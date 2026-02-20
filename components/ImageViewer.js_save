@@ -1,0 +1,344 @@
+import { useFocusEffect, useNavigation } from "@react-navigation/native"
+import { useCameraPermissions } from "expo-camera"
+import { router } from "expo-router"
+import { useAtom } from "jotai"
+import { CheckIcon, X as CloseIcon, DropletsIcon, FireExtinguisherIcon, GripIcon, MapPinPlusIcon, PaintRoller, ZapIcon } from "lucide-react-native"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { ActivityIndicator, Dimensions, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native"
+import RNBlobUtil from 'react-native-blob-util'
+import FastImage from 'react-native-fast-image'
+import RNFS from 'react-native-fs'
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
+import ImageZoom from 'react-native-image-pan-zoom'
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated"
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import uuid from 'react-native-uuid'
+import { supabase } from "../lib/supabase"
+import { categoriesAtom, loggedInUserAtom, selectedPinAtom, statusesAtom } from "../store/atoms"
+import MapPin from "./MapPin"
+import PdfViewerFilterOverlay from "./PdfViewerFilterOverlay"
+
+const WINDOW = Dimensions.get("window")
+const PIN_SIZE = 24
+const FLOATING_BUTTON_SIZE = 56
+
+const categoriesIcons = {
+    unassigned: <CheckIcon color="white" size={24} />,
+    zap: <ZapIcon color="white" size={24} />,
+    droplets: <DropletsIcon color="white" size={24} />,
+    paint: <PaintRoller color="white" size={24} />,
+    carrelage: <GripIcon color="white" size={24} />,
+    'fire-extinguisher': <FireExtinguisherIcon color="white" size={24} />,
+}
+
+const PinMarker = memo(({ pin, imageRenderSize, scale, positionX, positionY, onPinPress }) => (
+    <View style={[styles.pinContainer, { 
+        left: positionX + (pin.x * imageRenderSize.width * scale),
+        top: positionY + (pin.y * imageRenderSize.height * scale),
+        transform: [{ scale: 1 / scale }]
+    }]}>
+        <MapPin pin={pin} onPinPress={onPinPress} />
+    </View>
+), (prev, next) => 
+    prev.pin.id === next.pin.id && prev.scale === next.scale && 
+    prev.positionX === next.positionX && prev.positionY === next.positionY
+)
+
+export default function ImageViewerWithPins({ myuri, myname, source, pins, onPinUpdate, selectedProject, imageName, plan_id }) {
+    const insets = useSafeAreaInsets()
+    const navigation = useNavigation()
+    const [user] = useAtom(loggedInUserAtom)
+    const [categories] = useAtom(categoriesAtom)
+    const [statuses] = useAtom(statusesAtom)
+    const [selectedPin, setSelectedPin] = useAtom(selectedPinAtom)
+    
+    const [normalizedPins, setNormalizedPins] = useState(pins)
+    const [filteredPins, setFilteredPins] = useState(pins)
+    const [localPath, setLocalPath] = useState(null)
+    const [imageInfo, setImageInfo] = useState({ width: 0, height: 0 })
+    const [imageReady, setImageReady] = useState(false)
+    const [currentScale, setCurrentScale] = useState(1)
+    const [currentPosition, setCurrentPosition] = useState({ x: 0, y: 0 })
+    const [error, setError] = useState(null)
+    const [bottomSheetVisible, setBottomSheetVisible] = useState(false)
+    const [bottomSheetPin, setBottomSheetPin] = useState(null)
+    const [projectNumber, setProjectNumber] = useState('')
+    const [pinNumber, setPinNumber] = useState('')
+    const [showFabActions, setShowFabActions] = useState(false)
+    
+    const [permission, requestPermission] = useCameraPermissions()
+    const buttonRef = useRef(null)
+    const lastTapRef = useRef(0)
+    const buttonX = useSharedValue(0)
+    const buttonY = useSharedValue(0)
+    const buttonScale = useSharedValue(1)
+    const isDragging = useSharedValue(false)
+
+    useEffect(() => setNormalizedPins(pins ?? []), [pins])
+
+    useFocusEffect(useCallback(() => {
+        let currentLocalPath = null
+        let cancelled = false
+
+        const downloadFile = async () => {
+            try {
+                setImageReady(false)
+                setLocalPath(null)
+                setError(null)
+                
+                const extension = source.split('.').pop().split('?')[0] || 'png'
+                const res = await RNBlobUtil.config({ fileCache: true, appendExt: extension }).fetch('GET', source)
+                
+                if (cancelled) return
+                currentLocalPath = res.path()
+                const fileInfo = await RNFS.stat(currentLocalPath)
+                
+                if (fileInfo.size === 0) throw new Error('Downloaded file is empty')
+                setLocalPath(currentLocalPath)
+            } catch (e) {
+                if (!cancelled) setError('Failed to load file: ' + e.message)
+            }
+        }
+
+        if (source) downloadFile()
+        return () => {
+            cancelled = true
+            setImageReady(false)
+            if (currentLocalPath) RNFS.unlink(currentLocalPath).catch(() => {})
+        }
+    }, [source]))
+
+    useEffect(() => {
+        if (!localPath) return
+        const fileUri = localPath.startsWith('file://') ? localPath : `file://${localPath}`
+        Image.getSize(fileUri,
+            (width, height) => {
+                console.log('📐 Image dimensions:', { width, height })
+                setImageInfo({ width, height })
+                setImageReady(true)
+            },
+            (error) => console.error('Failed to get image size:', error)
+        )
+    }, [localPath])
+
+    const handleMove = useCallback((pos) => {
+        setCurrentPosition({ x: pos.positionX, y: pos.positionY })
+        setCurrentScale(pos.scale)
+    }, [])
+
+    const handleStatusDoubleTap = useCallback(async () => {
+        const now = Date.now()
+        if (now - lastTapRef.current < 300 && bottomSheetPin && statuses.length) {
+            const lastStatus = [...statuses].sort((a, b) => a.order - b.order).pop()
+            if (lastStatus && bottomSheetPin.status_id !== lastStatus.id) {
+                const { error } = await supabase.from('pdf_pins').update({ status_id: lastStatus.id }).eq('id', bottomSheetPin.id)
+                if (!error) {
+                    setBottomSheetPin({ ...bottomSheetPin, status_id: lastStatus.id, Status: lastStatus })
+                    setNormalizedPins(prev => prev.map(p => p.id === bottomSheetPin.id ? { ...p, status_id: lastStatus.id } : p))
+                    onPinUpdate?.({ ...bottomSheetPin, status_id: lastStatus.id })
+                }
+            }
+        }
+        lastTapRef.current = now
+    }, [bottomSheetPin, statuses, onPinUpdate])
+
+    const handlePinDrop = useCallback((normX, normY) => {
+        const newPin = {
+            id: uuid.v4(), x: normX, y: normY, note: '', photoUris: [],
+            category_id: categories[0]?.id, status_id: statuses[0]?.id, name: '',
+            project_id: selectedProject?.id, pdf_name: imageName || '', plan_id: plan_id || '', due_date: null,
+        }
+        setNormalizedPins(prev => [...prev, newPin])
+        onPinUpdate?.(newPin)
+        
+        if (!permission?.granted) {
+            requestPermission()
+        } else {
+            setSelectedPin(newPin)
+            router.push({ pathname: "CameraScreen", params: { myuri, myname, myplanid: plan_id } })
+        }
+    }, [categories, statuses, selectedProject, imageName, plan_id, permission, myuri, myname, setSelectedPin, onPinUpdate])
+
+    const handleDropToImage = useCallback(() => {
+        if (!buttonRef.current || !imageInfo.width) return
+        buttonRef.current?.measureInWindow((bX, bY, bW, bH) => {
+            const dropX = bX + bW / 2, dropY = bY + bH / 2
+            const imageX = (dropX - currentPosition.x) / currentScale
+            const imageY = (dropY - currentPosition.y) / currentScale
+            const normX = imageX / imageInfo.width, normY = imageY / imageInfo.height
+            if (normX >= 0 && normX <= 1 && normY >= 0 && normY <= 1) handlePinDrop(normX, normY)
+        })
+    }, [imageInfo, currentScale, currentPosition, handlePinDrop])
+
+    const onPinPress = useCallback(async (pin) => {
+        const { data } = await supabase.from('pdf_pins').select('*,projects(*),categories(*),Status(*)').eq('id', pin.id).single()
+        if (data) {
+            setProjectNumber(data.projects?.project_number || '')
+            setPinNumber(data.pin_number || '')
+            setBottomSheetPin(data)
+        } else setBottomSheetPin(pin)
+        setBottomSheetVisible(true)
+    }, [])
+
+    const handleNavigateToMetadata = useCallback(() => {
+        setBottomSheetVisible(false)
+        if (bottomSheetPin) {
+            navigation.navigate("PinMetadataScreen", { 
+                pinId: bottomSheetPin.id, from: 'Image', myuri, myname, myplanid: plan_id, photoUris: JSON.stringify([])
+            })
+        }
+    }, [bottomSheetPin, navigation, myuri, myname, plan_id])
+
+    const buttonGesture = useMemo(() => Gesture.Pan()
+        .onStart(() => { isDragging.value = true; buttonScale.value = withSpring(1.2) })
+        .onUpdate((e) => { buttonX.value = e.translationX; buttonY.value = e.translationY })
+        .onEnd(() => { isDragging.value = false; buttonScale.value = withSpring(1); runOnJS(setShowFabActions)(true) }), [])
+
+    const handleConfirmDrop = useCallback(() => {
+        handleDropToImage()
+        setShowFabActions(false)
+        buttonX.value = withSpring(0)
+        buttonY.value = withSpring(0)
+    }, [handleDropToImage])
+
+    const handleCancelDrop = useCallback(() => {
+        setShowFabActions(false)
+        buttonX.value = withSpring(0)
+        buttonY.value = withSpring(0)
+    }, [])
+
+    const buttonAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateX: buttonX.value }, { translateY: buttonY.value }, { scale: buttonScale.value }],
+        opacity: isDragging.value ? 0.8 : 1
+    }), [])
+
+    useFocusEffect(useCallback(() => () => setBottomSheetVisible(false), []))
+
+    if (permission === null) return <Text style={styles.centerText}>Loading...</Text>
+    if (permission && !permission.granted) {
+        return (
+            <View style={styles.permissionContainer}>
+                <TouchableOpacity onPress={requestPermission}><Text>Grant Permission</Text></TouchableOpacity>
+            </View>
+        )
+    }
+
+    const fileUri = localPath ? (localPath.startsWith('file://') ? localPath : `file://${localPath}`) : null
+
+    return (
+        <View style={styles.container}>
+            <PdfViewerFilterOverlay pins={pins} onFilter={setFilteredPins} fabOffset={0} />
+
+            {fileUri && imageReady && (
+                <ImageZoom cropWidth={WINDOW.width} cropHeight={WINDOW.height} imageWidth={imageInfo.width} 
+                    imageHeight={imageInfo.height} onMove={handleMove} minScale={0.5} maxScale={8} 
+                    enableSwipeDown={false} enableCenterFocus={false} style={styles.imageZoom}>
+                    <FastImage source={{ uri: fileUri, priority: FastImage.priority.high }}
+                        style={{ width: imageInfo.width, height: imageInfo.height }}
+                        resizeMode={FastImage.resizeMode.stretch}
+                        onError={(e) => setError('Failed to load image')} />
+                    {filteredPins.map((pin) => (
+                        <PinMarker key={pin.id} pin={pin} imageRenderSize={imageInfo} scale={currentScale}
+                            positionX={currentPosition.x} positionY={currentPosition.y} onPinPress={() => onPinPress(pin)} />
+                    ))}
+                </ImageZoom>
+            )}
+
+            {!fileUri && !error && (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#fff" />
+                    <Text style={styles.loadingText}>Chargement...</Text>
+                </View>
+            )}
+
+            {error && <View style={styles.errorContainer}><Text style={styles.errorText}>{error}</Text></View>}
+
+            {user.role !== 'guest' && (
+                <View style={[styles.buttonWrapper, { paddingBottom: insets.bottom }]} pointerEvents="box-none">
+                    {showFabActions && (
+                        <Animated.View style={[styles.fabActionsContainer, buttonAnimatedStyle]} pointerEvents="box-none">
+                            <TouchableOpacity style={[styles.actionButton, styles.checkButton]} onPress={handleConfirmDrop} activeOpacity={0.7}>
+                                <CheckIcon size={24} color="white" />
+                            </TouchableOpacity>
+                            <View style={{ width: FLOATING_BUTTON_SIZE }} />
+                            <TouchableOpacity style={[styles.actionButton, styles.closeActionButton]} onPress={handleCancelDrop} activeOpacity={0.7}>
+                                <CloseIcon size={24} color="white" />
+                            </TouchableOpacity>
+                        </Animated.View>
+                    )}
+                    <GestureDetector gesture={buttonGesture}>
+                        <Animated.View ref={buttonRef} style={[styles.floatingButton, buttonAnimatedStyle]} pointerEvents="auto">
+                            <MapPinPlusIcon size={28} color="white" />
+                        </Animated.View>
+                    </GestureDetector>
+                </View>
+            )}
+
+            <Modal visible={bottomSheetVisible} transparent animationType="slide" onRequestClose={() => setBottomSheetVisible(false)}>
+                <Pressable style={styles.modalOverlay} onPress={() => setBottomSheetVisible(false)}>
+                    <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
+                        <View style={styles.bottomSheetHeader}>
+                            <View style={styles.bottomSheetHandle} />
+                            <TouchableOpacity onPress={() => setBottomSheetVisible(false)} style={styles.closeButton} activeOpacity={0.7}>
+                                <CloseIcon size={20} color="#111" />
+                            </TouchableOpacity>
+                        </View>
+                        {bottomSheetPin && (
+                            <Pressable style={styles.bottomSheetContent} onPress={handleNavigateToMetadata}>
+                                <View style={styles.statusRow}>
+                                    <TouchableOpacity onPress={handleStatusDoubleTap} activeOpacity={0.7}
+                                        style={[styles.statusIconCircle, { 
+                                            backgroundColor: statuses.find(s => s.id === bottomSheetPin.status_id)?.color || bottomSheetPin.Status?.color || '#ccc'
+                                        }]}>
+                                        {categoriesIcons[categories.find(c => c.id === bottomSheetPin.category_id)?.icon || bottomSheetPin.categories?.icon || 'unassigned']}
+                                    </TouchableOpacity>
+                                    <View style={[styles.statusBadge, { 
+                                        backgroundColor: statuses.find(s => s.id === bottomSheetPin.status_id)?.color || bottomSheetPin.Status?.color || '#ccc'
+                                    }]}>
+                                        <Text style={styles.statusBadgeText}>
+                                            {statuses.find(s => s.id === bottomSheetPin.status_id)?.name || bottomSheetPin.Status?.name || 'N/A'}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.idText}>ID : {projectNumber || 'N/A'} - {pinNumber || 'N/A'}</Text>
+                                <Text style={styles.pinName}>{bottomSheetPin.name || 'Sans titre'}</Text>
+                                {bottomSheetPin.note && <Text style={styles.pinNote}>{bottomSheetPin.note}</Text>}
+                            </Pressable>
+                        )}
+                    </View>
+                </Pressable>
+            </Modal>
+        </View>
+    )
+}
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#000' },
+    centerText: { flex: 1, textAlign: "center", marginTop: 50, color: '#fff' },
+    imageZoom: { backgroundColor: '#000' },
+    buttonWrapper: { position: 'absolute', right: 0, bottom: 0, left: 0, top: 0, pointerEvents: 'box-none' },
+    floatingButton: { position: "absolute", right: 20, bottom: 180, width: FLOATING_BUTTON_SIZE, height: FLOATING_BUTTON_SIZE, borderRadius: FLOATING_BUTTON_SIZE / 2, backgroundColor: "black", justifyContent: "center", alignItems: "center", elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 6, zIndex: 9999 },
+    pinContainer: { position: "absolute", zIndex: 10, alignItems: "center", justifyContent: "center", width: PIN_SIZE, height: PIN_SIZE, marginLeft: -PIN_SIZE / 2, marginTop: -PIN_SIZE / 2 },
+    permissionContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingText: { color: '#fff', fontSize: 14, marginTop: 10 },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    errorText: { color: '#fff', fontSize: 16 },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+    bottomSheet: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' },
+    bottomSheetHeader: { alignItems: 'center', paddingTop: 10, paddingHorizontal: 20, position: 'relative' },
+    bottomSheetHandle: { width: 40, height: 5, backgroundColor: '#ccc', borderRadius: 3, marginBottom: 10 },
+    closeButton: { position: 'absolute', right: 12, top: 12, backgroundColor: '#f3f4f6', borderRadius: 9999, padding: 6, justifyContent: 'center', alignItems: 'center' },
+    bottomSheetContent: { paddingHorizontal: 20, paddingBottom: 20 },
+    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+    statusIconCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+    statusBadge: { borderRadius: 9999, paddingHorizontal: 16, paddingVertical: 8 },
+    statusBadgeText: { color: 'white', fontWeight: '500', fontSize: 14, fontFamily: 'Outfit_400Regular' },
+    idText: { color: '#6B7280', fontSize: 12, marginBottom: 8, fontFamily: 'Outfit_400Regular' },
+    pinName: { fontSize: 20, color: '#000', marginBottom: 8, fontFamily: 'Outfit_400Regular' },
+    pinNote: { fontSize: 14, color: '#374151', lineHeight: 24, marginBottom: 16, fontFamily: 'Outfit_400Regular' },
+    fabActionsContainer: { position: 'absolute', right: -40, bottom: 120, flexDirection: 'row', gap: 16, alignItems: 'center' },
+    actionButton: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4 },
+    checkButton: { backgroundColor: '#10b981' },
+    closeActionButton: { backgroundColor: '#ef4444' },
+})

@@ -1,0 +1,190 @@
+/* use client */
+
+import { Camera } from 'expo-camera';
+import { isEqual } from 'lodash';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
+import 'react-native-url-polyfill/auto';
+import { addPinToSupabase, loadPinsFromSupabase, updatePinInSupabase } from '../../services/supabaseService.js';
+
+// ⭐ AJOUT DE useIsFocused pour le démontage forcé
+import { useIsFocused } from '@react-navigation/native';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { useAtom } from 'jotai';
+import { ChevronLeft } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import uuid from 'react-native-uuid';
+import PdfViewerWithPins from '../../components/PdfViewer.js';
+import { supabase } from '../../lib/supabase.js';
+import { loggedInUserAtom, pinsAtom, selectedProjectAtom } from '../../store/atoms.js';
+
+export default function MainScreen() {
+    const { myuri, myname, myplanid } = useLocalSearchParams();
+    const navigation = useNavigation();
+    // ⭐ Détermine si l'écran est visible ou masqué
+    const isFocused = useIsFocused(); 
+
+    const [pdfUri, setPdfUri] = useState(null);
+    const [pdfName, setPdfName] = useState(null);
+    const [pins, setPins] = useState([]);
+    const [cameraPermission, setCameraPermission] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [selectedProject, setSelectedProject] = useAtom(selectedProjectAtom)
+    const [loggedInUser, setLoggedInUser] = useAtom(loggedInUserAtom);
+    const [pinsState, setPinsState] = useAtom(pinsAtom);
+    const [planId, setPlanId] = useState(null);
+
+    // Header + fetch PDF + assign name
+    useEffect(() => {
+        if (myuri && myname && myplanid) {
+            setPdfName(myname);
+            fetchPdfUri(myuri);
+            setPlanId(myplanid);
+
+            navigation.setOptions({
+                title: myname,
+                headerTitleAlign: 'center',
+                headerTitleStyle: {
+                    fontFamily: 'Outfit_700Bold',
+                    fontSize: 20,
+                    color: 'black',
+                },
+                headerLeft: () => (
+                    <TouchableOpacity 
+                        onPress={() => router.navigate('/plans')} 
+                        style={{ paddingRight: 10, paddingVertical: 5 }}
+                    >
+                        <ChevronLeft color="black" size={24} /> 
+                    </TouchableOpacity>
+                ),
+            });
+        }
+    }, [myuri, myname, myplanid]); // Ajout de myplanid aux dépendances
+
+    const fetchPdfUri = async (uri) => {
+        const { data } = supabase.storage.from('project-plans').getPublicUrl(uri);
+        if (data?.publicUrl) {
+            setPdfUri(data.publicUrl);
+        } else {
+            Alert.alert('Erreur', 'Impossible de charger le fichier PDF');
+        }
+    };
+
+    // Request camera permission
+    useEffect(() => {
+        (async () => {
+            const { status } = await Camera.requestCameraPermissionsAsync();
+            setCameraPermission(status === 'granted');
+        })();
+    }, []);
+
+    // Load pins from Supabase only
+    const loadPins = useCallback(async () => {
+        if (!planId) return; // Utiliser planId
+        try {
+            setLoading(true);
+            // Utiliser planId au lieu de pdfName si possible pour la recherche
+            const { pins: supabasePins = [] } = await loadPinsFromSupabase(planId,loggedInUser); 
+            setPins(supabasePins);
+            setPinsState(supabasePins)
+        } catch (error) {
+            console.error('Erreur de chargement des pins Supabase:', error);
+            Alert.alert('Erreur', 'Impossible de charger les pins depuis Supabase');
+            setPins([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [planId]);
+
+    useEffect(() => {
+        // Charger les pins seulement si l'écran est focalisé ET que l'URI est prêt
+        if (isFocused && planId && pdfUri) { 
+            loadPins();
+        }
+    }, [isFocused, planId, pdfUri, loadPins]); // Ajout de isFocused et loadPins
+
+    const handlePinUpdate = async (updatedPin) => {
+        try {
+            let pinToSave = { ...updatedPin };
+            if (!pinToSave.id || !pins.find(p => p.id === updatedPin.id)) {
+                if(!pinToSave.id) {pinToSave.id = uuid.v4();}
+                // Remplacer l'appel à addPinToSupabase par la version avec planId si elle existe, sinon garder pdfName
+                await addPinToSupabase(planId || pdfName, pinToSave, loggedInUser.id);
+            } else {
+                await updatePinInSupabase(planId || pdfName, pinToSave, loggedInUser.id);
+            }
+
+            // Mettre à jour l'état local et atomique
+            setPins(prev =>
+                prev.some(p => p.id === pinToSave.id)
+                    ? prev.map(p => (p.id === pinToSave.id ? pinToSave : p))
+                    : [...prev, pinToSave]
+            );
+            setPinsState(prev =>
+                prev.some(p => p.id === pinToSave.id)
+                    ? prev.map(p => (p.id === pinToSave.id ? pinToSave : p))
+                    : [...prev, pinToSave]
+            );
+        } catch (error) {
+            console.error('Erreur de mise à jour du pin:', error);
+            Alert.alert('Erreur', 'Échec de mise à jour du pin');
+        }
+    };
+
+    // --- ⭐ LOGIQUE DE DÉMONTAGE FORCÉ ---
+    if (!isFocused) {
+        // L'écran est masqué. Retourner une vue minimale pour FORCER le démontage
+        // du composant PdfViewerWithPins, déclenchant son useEffect cleanup.
+        return <View style={styles.container} />;
+    }
+
+    // L'écran est focalisé (visible)
+    return (
+        <SafeAreaView style={styles.container} edges={'bottom'}>
+            {loading && (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#2196F3" />
+                </View>
+            )}
+
+            {/* ⭐ Monté seulement si isFocused est true */}
+            {pdfUri && pins && (
+                <View style={styles.pdfContainer}>
+                    <PdfViewerWithPins
+                        myuri={myuri}
+                        myname={myname}
+                        pdfName={pdfName}
+                        plan_id={myplanid}
+                        selectedProject={selectedProject}
+                        source={pdfUri}
+                        pins={pinsState} // Utiliser pinsState pour la source des pins
+                        onPinsChange={(newPins) => {
+                            // S'assurer que les pins atomiques/locaux sont synchronisés si PdfViewer les modifie directement (ce qui est rare)
+                            if (!isEqual(pins, newPins)) {
+                                console.log('Pins changed, updating state');
+                                setPins(newPins);
+                                setPinsState(newPins);
+                            }
+                        }}
+                        onPinUpdate={handlePinUpdate}
+                    />
+                </View>
+            )}
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    container: { flex: 1 },
+    loadingContainer: {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        zIndex: 1000,
+        transform: [{ translateX: -25 }, { translateY: -25 }],
+    },
+    pdfContainer: {
+        flex: 1,
+        position: 'relative',
+    },
+});

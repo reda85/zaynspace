@@ -1,0 +1,840 @@
+import { Feather } from '@expo/vector-icons';
+import BottomSheet, { BottomSheetScrollView, TouchableOpacity } from '@gorhom/bottom-sheet';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { useAtom } from 'jotai';
+import { CheckIcon, DropletsIcon, FireExtinguisherIcon, GripIcon, PaintRoller, Zap, ZapIcon } from 'lucide-react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+
+  StyleSheet,
+  Text,
+  TextInput,
+
+  View,
+} from 'react-native';
+import DropDownPicker from 'react-native-dropdown-picker';
+import {
+  GestureHandlerRootView,
+  ScrollView,
+} from 'react-native-gesture-handler';
+import { categoriesAtom, statusesAtom } from '../store/atoms';
+import CameraModal from './CameraView';
+import DrawingScreen from './DrawingScreen'; // adjust path if needed
+import Timeline from './TimeLine';
+
+
+const assigneeList = [
+  { id: '1', name: 'Alice Durand' },
+  { id: '2', name: 'Bob Martin' },
+  { id: '3', name: 'Carla Smith' },
+  { id: '4', name: 'David Leblanc' },
+];
+
+const statusColorMap = {
+  'En cours': '#facc15', // yellow-400
+  'A valider': '#3b82f6', // blue-500
+  'Termine': '#16a34a', // green-600
+  'Ignorer': '#4b5563', // gray-600
+};
+
+const categoriesIcons = {
+  'unassigned' : <CheckIcon style={{ color: 'white' }}  />,
+  'zap': <ZapIcon style={{ color: 'white' }} />,
+  'droplets': <DropletsIcon style={{ color: 'white' }} />,
+  'paint': <PaintRoller style={{ color: 'white' }} />,
+  'carrelage': <GripIcon style={{ color: 'white' }} />,
+  'fire-extinguisher': <FireExtinguisherIcon style={{ color: 'white' }} />,
+}
+
+
+export default function PinMetadataScreen({ visible, photoUris, onSave, onCancel, pin, onPinUpdate, onCaptureSnippet }) {
+  const [name, setName] = useState(pin?.name || '');
+  const [note, setNote] = useState(pin?.note || '');
+  const [categories, setCategories] = useAtom(categoriesAtom);
+  const [statuses, setStatuses] = useAtom(statusesAtom);
+  const [category, setCategory] = useState(categories.find(c => c.id === pin?.category_id)?.name || categories[0]?.name || 'Other');
+  const [status, setStatus] = useState(statuses.find(s => s.id === pin?.status_id) || statuses[0]);
+  const [photos, setPhotos] = useState(photoUris || []);
+  const [assigneeModalVisible, setAssigneeModalVisible] = useState(false);
+  const [assigneeSearch, setAssigneeSearch] = useState('');
+  const [assignee, setAssignee] = useState(pin?.assigned_to || null);
+  const [showAllEvents, setShowAllEvents] = useState(false);
+  const [due_date, setDue_date] = useState(pin?.due_date || null);
+  const [showDate, setShowDate] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [events, setEvents] = useState([]);
+  const [commentText, setCommentText] = useState('');
+  const sheetRef = useRef(null);
+  const snapPoints = useMemo(() => ['50%', '90%'], []);
+  const [showDrawing, setShowDrawing] = useState(false);
+const [currentPhotoUri, setCurrentPhotoUri] = useState(null);
+const [drawingIndex, setDrawingIndex] = useState(0);
+const [showCamera, setShowCamera] = useState(false);
+
+  const handlePhotoTaken = (uri) => {
+    if (!uri) return;
+    setPhotos((prev) => [...prev, uri]);
+    setCurrentPhotoUri(uri);
+    setDrawingIndex(photos.length);
+    setShowDrawing(true);
+    setShowCamera(false);
+  };
+  const dateSelected = pin?.due_date || due_date !== null;
+
+  
+//console.log('PinMetadataScreen rendered with pin:', pin);
+//console.log('PinMetadataScreen rendered with statuses:', statuses, status);
+//console.log('PinMetadataScreen rendered with categories:', categories, category);
+  const handleSendComment = () => {
+    if (!commentText.trim()) return;
+    console.log('Sending comment:', commentText);
+    setCommentText('');
+  };
+
+  useEffect(() => {
+    if (visible && sheetRef.current) {
+      sheetRef.current.expand();
+    } else if (sheetRef.current) {
+      sheetRef.current.close();
+    }
+  }, [visible]);
+
+  {/*useEffect(() => {
+    const fetchEvents = async () => {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*, pins_photos(*), members(*)')
+        .eq('pin_id', pin.id)
+        .order('created_at', { ascending: true });
+
+      if (!error) setEvents(data);
+      else console.error('Failed to load events:', error);
+      if(data){
+        console.log('Events:',data);
+      }
+    };
+
+    if (pin?.id) fetchEvents();
+  }, [pin,visible]);
+
+  */}
+
+  useEffect(() => {
+    setCategory(categories.find(c => c.id === pin?.category_id) || categories[0]);
+    setStatus(statuses.find(s => s.id === pin?.status_id) || statuses[0] );
+    setPhotos(pin?.photoUris || []);
+    setName(pin?.name || '');
+    setNote(pin?.note || '');
+    setDue_date(pin?.due_date || null);
+    setAssignee(pin?.assigned_to || null);
+    setEvents(pin?.events || null);
+  }, [pin]);
+
+  const getCurrentPin = () => ({
+    ...pin,
+    name,
+    note,
+    pin_number: pin?.pin_number,
+   
+    category_id: category?.id,
+    status_id: status?.id,
+    due_date,
+    assigned_to: assignee,
+    photoUris: photos,
+  });
+
+  useEffect(() => {
+    if (photoUris) {
+      setPhotos((prev) => [...new Set([...prev, ...photoUris])]);
+    }
+  }, [photoUris]);
+
+  useEffect(() => {
+    if (pin && onPinUpdate) {
+      onPinUpdate(getCurrentPin());
+    }
+  }, [name, note, category, status, due_date, assignee, photos]);
+
+
+
+  const handleSheetChange = useCallback((index) => {
+    console.log('handleSheetChange', index);
+  }, []);
+
+  const handleClosePress = useCallback(() => {
+    sheetRef.current?.close();
+    onCancel();
+  }, [onCancel]);
+
+  const removePhoto = (uri) => {
+    setPhotos((prev) => prev.filter((p) => p !== uri));
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <BottomSheet
+          ref={sheetRef}
+          index={visible ? 1 : -1}
+          snapPoints={snapPoints}
+          enablePanDownToClose
+          onClose={onCancel}
+          onChange={handleSheetChange}
+        >
+          <View style={styles.sheetContainer}>
+            <BottomSheetScrollView
+              contentContainerStyle={styles.scrollContent}
+              style={styles.scrollView}
+            >
+              <View style={styles.headerRow}>
+                <View style={{ flex: 1 }} />
+                <TouchableOpacity onPress={() => console.log('Menu pressed')}>
+                  <Feather name="more-vertical" size={24} color="black" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleClosePress} style={{ marginLeft: 12 }}>
+                  <Feather name="x" size={24} color="black" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.statusRow}>
+                <View style={[styles.statusIconCircle, { backgroundColor: statuses.find(s => s.id === status?.id)?.color || '#ccc' }]}>
+                  {categoriesIcons[categories.find(c => c.id === category?.id)?.icon]}
+                </View>
+                <View style={styles.dropdownWrapper}>
+  <DropDownPicker
+  open={statusOpen}
+  value={status?.id}
+  items={statuses.map(s => ({ label: s.name, value: s.id }))}
+  setOpen={setStatusOpen}
+  setValue={(newValue) => {
+    const newStatus = statuses.find(st => st.id === newValue);
+    if (newStatus) setStatus(newStatus);
+  }}
+  setItems={() => {}}
+    
+    // Use modal so it's never clipped
+    listMode="MODAL"
+    modalTitle="Select Status"
+    modalTitleStyle={{
+      fontFamily: "Lexend_400Regular",
+      color: "black",
+      fontSize: 16,
+      marginBottom: 10,
+    }}
+    modalProps={{
+      animationType: "slide",
+    }}
+    modalContentContainerStyle={{
+      backgroundColor: "#fff",
+    }}
+
+    // Selected pill style
+    style={[
+      styles.dropdown,
+      { backgroundColor: status?.color || '#ccc' }
+    ]}
+
+    // Dropdown text styles
+    textStyle={{
+      fontFamily: 'Lexend_400Regular',
+      color: "#black",
+      fontSize: 16,
+    }}
+
+    // Modal item styles
+    labelStyle={{
+      fontFamily: "Lexend_400Regular",
+      color: "#FFF",
+    }}
+
+    dropDownContainerStyle={{
+      backgroundColor: "#fff",
+    }}
+
+    ArrowDownIconComponent={({ style }) => (
+      <Feather name="chevron-down" size={20} color="#fff" style={style} />
+    )}
+  />
+</View>
+
+              </View>
+<Text style={styles.idText}>ID : {pin?.projects?.project_number} - {pin?.pin_number}</Text>
+              <TextInput
+                style={styles.textArea}
+                value={name}
+                onChangeText={setName}
+                placeholder="Ajouter un nom ici..."
+                placeholderTextColor="#999"
+              />
+
+              <TextInput
+                style={styles.noteInput}
+                value={note}
+                onChangeText={setNote}
+                placeholder="Ajouter une description ici..."
+                placeholderTextColor="#999"
+                multiline
+              />
+
+              <View style={styles.timeAssigneeRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.assigneeBtn,
+                    assignee ? styles.assigneeSelected : styles.assigneeUnselected,
+                  ]}
+                  onPress={() => setAssigneeModalVisible(true)}
+                >
+                  <Feather name="user" size={18} color="#000" style={styles.userIcon} />
+                  <Text style={styles.assigneeText}>{assignee ? assignee.name : 'Affecter'}</Text>
+                </TouchableOpacity>
+
+                <View style={styles.dateWrapper}>
+                  <TouchableOpacity
+                    style={[
+                      styles.dateButton,
+                      dateSelected ? styles.dateSelected : styles.dateUnselected,
+                    ]}
+                    onPress={() => setShowDate(true)}
+                  >
+                    <Feather name="calendar" size={18} color="#000" style={styles.dateIcon} />
+                    <Text style={styles.dateText}>
+                      {dateSelected ? (
+                        <>
+                          {new Date(due_date).toLocaleDateString()}{' '}
+                          <Text onPress={() => setDue_date(null)} style={{ color: '#dc2626' }}>
+                            ✕
+                          </Text>
+                        </>
+                      ) : (
+                        'Ajouter date'
+                      )}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {showDate && (
+                <DateTimePicker
+                  value={due_date || new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(e, selected) => {
+                    setShowDate(Platform.OS === 'ios');
+                    if (selected) setDue_date(selected);
+                  }}
+                />
+              )}
+
+              <View style={styles.categorywrapper}>
+              <DropDownPicker
+  open={categoryOpen}
+  value={category?.id}
+  items={categories.map(c => ({ label: c.name, value: c.id }))}
+  setOpen={setCategoryOpen}
+  setValue={(newValue) => {
+    const newCategory = categories.find(cat => cat.id === newValue);
+    if (newCategory) setCategory(newCategory);
+  }}
+  setItems={() => {}}
+  style={styles.categorydropdown}
+  dropDownContainerStyle={styles.categorydropdownContainer}
+  textStyle={styles.categorytext}
+  ArrowIconComponent={({ style }) => <Zap size={18} color="#333" style={style} />}
+/>
+
+                
+              </View>
+
+              <Modal visible={assigneeModalVisible} animationType="slide" transparent>
+                <View style={styles.modalOverlay}>
+                  <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>Select Assignee</Text>
+                    <TextInput
+                      placeholder="Search..."
+                      value={assigneeSearch}
+                      onChangeText={setAssigneeSearch}
+                      style={styles.searchInput}
+                      placeholderTextColor="#999"
+                    />
+                    <ScrollView style={{ maxHeight: 300 }}>
+                      {assigneeList
+                        .filter((person) =>
+                          person.name.toLowerCase().includes(assigneeSearch.toLowerCase())
+                        )
+                        .map((person) => (
+                          <TouchableOpacity
+                            key={person.id}
+                            style={styles.assigneeOption}
+                            onPress={() => {
+                              setAssignee(person);
+                              setAssigneeModalVisible(false);
+                            }}
+                          >
+                            <Text style={styles.assigneeName}>{person.name}</Text>
+                          </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                    <TouchableOpacity
+                      onPress={() => setAssigneeModalVisible(false)}
+                      style={styles.closeModalBtn}
+                    >
+                      <Text style={styles.closeModalText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </Modal>
+
+
+{/* New row under category selector */}
+<View style={styles.snippetPhotoRow}>
+  <TouchableOpacity
+  style={styles.addSnippetBtn}
+  onPress={async () => {
+    try {
+      // Assume a prop function `onCaptureSnippet` returns a URI of the snippet
+      const uri = await onCaptureSnippet(); 
+      if (!uri) return;
+
+      // Add to photos
+      setPhotos((prev) => [...prev, uri]);
+      setCurrentPhotoUri(uri);
+      setDrawingIndex(photos.length); // new photo index
+      setShowDrawing(true);
+    } catch (err) {
+      console.error('Failed to capture snippet:', err);
+    }
+  }}
+>
+  <Feather name="scissors" size={18} color="#be185d" style={styles.snippetIcon} />
+  <Text style={styles.addSnippetText}>Ajouter capture</Text>
+</TouchableOpacity>
+
+
+ <TouchableOpacity
+  style={styles.addPhotosBtn}
+  onPress={() => setShowCamera(true)}
+>
+  <Feather name="image" size={18} color="#2563eb" style={styles.photosIcon} />
+  <Text style={styles.addPhotosText}>Ajouter Photos</Text>
+</TouchableOpacity>
+</View>
+
+      {/* Camera modal */}
+      {showCamera && (
+        <Modal visible animationType="slide">
+          <CameraModal
+            onCancel={() => setShowCamera(false)}
+            onCapture={handlePhotoTaken}
+            pinId={pin?.id}
+            removePin={() => {}}
+            toDrawings={() => setShowDrawing(true)}
+          />
+        </Modal>
+      )}
+
+      {/* Drawing modal */}
+      {showDrawing && currentPhotoUri && (
+        <Modal visible animationType="slide">
+          <DrawingScreen
+            visible={showDrawing}
+            photoUri={currentPhotoUri}
+            pin={pin}
+            onDone={(savedUri) => {
+              const updated = [...photos];
+              updated[drawingIndex] = savedUri;
+              setPhotos(updated);
+              setShowDrawing(false);
+            }}
+            onCancel={() => setShowDrawing(false)}
+          />
+        </Modal>
+      )}
+
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[styles.tab, !showAllEvents && styles.activeTab]}
+                  onPress={() => setShowAllEvents(false)}
+                >
+                  <Text style={[styles.tabText, !showAllEvents && styles.activeTabText]}>
+                    Moins de mises à jour
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tab, showAllEvents && styles.activeTab]}
+                  onPress={() => setShowAllEvents(true)}
+                >
+                  <Text style={[styles.tabText, showAllEvents && styles.activeTabText]}>
+                    Plus de mises à jour
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+           {events &&   <Timeline events={events} showAllEvents={showAllEvents} /> }
+            </BottomSheetScrollView>
+
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 20}
+              style={styles.commentStickyWrapper}
+            >
+              <View style={styles.commentInputWrapper}>
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="Écrire un commentaire..."
+                  placeholderTextColor="#999"
+                  multiline
+                  value={commentText}
+                  onChangeText={setCommentText}
+                />
+                <TouchableOpacity onPress={handleSendComment} style={styles.sendButton}>
+                  <Feather name="send" size={18} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </KeyboardAvoidingView>
+          </View>
+        </BottomSheet>
+      </GestureHandlerRootView>
+     
+
+    </Modal>
+    
+  );
+}
+
+const styles = StyleSheet.create({
+  sheetContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    backgroundColor: '#fff',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 10, // Space for comment input
+  },
+  commentStickyWrapper: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderColor: '#eee',
+  },
+  commentInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#f9fafb', // Tailwind gray-50
+    borderWidth: 1,
+    borderColor: '#e5e7eb', // Tailwind gray-200
+  },
+  commentInput: {
+    flex: 1,
+    fontFamily: 'Lexend_400Regular',
+    fontSize: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    color: '#111827',
+    minHeight: 40,
+  },
+  sendButton: {
+    marginLeft: 8,
+    backgroundColor: '#2563eb', // Tailwind blue-600
+    padding: 8,
+    borderRadius: 9999,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 10,
+  },
+  statusIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dropdownWrapper: {
+    alignSelf: 'flex-start',
+  },
+  dropdown: {
+    borderRadius: 9999,
+    borderWidth: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
+    minWidth: 120,
+  },
+  dropdownContainer: {
+    borderWidth: 0,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    alignSelf: 'flex-start',
+  },
+  dropdownText: {
+    color: '#fff',
+    fontFamily: 'Lexend_400Regular',
+    fontSize: 16,
+  },
+  textArea: {
+    fontFamily: 'Lexend_400Regular',
+    width: '100%',
+    fontSize: 24,
+    outlineStyle: 'none',
+  },
+  noteInput: {
+    fontFamily: 'Lexend_400Regular',
+    width: '100%',
+    fontSize: 18,
+    outlineStyle: 'none',
+    marginTop: 10,
+  },
+  timeAssigneeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+   
+    marginTop: 10,
+    marginBottom: 10,
+    gap: 10,
+  },
+  assigneeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#eff6ff',
+    flex: 1,
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+  },
+  assigneeText: {
+    color: 'black',
+    fontFamily: 'Lexend_400Regular',
+    marginLeft: 6,
+  },
+  assigneeSelected: {
+    backgroundColor: '#dbeafe', // Tailwind bg-blue-100
+  },
+  assigneeUnselected: {
+    backgroundColor: '#f3f4f6', // Tailwind bg-gray-100
+  },
+  dateWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    
+  },
+  dateButton: {
+   
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    backgroundColor: '#eff6ff',
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+  },
+  dateText: {
+    fontFamily: 'Lexend_400Regular',
+    color: 'black',
+  },
+  dateSelected: {
+    backgroundColor: '#dbeafe', // Tailwind bg-blue-100
+  },
+  dateUnselected: {
+    backgroundColor: '#f3f4f6', // Tailwind bg-gray-100
+  },
+  dateIcon: {
+    marginRight: 6,
+    backgroundColor: '#fff',
+    padding: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  userIcon: {
+    marginRight: 6,
+    backgroundColor: '#fff',
+    padding: 6,
+    borderRadius: 9999,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  categorywrapper: {
+    alignSelf: 'flex-start',
+    minWidth: 160,
+  },
+  categorydropdown: {
+    backgroundColor: '#f5f5f5', // Tailwind bg-neutral-100
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  categorydropdownContainer: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#ddd',
+  },
+  categorytext: {
+    fontFamily: 'Lexend_400Regular',
+    fontSize: 16,
+    color: '#333',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    marginBottom: 10,
+    fontFamily: 'Lexend_400Regular',
+  },
+  assigneeOption: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
+  },
+  assigneeName: {
+    fontSize: 16,
+    fontFamily: 'Lexend_400Regular',
+  },
+  closeModalBtn: {
+    marginTop: 20,
+    alignSelf: 'center',
+  },
+  closeModalText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    borderRadius: 9999,
+    backgroundColor: '#f3f4f6', // gray-100
+    marginBottom: 10,
+    marginTop: 40,
+  },
+  tab: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 9999,
+  },
+  activeTab: {
+    backgroundColor: '#2563eb', // blue-600
+  },
+  tabText: {
+    color: '#374151', // gray-700
+    fontSize: 14,
+    fontFamily: 'Lexend_400Regular',
+  },
+  activeTabText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  snippetPhotoRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginTop: 10,
+  marginBottom: 10,
+  gap: 10,
+},
+
+addSnippetBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 6,
+  backgroundColor: '#f3f4f6', // light pink
+  borderWidth: 2,
+  borderColor: '#be185d', // bold pink
+  flex: 1,
+},
+
+addSnippetText: {
+  fontFamily: 'Lexend_400Regular',
+  color: '#be185d',
+  marginLeft: 6,
+},
+
+snippetIcon: {
+  backgroundColor: '#fff',
+  padding: 6,
+  borderRadius: 9999,
+  borderWidth: 1,
+  borderColor: '#f9a8d4', // soft pink border
+},
+
+addPhotosBtn: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingVertical: 8,
+  paddingHorizontal: 12,
+  borderRadius: 6,
+  backgroundColor: '#f3f4f6', // light gray
+  borderWidth: 2,
+  borderColor: '#2563eb', // blue border
+  flex: 1,
+},
+
+addPhotosText: {
+  fontFamily: 'Lexend_400Regular',
+  color: '#2563eb',
+  marginLeft: 6,
+},
+
+photosIcon: {
+  backgroundColor: '#fff',
+  padding: 6,
+  borderRadius: 9999,
+  borderWidth: 1,
+  borderColor: '#93c5fd', // soft blue border
+},
+idText: {
+  fontFamily: 'Lexend_400Regular',
+  color: '#6B7280',
+  fontSize: 12,
+  marginTop: 10,
+  marginLeft: 4,
+},
+
+});

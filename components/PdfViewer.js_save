@@ -1,0 +1,723 @@
+/* use client */
+
+import { useFocusEffect, useNavigation } from "@react-navigation/native"
+import { useCameraPermissions } from "expo-camera"
+import { router } from "expo-router"
+import { useAtom } from "jotai"
+import { CheckIcon, X as CloseIcon, DropletsIcon, FireExtinguisherIcon, GripIcon, MapPinPlusIcon, PaintRoller, ZapIcon } from "lucide-react-native"
+import { PDFDocument } from 'pdf-lib'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+    Dimensions,
+    Modal,
+    Platform,
+    Pressable,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native"
+import RNBlobUtil from 'react-native-blob-util'
+import RNFS from 'react-native-fs'
+import { Gesture, GestureDetector } from "react-native-gesture-handler"
+import Pdf from "react-native-pdf"
+
+import Animated, {
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
+} from "react-native-reanimated"
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import uuid from 'react-native-uuid'
+import { supabase } from "../lib/supabase"
+import { categoriesAtom, loggedInUserAtom, selectedPinAtom, statusesAtom } from "../store/atoms"
+import MapPin from "./MapPin"
+import PdfViewerFilterOverlay from "./PdfViewerFilterOverlay"
+
+const AnimatedView = Animated.createAnimatedComponent(View)
+const WINDOW = Dimensions.get("window")
+const PIN_SIZE = 24
+const FLOATING_BUTTON_SIZE = 56
+
+const INITIAL_SCALE = 0.5
+const BASE_RESOLUTION_MULTIPLIER = 1.5
+
+const categoriesIcons = {
+    unassigned: <CheckIcon color="white" size={24} />,
+    zap: <ZapIcon color="white" size={24} />,
+    droplets: <DropletsIcon color="white" size={24} />,
+    paint: <PaintRoller color="white" size={24} />,
+    carrelage: <GripIcon color="white" size={24} />,
+    'fire-extinguisher': <FireExtinguisherIcon color="white" size={24} />,
+}
+
+// ⭐ OPTIMIZATION: Memoized Pin Component
+const PinMarker = memo(({ pin, pdfRenderSize, pinAnimatedStyle, onPinPress }) => {
+    const absX = pin.x * pdfRenderSize.width
+    const absY = pin.y * pdfRenderSize.height
+
+    return (
+        <Animated.View 
+            style={[
+                styles.pinContainer, 
+                { left: absX, top: absY }, 
+                pinAnimatedStyle
+            ]}
+        >
+            <MapPin pin={pin} onPinPress={onPinPress} />
+        </Animated.View>
+    )
+}, (prevProps, nextProps) => {
+    return (
+        prevProps.pin.id === nextProps.pin.id &&
+        prevProps.pin.x === nextProps.pin.x &&
+        prevProps.pin.y === nextProps.pin.y &&
+        prevProps.pin.status_id === nextProps.pin.status_id &&
+        prevProps.pin.category_id === nextProps.pin.category_id &&
+        prevProps.pdfRenderSize.width === nextProps.pdfRenderSize.width
+    )
+})
+
+export default function PdfViewerWithPins({ myuri, myname, source, pins, onPinsChange, onPinUpdate, selectedProject, pdfName, plan_id }) {
+    const insets = useSafeAreaInsets()
+    const [normalizedPins, setNormalizedPins] = useState(pins)
+    const [user] = useAtom(loggedInUserAtom)
+    const [selectedPin, setSelectedPin] = useAtom(selectedPinAtom)
+    const [editingPin, setEditingPin] = useState(null)
+    const [categories] = useAtom(categoriesAtom)
+    const [statuses] = useAtom(statusesAtom)
+    const [filteredPins, setFilteredPins] = useState(pins)
+    const [ghostPinPosition, setGhostPinPosition] = useState(null)
+    const [bottomSheetVisible, setBottomSheetVisible] = useState(false)
+    const [bottomSheetPin, setBottomSheetPin] = useState(null)
+    const [projectNumber, setProjectNumber] = useState('')
+    const [pinNumber, setPinNumber] = useState('')
+    const [showFabActions, setShowFabActions] = useState(false)
+
+    const lastTapRef = useRef(0)
+    const DOUBLE_TAP_DELAY = 300
+    
+    const savedScale = useSharedValue(INITIAL_SCALE)
+    const savedTranslateX = useSharedValue(0)
+    const savedTranslateY = useSharedValue(0)
+
+    const pdfRef = useRef(null)
+    const [permission, requestPermission] = useCameraPermissions()
+    const [localPath, setLocalPath] = useState(null)
+    const [error, setError] = useState(null)
+
+    const scale = useSharedValue(INITIAL_SCALE) 
+    const translateX = useSharedValue(0)
+    const translateY = useSharedValue(0)
+    const isDragging = useSharedValue(false)
+    
+    const buttonRef = useRef(null)
+    const buttonX = useSharedValue(0)
+    const buttonY = useSharedValue(0)
+    const buttonScale = useSharedValue(1)
+    
+    const [pdfInfo, setPdfInfo] = useState({ width: 0, height: 0, pages: 0 })
+    const [pdfRenderSize, setPdfRenderSize] = useState({ width: 0, height: 0 })
+    const [pdfReady, setPdfReady] = useState(false)
+    const [pdfLayout, setPdfLayout] = useState(null)
+    const navigation = useNavigation()
+
+    const handleStatusDoubleTap = useCallback(async () => {
+        const now = Date.now()
+        if (now - lastTapRef.current < DOUBLE_TAP_DELAY) {
+            if (!bottomSheetPin || !statuses.length) return
+
+            const sortedStatuses = [...statuses].sort((a, b) => a.order - b.order)
+            const lastStatus = sortedStatuses[sortedStatuses.length - 1]
+
+            if (lastStatus && bottomSheetPin.status_id !== lastStatus.id) {
+                const { error } = await supabase
+                    .from('pdf_pins')
+                    .update({ status_id: lastStatus.id })
+                    .eq('id', bottomSheetPin.id)
+
+                if (!error) {
+                    setBottomSheetPin({ ...bottomSheetPin, status_id: lastStatus.id, Status: lastStatus })
+                    setNormalizedPins(prev => 
+                        prev.map(p => p.id === bottomSheetPin.id ? { ...p, status_id: lastStatus.id } : p)
+                    )
+                    onPinUpdate?.({ ...bottomSheetPin, status_id: lastStatus.id })
+                }
+            }
+        }
+        lastTapRef.current = now
+    }, [bottomSheetPin, statuses, onPinUpdate])
+
+    const pdfSource = useMemo(() => {
+        if (!localPath) return null
+        const finalPath = Platform.OS === 'android' && !localPath.startsWith('file://') 
+            ? `file://${localPath}` 
+            : localPath
+        return { uri: finalPath, cache: true }
+    }, [localPath])
+
+    // ⭐ OPTIMIZATION: Memoized gestures
+    const pinchGesture = useMemo(() => Gesture.Pinch()
+        .onStart(() => {
+            savedScale.value = scale.value
+        })
+        .onUpdate((e) => {
+            scale.value = Math.max(INITIAL_SCALE, Math.min(8.0, savedScale.value * e.scale))
+        })
+        .onEnd(() => {
+            savedScale.value = scale.value
+            if (scale.value < INITIAL_SCALE * 1.1) {
+                scale.value = withTiming(INITIAL_SCALE)
+                translateX.value = withTiming(0)
+                translateY.value = withTiming(0)
+                savedScale.value = INITIAL_SCALE
+                savedTranslateX.value = 0
+                savedTranslateY.value = 0
+            }
+        }), [])
+
+    const panGesture = useMemo(() => Gesture.Pan()
+        .onStart(() => {
+            savedTranslateX.value = translateX.value
+            savedTranslateY.value = translateY.value
+        })
+        .onUpdate((e) => {
+            translateX.value = savedTranslateX.value + e.translationX
+            translateY.value = savedTranslateY.value + e.translationY
+        })
+        .onEnd(() => {
+            savedTranslateX.value = translateX.value
+            savedTranslateY.value = translateY.value
+        }), [])
+
+    const gesture = useMemo(() => Gesture.Simultaneous(pinchGesture, panGesture), [pinchGesture, panGesture])
+
+    const pdfAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [
+            { translateX: translateX.value },
+            { translateY: translateY.value },
+            { scale: scale.value }
+        ]
+    }), [])
+
+    const pinAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: 1 / scale.value }]
+    }), [])
+
+    useEffect(() => { 
+        setNormalizedPins(pins ?? []) 
+    }, [pins])
+
+    useFocusEffect(
+        useCallback(() => {
+            let currentLocalPath = null
+            let cancelled = false
+
+            const downloadPdf = async () => {
+                try {
+                    setPdfReady(false)
+                    setLocalPath(null)
+                    setError(null)
+
+                    const res = await RNBlobUtil
+                        .config({ fileCache: true, appendExt: 'pdf' })
+                        .fetch('GET', source)
+
+                    if (cancelled) {
+                   //     RNFS.unlink(res.path()).catch(() => {})
+                        return
+                    }
+
+                    currentLocalPath = res.path()
+                    setLocalPath(currentLocalPath)
+                } catch (e) {
+                    if (!cancelled) {
+                        setError('Failed to load PDF')
+                        console.error(e)
+                    }
+                }
+            }
+
+            if (source) {
+                downloadPdf()
+            }
+
+            return () => {
+                cancelled = true
+                setPdfReady(false)
+
+                if (currentLocalPath) {
+                    RNFS.unlink(currentLocalPath).catch(() => {})
+                }
+            }
+        }, [source])
+    )
+
+    const getPdfPageSize = useCallback(async (localPath) => {
+        try {
+            const fileUri = localPath.startsWith('file://') ? localPath : `file://${localPath}`
+            const base64Data = await RNFS.readFile(fileUri, 'base64')
+            const pdfDoc = await PDFDocument.load(base64Data)
+            const firstPage = pdfDoc.getPage(0)
+            const { width, height } = firstPage.getSize()
+            return { width, height, pages: pdfDoc.getPageCount() }
+        } catch (error) { 
+            console.error(error)
+            return null 
+        }
+    }, [])
+
+    useEffect(() => {
+        if (!localPath) return
+        
+        getPdfPageSize(localPath).then((info) => {
+            if (!info) return
+            setPdfInfo(info)
+            
+            const screenWidth = WINDOW.width
+            const targetWidth = screenWidth * BASE_RESOLUTION_MULTIPLIER
+            const aspectRatio = info.width / info.height
+            
+            let renderWidth = targetWidth
+            let renderHeight = renderWidth / aspectRatio
+            
+            setPdfRenderSize({ width: renderWidth, height: renderHeight })
+            setPdfReady(true)
+        })
+    }, [localPath, getPdfPageSize])
+
+    const handleLayout = useCallback((event) => {
+        setPdfLayout(event.nativeEvent.layout)
+    }, [])
+
+    const handleLoadComplete = useCallback((numberOfPages, filePath, tableContents) => { 
+        console.log("PDF Load Complete")
+    }, [])
+
+    const handleDropToPdf = useCallback(() => {
+        if (!pdfRef.current || !pdfLayout) return
+        
+        buttonRef.current?.measureInWindow((buttonX, buttonY, buttonWidth, buttonHeight) => {
+            const dropX = buttonX + buttonWidth / 2
+            const dropY = buttonY + buttonHeight / 2
+            
+            const screenCenterX = WINDOW.width / 2
+            const screenCenterY = WINDOW.height / 2
+            
+            const currentTranslateX = translateX.value
+            const currentTranslateY = translateY.value
+
+            const pdfCenterOffsetX = (pdfRenderSize.width / 2) * scale.value
+            const pdfCenterOffsetY = (pdfRenderSize.height / 2) * scale.value
+            
+            const pdfGlobalLeft = screenCenterX - pdfCenterOffsetX + currentTranslateX
+            const pdfGlobalTop = screenCenterY - pdfCenterOffsetY + currentTranslateY
+
+            const dropInZoomedPdfX = dropX - pdfGlobalLeft
+            const dropInZoomedPdfY = dropY - pdfGlobalTop
+
+            const finalX = dropInZoomedPdfX / scale.value
+            const finalY = dropInZoomedPdfY / scale.value
+
+            const normX = finalX / pdfRenderSize.width
+            const normY = finalY / pdfRenderSize.height
+            
+            if (normX >= 0 && normX <= 1 && normY >= 0 && normY <= 1) {
+                handlePinDrop(normX, normY)
+            }
+        })
+    }, [pdfLayout, pdfRenderSize])
+
+    const handlePinDrop = useCallback((normX, normY) => {
+        const newPin = {
+            id: uuid.v4(),
+            x: normX,
+            y: normY,
+            note: '',
+            photoUris: [],
+            category_id: categories[0]?.id,
+            status_id: statuses[0]?.id,
+            name: '',
+            project_id: selectedProject?.id,
+            pdf_name: pdfName || '',
+            plan_id: plan_id || '',
+            due_date: null,
+        }
+        setEditingPin(newPin)
+        setNormalizedPins(prev => [...prev, newPin])
+        onPinUpdate?.(newPin)
+        
+        if (!permission?.granted) {
+            requestPermission()
+        } else {
+            startCameraForPin(newPin)
+        }
+    }, [categories, statuses, selectedProject, pdfName, plan_id, permission, onPinUpdate])
+
+    const startCameraForPin = useCallback((pin) => {
+        setSelectedPin(pin)
+        setEditingPin(pin)
+        router.push({ 
+            pathname: "CameraScreen", 
+            params: { myuri, myname, myplanid: plan_id } 
+        })
+    }, [myuri, myname, plan_id, setSelectedPin])
+
+    const onPinPress = useCallback(async (pin) => {
+        const { data } = await supabase
+            .from('pdf_pins')
+            .select('*,projects(*),categories(*),Status(*)')
+            .eq('id', pin.id)
+            .single()
+            
+        if (data) {
+            setProjectNumber(data.projects?.project_number || '')
+            setPinNumber(data.pin_number || '')
+            setBottomSheetPin(data)
+        } else {
+            setBottomSheetPin(pin)
+        }
+        setBottomSheetVisible(true)
+    }, [])
+
+    const handleNavigateToMetadata = useCallback(() => {
+        setBottomSheetVisible(false)
+        if (bottomSheetPin) {
+            navigation.navigate("PinMetadataScreen", { 
+                pinId: bottomSheetPin.id, 
+                from: 'Pdf', 
+                myuri, 
+                myname, 
+                myplanid: plan_id, 
+                photoUris: JSON.stringify([]) 
+            })
+        }
+    }, [bottomSheetPin, navigation, myuri, myname, plan_id])
+
+    const removePin = useCallback(async (pinId) => {
+        setNormalizedPins(prev => prev.filter(p => p.id !== pinId))
+        await supabase.from('pdf_pins').delete().eq('id', pinId)
+        if (editingPin?.id === pinId) setEditingPin(null)
+    }, [editingPin])
+
+    // ⭐ OPTIMIZATION: Memoized pins rendering
+    const renderedPins = useMemo(() => {
+        if (!pdfLayout || !pdfRenderSize.width) return null
+
+        return filteredPins.map((pin) => (
+            <PinMarker
+                key={pin.id}
+                pin={pin}
+                pdfRenderSize={pdfRenderSize}
+                pinAnimatedStyle={pinAnimatedStyle}
+                onPinPress={() => onPinPress(pin)}
+            />
+        ))
+    }, [filteredPins, pdfLayout, pdfRenderSize, pinAnimatedStyle, onPinPress])
+
+    const buttonGesture = useMemo(() => Gesture.Pan()
+        .onStart(() => {
+            isDragging.value = true
+            buttonScale.value = withSpring(1.2)
+            runOnJS(setGhostPinPosition)({
+                x: WINDOW.width - 20 - FLOATING_BUTTON_SIZE / 2,
+                y: WINDOW.height - 110 - FLOATING_BUTTON_SIZE / 2 - insets.bottom,
+            })
+        })
+        .onUpdate((e) => {
+            // Calculate bounds to keep action buttons visible
+            // fabActionsContainer is at right: -40, so account for that offset
+            const ACTION_BUTTON_SIZE = 48
+            const ACTION_BUTTON_SPACING = 16
+            const CONTAINER_RIGHT_OFFSET = -40
+            const TOTAL_WIDTH = ACTION_BUTTON_SIZE + ACTION_BUTTON_SPACING + FLOATING_BUTTON_SIZE + ACTION_BUTTON_SPACING + ACTION_BUTTON_SIZE
+            
+            // Min X: keep right button visible (accounting for -40 offset)
+            const MIN_X = -(WINDOW.width - 20 + CONTAINER_RIGHT_OFFSET - ACTION_BUTTON_SIZE)
+            // Max X: keep left button visible  
+            const MAX_X = TOTAL_WIDTH - FLOATING_BUTTON_SIZE - 20 + CONTAINER_RIGHT_OFFSET
+            
+            // fabActionsContainer bottom is 120, FAB is at 180, so actions are 60px lower
+            const MIN_Y = -(WINDOW.height - 180 - FLOATING_BUTTON_SIZE - 60) // 60px margin from top
+            const MAX_Y = insets.bottom + 60 + 60 // 60px margin + 60px for action buttons below
+            
+            // Constrain translation within bounds
+            const constrainedX = Math.max(MIN_X, Math.min(MAX_X, e.translationX))
+            const constrainedY = Math.max(MIN_Y, Math.min(MAX_Y, e.translationY))
+            
+            buttonX.value = constrainedX
+            buttonY.value = constrainedY
+            runOnJS(setGhostPinPosition)({
+                x: WINDOW.width - 20 - FLOATING_BUTTON_SIZE / 2 + constrainedX,
+                y: WINDOW.height - 110 - FLOATING_BUTTON_SIZE / 2 - insets.bottom + constrainedY,
+            })
+        })
+        .onEnd(() => {
+            isDragging.value = false
+            buttonScale.value = withSpring(1)
+            runOnJS(setGhostPinPosition)(null)
+            // Keep FAB at current position and show actions
+            runOnJS(setShowFabActions)(true)
+        }), [insets.bottom])
+
+    const handleConfirmDrop = useCallback(() => {
+        handleDropToPdf()
+        setShowFabActions(false)
+        buttonX.value = withSpring(0)
+        buttonY.value = withSpring(0)
+    }, [handleDropToPdf])
+
+    const handleCancelDrop = useCallback(() => {
+        setShowFabActions(false)
+        buttonX.value = withSpring(0)
+        buttonY.value = withSpring(0)
+    }, [])
+
+    const buttonAnimatedStyle = useAnimatedStyle(() => ({
+        transform: [
+            { translateX: buttonX.value },
+            { translateY: buttonY.value },
+            { scale: buttonScale.value }
+        ],
+        opacity: isDragging.value ? 0.8 : 1
+    }), [])
+
+    useFocusEffect(
+        useCallback(() => {
+            return () => {
+                setBottomSheetVisible(false)
+            }
+        }, [])
+    )
+
+    if (permission === null) {
+        return <Text style={styles.centerText}>Loading...</Text>
+    }
+    
+    if (permission && !permission.granted) {
+        return (
+            <View style={styles.permissionContainer}>
+                <TouchableOpacity onPress={requestPermission}>
+                    <Text>Grant Permission</Text>
+                </TouchableOpacity>
+            </View>
+        )
+    }
+
+    return (
+        <View ref={pdfRef} style={styles.container}>
+            <PdfViewerFilterOverlay 
+                pins={pins} 
+                onFilter={setFilteredPins} 
+                fabOffset={0} 
+            />
+
+            {pdfReady && pdfRenderSize.width > 0 && (
+                <GestureDetector gesture={gesture}>
+                    <Animated.View style={styles.pdfWrapper}>
+                        <Animated.View style={pdfAnimatedStyle}>
+                            <View 
+                                style={{ 
+                                    width: pdfRenderSize.width, 
+                                    height: pdfRenderSize.height, 
+                                    backgroundColor: 'white' 
+                                }} 
+                                onLayout={handleLayout}
+                            >
+                                {pdfSource && (
+                                    <Pdf
+                                        source={pdfSource}
+                                        style={{ width: pdfRenderSize.width, height: pdfRenderSize.height }}
+                                        onLoadComplete={handleLoadComplete}
+                                        onError={(e) => console.log(e)}
+                                        singlePage={true}
+                                        fitPolicy={0}
+                                        scale={1.0}
+                                        enableAntialiasing={true}
+                                        spacing={0}
+                                        trustAllCerts={false}
+                                        enablePaging={false}
+                                        horizontal={false}
+                                    />
+                                )}
+                                {renderedPins}
+                            </View>
+                        </Animated.View>
+                    </Animated.View>
+                </GestureDetector>
+            )}
+
+            {user.role !== 'guest' && (
+                <View style={[styles.buttonWrapper, { paddingBottom: insets.bottom }]} pointerEvents="box-none">
+                    {/* Action buttons (Check and Close) - Render BEFORE FAB so they're behind */}
+                    {showFabActions && (
+                        <Animated.View style={[styles.fabActionsContainer, buttonAnimatedStyle]} pointerEvents="box-none">
+                            {/* Green Check button - Left of FAB */}
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.checkButton]}
+                                onPress={handleConfirmDrop}
+                                activeOpacity={0.7}
+                            >
+                                <CheckIcon size={24} color="white" />
+                            </TouchableOpacity>
+
+                            {/* Spacer for FAB */}
+                            <View style={{ width: FLOATING_BUTTON_SIZE }} />
+
+                            {/* Red Close button - Right of FAB */}
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.closeActionButton]}
+                                onPress={handleCancelDrop}
+                                activeOpacity={0.7}
+                            >
+                                <CloseIcon size={24} color="white" />
+                            </TouchableOpacity>
+                        </Animated.View>
+                    )}
+
+                    <GestureDetector gesture={buttonGesture}>
+                        <Animated.View 
+                            ref={buttonRef} 
+                            style={[styles.floatingButton, buttonAnimatedStyle]} 
+                            pointerEvents="auto"
+                        >
+                            <MapPinPlusIcon size={28} color="white" />
+                        </Animated.View>
+                    </GestureDetector>
+                </View>
+            )}
+
+            <Modal 
+                visible={bottomSheetVisible} 
+                transparent={true} 
+                animationType="slide" 
+                onRequestClose={() => setBottomSheetVisible(false)}
+            >
+                <Pressable 
+                    style={styles.modalOverlay} 
+                    onPress={() => setBottomSheetVisible(false)}
+                >
+                    <View 
+                        style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}
+                    >
+                        <View style={styles.bottomSheetHeader}>
+                            <View style={styles.bottomSheetHandle} />
+                            <TouchableOpacity 
+                                onPress={() => setBottomSheetVisible(false)} 
+                                style={styles.closeButton}
+                                activeOpacity={0.7}
+                            >
+                                <CloseIcon size={20} color="#111" />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        {bottomSheetPin && (
+                            <Pressable 
+                                style={styles.bottomSheetContent}
+                                onPress={handleNavigateToMetadata}
+                            >
+                                <View style={styles.statusRow}>
+                                    <TouchableOpacity
+                                        onPress={handleStatusDoubleTap}
+                                        activeOpacity={0.7}
+                                        style={[
+                                            styles.statusIconCircle,
+                                            { 
+                                                backgroundColor: statuses.find(s => s.id === bottomSheetPin.status_id)?.color || 
+                                                    bottomSheetPin.Status?.color || '#ccc' 
+                                            },
+                                        ]}
+                                    >
+                                        {categoriesIcons[
+                                            categories.find(c => c.id === bottomSheetPin.category_id)?.icon || 
+                                            bottomSheetPin.categories?.icon || 
+                                            'unassigned'
+                                        ]}
+                                    </TouchableOpacity>
+
+                                    <View style={[
+                                        styles.statusBadge,
+                                        { 
+                                            backgroundColor: statuses.find(s => s.id === bottomSheetPin.status_id)?.color || 
+                                                bottomSheetPin.Status?.color || '#ccc' 
+                                        }
+                                    ]}>
+                                        <Text style={styles.statusBadgeText}>
+                                            {statuses.find(s => s.id === bottomSheetPin.status_id)?.name || 
+                                            bottomSheetPin.Status?.name || 'N/A'}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <Text style={styles.idText}>
+                                    ID : {projectNumber || 'N/A'} - {pinNumber || 'N/A'}
+                                </Text>
+
+                                <Text style={styles.pinName}>
+                                    {bottomSheetPin.name || 'Sans titre'}
+                                </Text>
+
+                                {bottomSheetPin.note && (
+                                    <Text style={styles.pinNote}>
+                                        {bottomSheetPin.note}
+                                    </Text>
+                                )}
+                            </Pressable>
+                        )}
+                    </View>
+                </Pressable>
+            </Modal>
+        </View>
+    )
+}
+
+const styles = StyleSheet.create({
+    container: { flex: 1, backgroundColor: '#000' },
+    centerText: { flex: 1, textAlign: "center", marginTop: 50 },
+    pdfWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    buttonWrapper: { position: 'absolute', right: 0, bottom: 0, left: 0, top: 0, pointerEvents: 'box-none' },
+    floatingButton: { position: "absolute", right: 20, bottom: 180, width: FLOATING_BUTTON_SIZE, height: FLOATING_BUTTON_SIZE, borderRadius: FLOATING_BUTTON_SIZE / 2, backgroundColor: "black", justifyContent: "center", alignItems: "center", elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 6, zIndex: 9999 },
+    pinContainer: { position: "absolute", zIndex: 10, alignItems: "center", justifyContent: "center", width: PIN_SIZE, height: PIN_SIZE, marginLeft: -PIN_SIZE / 2, marginTop: -PIN_SIZE / 2 },
+    permissionContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+    bottomSheet: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '80%' },
+    bottomSheetHeader: { alignItems: 'center', paddingTop: 10, paddingHorizontal: 20, position: 'relative' },
+    bottomSheetHandle: { width: 40, height: 5, backgroundColor: '#ccc', borderRadius: 3, marginBottom: 10 },
+    closeButton: { position: 'absolute', right: 12, top: 12, backgroundColor: '#f3f4f6', borderRadius: 9999, padding: 6, justifyContent: 'center', alignItems: 'center' },
+    bottomSheetContent: { paddingHorizontal: 20, paddingBottom: 20 },
+    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+    statusIconCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+    statusBadge: { borderRadius: 9999, paddingHorizontal: 16, paddingVertical: 8 },
+    statusBadgeText: { color: 'white', fontWeight: '500', fontSize: 14, fontFamily: 'Outfit_400Regular' },
+    idText: { color: '#6B7280', fontSize: 12, marginBottom: 8, fontFamily: 'Outfit_400Regular' },
+    pinName: { fontSize: 20, color: '#000', marginBottom: 8, fontFamily: 'Outfit_400Regular' },
+    pinNote: { fontSize: 14, color: '#374151', lineHeight: 24, marginBottom: 16, fontFamily: 'Outfit_400Regular' },
+    fabActionsContainer: {
+        position: 'absolute',
+        right: -40,
+        bottom: 120, // Lower than FAB (FAB is at 180)
+        flexDirection: 'row',
+        gap: 16,
+        alignItems: 'center',
+    },
+    actionButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+    },
+    checkButton: {
+        backgroundColor: '#10b981', // Green - Left side
+    },
+    closeActionButton: {
+        backgroundColor: '#ef4444', // Red - Right side
+    },
+})
