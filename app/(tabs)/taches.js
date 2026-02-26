@@ -188,15 +188,7 @@ export default function TasksScreen() {
                     return getSortedPins(updated, sortField, sortDirection);
                 });
 
-                const { error: insertError } = await supabase.from('events').insert([{
-                    pin_id: data.id,
-                    category: 'creation',
-                    event: ' a créé cette tâche',
-                    user_id: loggedInUser?.id,
-                    metadata: { pin_id: data.id },
-                }]);
-
-                if (insertError) console.error('Insert event error:', insertError);
+                
             }
 
             setNewTaskName('');
@@ -297,6 +289,7 @@ export default function TasksScreen() {
             const { data, error } = await supabase
                 .from('pdf_pins')
                 .select('*, assigned_to(*), categories(*), Status(*), pins_photos(*)')
+                .is('deleted_at', null)
                 .eq('project_id', projects?.id)
                 .eq('assigned_to', loggedInUser.id);
             if (data) {
@@ -310,6 +303,7 @@ export default function TasksScreen() {
             const { data, error } = await supabase
                 .from('pdf_pins')
                 .select('*, assigned_to(*), categories(*), Status(*), pins_photos(*)')
+                .is('deleted_at', null)
                 .eq('project_id', projects?.id);
             if (data) {
                 const sortedData = getSortedPins(data, sortField, sortDirection);

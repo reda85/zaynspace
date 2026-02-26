@@ -15,12 +15,16 @@
 //
 // 5. ✅ Progress Granularity - Clear progress stages (5% load, 10-40% render, 40-100% upload)
 //
+// 6. ✅ Conditional Gallery Save - Respects the "Sauvegarde automatique des données"
+//    preference stored in AsyncStorage (@settings/autoSaveImages)
+//
 // EXPECTED PERFORMANCE GAINS:
 // - UI responds immediately (< 100ms to show dialog)
 // - 70-90% faster rendering due to smaller output size
 // - 80-95% faster uploads due to compressed files
 // - For 10 photos: from ~30s to ~3-5s total time
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRoute } from "@react-navigation/native";
 import {
   Canvas,
@@ -39,7 +43,7 @@ import { encode } from "base64-arraybuffer";
 import { Buffer } from "buffer";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
-import { useLocalSearchParams, useRouter } from "expo-router"; // ✅ Add this
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAtom } from "jotai";
 import {
   ArrowRight,
@@ -73,16 +77,20 @@ import { loggedInUserAtom, selectedPinAtom } from "../store/atoms";
 
 global.Buffer = global.Buffer || Buffer;
 
+/* ---- Storage keys (must match StorageDataScreen) ---- */
+const AUTO_SAVE_KEY = "@settings/autoSaveImages";
+const COMPRESS_KEY   = "@settings/compressImages";
+const OPTIMIZE_KEY   = "@settings/optimizeStorage";
+
 const COLORS = ["red", "blue", "green", "black", "purple"];
 const TOOLS = ["pen", "line", "arrow", "text"];
 const FONT_SIZES = [12, 16, 20, 28, 36];
 
 export default function DrawingScreen() {
   const route = useRoute();
-  const {  myuri, myname, myplanid, returnToPinId } = route.params || {};
+  const { myuri, myname, myplanid, returnToPinId } = route.params || {};
   const params = useLocalSearchParams();
 
-  // ✅ ADD THESE DEBUG LOGS:
   console.log('=== DrawingScreen Debug ===');
   console.log('📦 params:', params);
   console.log('📸 params.photos:', params.photos);
@@ -90,21 +98,21 @@ export default function DrawingScreen() {
 
   const photos = useMemo(() => {
     if (!params.photos) {
-      console.error('❌ NO PHOTOS PARAM!');  // ✅ Add this
+      console.error('❌ NO PHOTOS PARAM!');
       return [];
     }
     if (Array.isArray(params.photos)) return params.photos;
-     const parsed = JSON.parse(params.photos);
-    console.log('✅ Parsed photos:', parsed);  // ✅ Add this
+    const parsed = JSON.parse(params.photos);
+    console.log('✅ Parsed photos:', parsed);
     return parsed;
   }, [params.photos]);
 
-  console.log('📷 Photos array length:', photos.length);  // ✅ Add this
-  console.log('🖼️ Photos:', photos);  // ✅ Add this
-  
-const router = useRouter();
+  console.log('📷 Photos array length:', photos.length);
+  console.log('🖼️ Photos:', photos);
+
+  const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+
   const [pin] = useAtom(selectedPinAtom);
   const [loggedInUser] = useAtom(loggedInUserAtom);
 
@@ -139,7 +147,7 @@ const router = useRouter();
   const [toolPanelOpen, setToolPanelOpen] = useState(false);
   const [selectedTextIndexState, setSelectedTextIndexState] = useState(null);
   const [isEditingText, setIsEditingText] = useState(false);
-  
+
   // Pinch gesture state for text transformation
   const initialScale = useSharedValue(1);
   const isPinching = useSharedValue(false);
@@ -152,7 +160,7 @@ const router = useRouter();
   const font36 = useFont(require("../assets/fonts/Roboto-Regular.ttf"), 36);
 
   const getCurrentFont = (size) => {
-    switch(size) {
+    switch (size) {
       case 12: return font12;
       case 16: return font16;
       case 20: return font20;
@@ -164,11 +172,9 @@ const router = useRouter();
 
   const currentFont = getCurrentFont(fontSize);
 
-  // OPTIMIZATION: Extracted render function (can be memoized if needed)
-  const renderImageToSurface = useCallback((img, photoPaths, canvasWidth, canvasHeight) => {
-    // OPTIMIZATION: Reduce max dimension for smaller files
-    const MAX_DIMENSION = 1920; // Reduced from 2048 - still HD quality
-    
+  const renderImageToSurface = useCallback((img, photoPaths, canvasWidth, canvasHeight, shouldCompress = true) => {
+    const MAX_DIMENSION = shouldCompress ? 1920 : 4096; // Full res when compression is off
+
     const imgWidth = img.width();
     const imgHeight = img.height();
 
@@ -214,7 +220,7 @@ const router = useRouter();
       if (item.type === "text" && item.text) {
         const itemFontSize = item.fontSize || 16;
         const itemFont = getCurrentFont(itemFontSize);
-        
+
         if (!itemFont) return;
 
         const finalX = item.x * scaleX;
@@ -222,11 +228,11 @@ const router = useRouter();
         const itemScale = item.scale || 1.0;
 
         const textScale = Math.min(scaleX, scaleY) * itemScale;
-        
+
         canvas.save();
         canvas.translate(finalX, finalY);
         canvas.scale(textScale, textScale);
-        
+
         const textBlob = Skia.TextBlob.MakeFromText(item.text, itemFont);
         if (textBlob) {
           const textWidth = itemFont.measureText(item.text).width;
@@ -252,21 +258,20 @@ const router = useRouter();
           textPaint.setAntiAlias(true);
           canvas.drawTextBlob(textBlob, 0, 0, textPaint);
         }
-        
+
         canvas.restore();
       }
     });
 
     const snapshot = surface.makeImageSnapshot();
-    
-    // OPTIMIZATION: Use JPEG with 85% quality instead of PNG
-    // This reduces file size by 70-90% with minimal quality loss
-    const bytes = snapshot.encodeToBytes(ImageFormat.JPEG, 85);
-    
+    // Compress with JPEG 85% when enabled, otherwise lossless PNG
+    const bytes = shouldCompress
+      ? snapshot.encodeToBytes(ImageFormat.JPEG, 85)
+      : snapshot.encodeToBytes(ImageFormat.PNG, 100);
+
     return bytes;
   }, [getCurrentFont]);
 
-  // Check if tap is on text element
   const findTextAtPosition = useCallback((x, y) => {
     const currentPaths = paths[currentIndex] || [];
     for (let i = currentPaths.length - 1; i >= 0; i--) {
@@ -274,11 +279,11 @@ const router = useRouter();
       if (item.type === "text") {
         const itemFont = getCurrentFont(item.fontSize || 16);
         if (!itemFont) continue;
-        
+
         const textWidth = itemFont.measureText(item.text).width;
         const textHeight = item.fontSize || 16;
         const padding = 8;
-        
+
         if (
           x >= item.x - padding &&
           x <= item.x + textWidth + padding &&
@@ -297,11 +302,7 @@ const router = useRouter();
       const newPaths = [...prev];
       const currentPaths = [...(newPaths[currentIndex] || [])];
       if (currentPaths[index] && currentPaths[index].type === "text") {
-        currentPaths[index] = {
-          ...currentPaths[index],
-          x,
-          y
-        };
+        currentPaths[index] = { ...currentPaths[index], x, y };
       }
       newPaths[currentIndex] = currentPaths;
       return newPaths;
@@ -313,11 +314,11 @@ const router = useRouter();
       const newPaths = [...prev];
       const currentPaths = [...(newPaths[currentIndex] || [])];
       const textItem = currentPaths[index];
-      
+
       if (textItem && textItem.type === "text") {
         currentPaths[index] = {
           ...textItem,
-          scale: scale !== undefined ? scale : (textItem.scale || 1.0)
+          scale: scale !== undefined ? scale : (textItem.scale || 1.0),
         };
       }
       newPaths[currentIndex] = currentPaths;
@@ -328,16 +329,13 @@ const router = useRouter();
   const resetManipulationFlag = useCallback(() => {
     setTimeout(() => {
       isManipulatingText.value = false;
-    }, 100); // Reduced from 300ms to 100ms
+    }, 100);
   }, []);
 
   const handleToolChange = useCallback((newTool) => {
     setTool(newTool);
     toolValue.value = newTool;
-    // Keep panel open for text tool so user can choose size
-    if (newTool !== "text") {
-      setToolPanelOpen(false);
-    }
+    if (newTool !== "text") setToolPanelOpen(false);
   }, []);
 
   const handleColorChange = useCallback((newColor) => {
@@ -349,7 +347,6 @@ const router = useRouter();
   const handleFontSizeChange = useCallback((newSize) => {
     setFontSize(newSize);
     fontSizeValue.value = newSize;
-    // Don't close panel when changing text size - let user continue adjusting
   }, []);
 
   const addPath = useCallback(
@@ -371,7 +368,6 @@ const router = useRouter();
   }, []);
 
   const currentPathsRef = useSharedValue([]);
-
 
   React.useEffect(() => {
     currentPathsRef.value = paths[currentIndex] || [];
@@ -400,12 +396,11 @@ const router = useRouter();
     .onFinalize(() => {
       "worklet";
       isPinching.value = false;
-      // Don't reset manipulation flag immediately - let the delay happen
       runOnJS(resetManipulationFlag)();
     });
 
   const pan = Gesture.Pan()
-    .maxPointers(1)  // Only allow single finger pan
+    .maxPointers(1)
     .onBegin(({ x, y }) => {
       "worklet";
       const currentTool = toolValue.value;
@@ -413,18 +408,16 @@ const router = useRouter();
 
       const currentPaths = currentPathsRef.value;
       let foundTextIndex = null;
-      
-      // Check if we tapped on existing text
+
       for (let i = currentPaths.length - 1; i >= 0; i--) {
         const item = currentPaths[i];
         if (item.type === "text") {
-          const fontSize = item.fontSize || 16;
+          const fs = item.fontSize || 16;
           const scale = item.scale || 1.0;
-          const textHeight = fontSize * scale;
-          // Rough approximation for text width (will be good enough for hit detection)
-          const approximateTextWidth = item.text.length * fontSize * 0.6 * scale;
-          const padding = 15; // Larger padding for easier selection
-          
+          const textHeight = fs * scale;
+          const approximateTextWidth = item.text.length * fs * 0.6 * scale;
+          const padding = 15;
+
           if (
             x >= item.x - padding &&
             x <= item.x + approximateTextWidth + padding &&
@@ -445,7 +438,6 @@ const router = useRouter();
         return;
       }
 
-      // If no text was tapped, deselect any selected text
       if (selectedTextIndex.value !== null) {
         selectedTextIndex.value = null;
         runOnJS(setSelectedTextIndexState)(null);
@@ -463,8 +455,6 @@ const router = useRouter();
     })
     .onUpdate(({ x, y }) => {
       "worklet";
-      
-      // Allow dragging even if we recently pinched
       if (isDraggingText.value && selectedTextIndex.value !== null) {
         runOnJS(updateTextPosition)(selectedTextIndex.value, x, y);
         return;
@@ -477,10 +467,9 @@ const router = useRouter();
     })
     .onEnd(({ x, y }) => {
       "worklet";
-      
+
       if (isDraggingText.value) {
         isDraggingText.value = false;
-        // Keep text selected but add delay before allowing new text input
         runOnJS(resetManipulationFlag)();
         return;
       }
@@ -506,7 +495,6 @@ const router = useRouter();
 
         runOnJS(addPath)({ type: "path", path, color: currentColor });
       } else if (currentTool === "text") {
-        // Only open text input if we're not manipulating existing text
         if (!isManipulatingText.value) {
           runOnJS(setTextPos)(x, y);
         }
@@ -532,14 +520,14 @@ const router = useRouter();
   const handleConfirmText = () => {
     const pos = startPoint.value || textPosition;
     if (textInput && pos) {
-      addPath({ 
-        type: "text", 
-        x: pos.x, 
-        y: pos.y, 
-        text: textInput, 
+      addPath({
+        type: "text",
+        x: pos.x,
+        y: pos.y,
+        text: textInput,
         color,
         fontSize: fontSizeValue.value,
-        scale: 1.0   // Default scale only
+        scale: 1.0,
       });
     }
     setTextInput("");
@@ -553,14 +541,43 @@ const router = useRouter();
 
   const handleSave = async () => {
     try {
-      // CRITICAL: Show loading dialog IMMEDIATELY
       setIsSaving(true);
       setSavingProgress(0);
-      
+
       // Allow UI to update before heavy work
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // OPTIMIZATION 1: Wait for all images to load ONCE at the start
+      // ── Read preferences ONCE before the upload loop ──
+      let shouldSaveToGallery = true; // default: on
+      let shouldCompress      = false; // default: off
+      let shouldOptimize      = true;  // default: on
+      try {
+        const [autoSaveEntry, compressEntry, optimizeEntry] = await AsyncStorage.multiGet([
+          AUTO_SAVE_KEY,
+          COMPRESS_KEY,
+          OPTIMIZE_KEY,
+        ]);
+        if (autoSaveEntry[1] !== null) shouldSaveToGallery = autoSaveEntry[1] === "true";
+        if (compressEntry[1]  !== null) shouldCompress      = compressEntry[1]  === "true";
+        if (optimizeEntry[1]  !== null) shouldOptimize      = optimizeEntry[1]  === "true";
+      } catch (e) {
+        console.warn("Could not read storage preferences:", e);
+      }
+
+      // Request MediaLibrary permission only if we need it
+      if (shouldSaveToGallery) {
+        const { status } = await MediaLibrary.requestPermissionsAsync();
+        if (status !== "granted") {
+          Alert.alert(
+            "Permission refusée",
+            "L'accès à la galerie est nécessaire pour sauvegarder automatiquement les images. Vous pouvez désactiver cette option dans Stockage et données."
+          );
+          // Continue saving to Supabase, but skip gallery
+          shouldSaveToGallery = false;
+        }
+      }
+
+      // OPTIMIZATION 1: Wait for all images to load
       setSavingProgress(5);
       for (let i = 0; i < photos.length; i++) {
         let attempts = 0;
@@ -571,62 +588,66 @@ const router = useRouter();
         if (!images[i]) throw new Error(`Image ${i} failed to load`);
       }
 
-      // OPTIMIZATION 2: Render images with progress updates
+      // OPTIMIZATION 2: Render images in chunks with progress updates
       setSavingProgress(10);
       const processedImages = [];
-      
-      // Process in chunks to allow UI updates
+
       const RENDER_CHUNK_SIZE = 2;
       for (let i = 0; i < photos.length; i += RENDER_CHUNK_SIZE) {
         const chunkPromises = [];
-        
+
         for (let j = i; j < Math.min(i + RENDER_CHUNK_SIZE, photos.length); j++) {
           chunkPromises.push((async () => {
             const img = images[j];
             const photoPaths = paths[j] || [];
-            
-            const bytes = renderImageToSurface(img, photoPaths, canvasSize.width, canvasSize.height);
+            const bytes = renderImageToSurface(img, photoPaths, canvasSize.width, canvasSize.height, shouldCompress);
             const base64 = encode(bytes);
-            
             return { base64, index: j };
           })());
         }
-        
+
         const chunkResults = await Promise.all(chunkPromises);
         processedImages.push(...chunkResults);
-        
-        // Update progress: 10-40% for rendering
+
         const renderProgress = 10 + (30 * processedImages.length / photos.length);
         setSavingProgress(renderProgress);
-        
-        // Allow UI to update
+
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      // OPTIMIZATION 3: Batched uploads for network efficiency
+      // OPTIMIZATION 3: Batched uploads
       const BATCH_SIZE = 3;
       let completedCount = 0;
-      
+
       for (let batchStart = 0; batchStart < processedImages.length; batchStart += BATCH_SIZE) {
         const batch = processedImages.slice(batchStart, batchStart + BATCH_SIZE);
-        
-        await Promise.all(batch.map(async ({ base64, index }) => {
-          const filename = `drawing_${Date.now()}_${index}.jpg`; // Changed to .jpg
-          const fileUri = `${FileSystem.documentDirectory}${filename}`;
 
-          await FileSystem.writeAsStringAsync(fileUri, base64, { 
-            encoding: 'base64'
-          });
-          await MediaLibrary.saveToLibraryAsync(fileUri);
+        await Promise.all(batch.map(async ({ base64, index }) => {
+          const ext      = shouldCompress ? "jpg" : "png";
+          const mime     = shouldCompress ? "image/jpeg" : "image/png";
+          const filename = `drawing_${Date.now()}_${index}.${ext}`;
+          const fileUri  = `${FileSystem.documentDirectory}${filename}`;
+
+          await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: "base64" });
+
+          // ── Conditionally save to the device gallery ──
+          if (shouldSaveToGallery) {
+            await MediaLibrary.saveToLibraryAsync(fileUri);
+          }
 
           const fileBuffer = Buffer.from(base64, "base64");
           const uploadPath = `${pin?.project_id}/${filename}`;
-          
+
           const { error: uploadError } = await supabase.storage
             .from("pinphotos")
-            .upload(uploadPath, fileBuffer, { contentType: "image/jpeg" }); // Changed to image/jpeg
-          
+            .upload(uploadPath, fileBuffer, { contentType: mime });
+
           if (uploadError) throw uploadError;
+
+          // ── Conditionally delete the local temp file to save space ──
+          if (shouldOptimize) {
+            await FileSystem.deleteAsync(fileUri, { idempotent: true });
+          }
 
           const { data: { publicUrl } } = supabase.storage
             .from("pinphotos")
@@ -644,51 +665,43 @@ const router = useRouter();
             }])
             .select()
             .single();
-          
+
           if (insertError) throw insertError;
 
-          await supabase.from("events").insert([{
-            pin_id: pin?.id,
-            category: "photo_upload",
-            project_id: pin?.project_id,
-            user_id: loggedInUser?.id,
-            pin_photo_id: photoInsert.id,
-            metadata: { pin_photo_id: photoInsert.id },
-          }]);
+         
 
           completedCount++;
-          // Update progress: 40-100% for uploads
           const uploadProgress = 40 + (60 * completedCount / processedImages.length);
           setSavingProgress(uploadProgress);
         }));
       }
-      
+
       if (returnToPinId) {
-  router.push({
-    pathname: '/PinMetadataScreen',
-    params: {
-      pinId: returnToPinId,
-      from: 'Pdf',
-      myuri,
-      myname,
-      myplanid,
-      photoUris: JSON.stringify([]),
-      refresh: String(Date.now()),
-    }
-  });
-} else {
-  router.push({
-    pathname: '/PinMetadataScreen',
-    params: {
-      pinId: pin?.id,
-      from: 'Pdf',
-      myuri,
-      myname,
-      myplanid,
-      photoUris: JSON.stringify([]),
-    }
-  });
-}
+        router.push({
+          pathname: "/PinMetadataScreen",
+          params: {
+            pinId: returnToPinId,
+            from: "Pdf",
+            myuri,
+            myname,
+            myplanid,
+            photoUris: JSON.stringify([]),
+            refresh: String(Date.now()),
+          },
+        });
+      } else {
+        router.push({
+          pathname: "/PinMetadataScreen",
+          params: {
+            pinId: pin?.id,
+            from: "Pdf",
+            myuri,
+            myname,
+            myplanid,
+            photoUris: JSON.stringify([]),
+          },
+        });
+      }
     } catch (err) {
       console.error(err);
       Alert.alert("Error", err.message || "Could not save drawings.");
@@ -712,11 +725,11 @@ const router = useRouter();
           contentContainerStyle={styles.thumbnailContent}
           showsHorizontalScrollIndicator={false}
           renderItem={({ item, index }) => (
-            <TouchableOpacity 
-              onPress={() => setCurrentIndex(index)} 
+            <TouchableOpacity
+              onPress={() => setCurrentIndex(index)}
               style={[
-                styles.thumbnailWrapper, 
-                index === currentIndex && styles.thumbnailActive
+                styles.thumbnailWrapper,
+                index === currentIndex && styles.thumbnailActive,
               ]}
             >
               <Image source={{ uri: item }} style={styles.thumbnail} />
@@ -733,37 +746,47 @@ const router = useRouter();
         </View>
       </View>
 
-      <View 
+      <View
         style={[
           styles.canvasContainer,
-          { 
+          {
             top: thumbnailSectionHeight,
-            bottom: descriptionHeight
-          }
+            bottom: descriptionHeight,
+          },
         ]}
         onLayout={onCanvasLayout}
       >
         <GestureDetector gesture={Gesture.Simultaneous(pinch, pan)}>
           <Canvas style={{ flex: 1 }} ref={canvasRef}>
-            {background && <SkiaImage image={background} x={0} y={0} width={canvasSize.width} height={canvasSize.height} fit="fill" />}
+            {background && (
+              <SkiaImage
+                image={background}
+                x={0}
+                y={0}
+                width={canvasSize.width}
+                height={canvasSize.height}
+                fit="fill"
+              />
+            )}
             {(paths[currentIndex] || []).map((item, i) => {
               if (item.type === "path") {
-                return <Path key={i} path={item.path} color={item.color} style="stroke" strokeWidth={3} />;
+                return (
+                  <Path key={i} path={item.path} color={item.color} style="stroke" strokeWidth={3} />
+                );
               }
               if (item.type === "text") {
                 const itemFont = getCurrentFont(item.fontSize || 16);
                 if (!itemFont) return null;
-                
+
                 const textWidth = itemFont.measureText(item.text).width;
                 const textHeight = item.fontSize || 16;
                 const padding = 8;
                 const isSelected = selectedTextIndexState === i;
                 const scale = item.scale || 1.0;
-                
-                // Calculate scaled dimensions
+
                 const scaledWidth = (textWidth + padding * 2) * scale;
                 const scaledHeight = (textHeight + padding * 2) * scale;
-                
+
                 return (
                   <React.Fragment key={i}>
                     <RoundedRect
@@ -786,18 +809,18 @@ const router = useRouter();
                         strokeWidth={3}
                       />
                     )}
-                    <SkiaText 
-                      x={item.x} 
-                      y={item.y} 
-                      text={item.text} 
-                      color={item.color} 
+                    <SkiaText
+                      x={item.x}
+                      y={item.y}
+                      text={item.text}
+                      color={item.color}
                       font={itemFont}
                       transform={[
                         { translateX: item.x },
                         { translateY: item.y },
                         { scale: scale },
                         { translateX: -item.x },
-                        { translateY: -item.y }
+                        { translateY: -item.y },
                       ]}
                     />
                   </React.Fragment>
@@ -811,7 +834,7 @@ const router = useRouter();
 
       <View style={[styles.toolPanel, { top: thumbnailSectionHeight + 20 }]}>
         {!toolPanelOpen && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.toolPanelToggle}
             onPress={() => setToolPanelOpen(true)}
           >
@@ -826,7 +849,7 @@ const router = useRouter();
 
         {toolPanelOpen && (
           <View style={styles.toolPanelExpanded}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.toolPanelClose}
               onPress={() => setToolPanelOpen(false)}
             >
@@ -837,13 +860,13 @@ const router = useRouter();
               <Text style={styles.toolLabel}>Couleur</Text>
               <View style={styles.palette}>
                 {COLORS.map((c) => (
-                  <TouchableOpacity 
-                    key={c} 
+                  <TouchableOpacity
+                    key={c}
                     style={[
-                      styles.colorDot, 
+                      styles.colorDot,
                       { backgroundColor: c },
-                      c === color && styles.colorDotActive
-                    ]} 
+                      c === color && styles.colorDotActive,
+                    ]}
                     onPress={() => handleColorChange(c)}
                   >
                     {c === color && <View style={styles.colorDotCheck} />}
@@ -855,26 +878,26 @@ const router = useRouter();
             <View style={styles.toolsContainer}>
               <Text style={styles.toolLabel}>Outils</Text>
               <View style={styles.tools}>
-                <TouchableOpacity 
-                  style={[styles.toolButton, tool === "pen" && styles.activeToolButton]} 
+                <TouchableOpacity
+                  style={[styles.toolButton, tool === "pen" && styles.activeToolButton]}
                   onPress={() => handleToolChange("pen")}
                 >
                   <Pen color={tool === "pen" ? "#fff" : "#ccc"} size={20} />
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.toolButton, tool === "line" && styles.activeToolButton]} 
+                <TouchableOpacity
+                  style={[styles.toolButton, tool === "line" && styles.activeToolButton]}
                   onPress={() => handleToolChange("line")}
                 >
                   <Slash color={tool === "line" ? "#fff" : "#ccc"} size={20} />
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.toolButton, tool === "arrow" && styles.activeToolButton]} 
+                <TouchableOpacity
+                  style={[styles.toolButton, tool === "arrow" && styles.activeToolButton]}
                   onPress={() => handleToolChange("arrow")}
                 >
                   <ArrowRight color={tool === "arrow" ? "#fff" : "#ccc"} size={20} />
                 </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.toolButton, tool === "text" && styles.activeToolButton]} 
+                <TouchableOpacity
+                  style={[styles.toolButton, tool === "text" && styles.activeToolButton]}
                   onPress={() => handleToolChange("text")}
                 >
                   <Type color={tool === "text" ? "#fff" : "#ccc"} size={22} />
@@ -887,17 +910,17 @@ const router = useRouter();
                 <Text style={styles.toolLabel}>Taille du texte</Text>
                 <View style={styles.fontSizes}>
                   {FONT_SIZES.map((size) => (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       key={size}
                       style={[
                         styles.fontSizeButton,
-                        fontSize === size && styles.activeFontSizeButton
-                      ]} 
+                        fontSize === size && styles.activeFontSizeButton,
+                      ]}
                       onPress={() => handleFontSizeChange(size)}
                     >
-                      <Type 
-                        color={fontSize === size ? "#fff" : "#ccc"} 
-                        size={size === 12 ? 14 : size === 16 ? 18 : size === 20 ? 22 : size === 28 ? 26 : 30} 
+                      <Type
+                        color={fontSize === size ? "#fff" : "#ccc"}
+                        size={size === 12 ? 14 : size === 16 ? 18 : size === 20 ? 22 : size === 28 ? 26 : 30}
                       />
                     </TouchableOpacity>
                   ))}
@@ -908,7 +931,6 @@ const router = useRouter();
         )}
       </View>
 
-      {/* Hint when text is selected */}
       {selectedTextIndexState !== null && (
         <View style={[styles.textHint, { bottom: controlsHeight + 80 }]}>
           <Text style={styles.textHintText}>📍 Drag to move • 🤏 Pinch to scale</Text>
@@ -923,34 +945,37 @@ const router = useRouter();
 
       {addingText && (
         <View style={[styles.textInputOverlay, { bottom: controlsHeight + 60 }]}>
-          <TextInput 
-            style={styles.textInput} 
-            placeholder="Enter text" 
-            placeholderTextColor="#aaa" 
-            value={textInput} 
-            onChangeText={setTextInput} 
-            onSubmitEditing={handleConfirmText} 
-            autoFocus 
+          <TextInput
+            style={styles.textInput}
+            placeholder="Enter text"
+            placeholderTextColor="#aaa"
+            value={textInput}
+            onChangeText={setTextInput}
+            onSubmitEditing={handleConfirmText}
+            autoFocus
           />
           <TouchableOpacity onPress={handleConfirmText}><Save color="white" size={28} /></TouchableOpacity>
         </View>
       )}
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.descriptionWrapper}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.descriptionWrapper}
+      >
         <View style={[styles.descriptionContainer, { paddingBottom: 8 + insets.bottom }]}>
-          <TextInput 
-            style={styles.descriptionInput} 
-            placeholder="Add a description..." 
-            placeholderTextColor="#ccc" 
+          <TextInput
+            style={styles.descriptionInput}
+            placeholder="Add a description..."
+            placeholderTextColor="#ccc"
             onChangeText={(txt) =>
               setDescriptions((prev) => {
                 const copy = [...prev];
                 copy[currentIndex] = txt;
                 return copy;
               })
-            } 
-            value={descriptions[currentIndex]} 
-            multiline 
+            }
+            value={descriptions[currentIndex]}
+            multiline
           />
         </View>
       </KeyboardAvoidingView>
@@ -959,7 +984,9 @@ const router = useRouter();
         <View style={styles.overlay}>
           <View style={styles.loaderBox}>
             <ActivityIndicator size="large" color="#6D28D9" />
-            <Text style={styles.loaderText}>Enregistrement... {Math.round(savingProgress)}%</Text>
+            <Text style={styles.loaderText}>
+              Enregistrement... {Math.round(savingProgress)}%
+            </Text>
           </View>
         </View>
       )}
@@ -969,14 +996,14 @@ const router = useRouter();
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "black" },
-  
+
   canvasContainer: {
     position: "absolute",
     left: 0,
     right: 0,
     backgroundColor: "black",
   },
-  
+
   thumbnailSection: {
     position: "absolute",
     left: 0,
@@ -990,16 +1017,16 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingRight: 16,
   },
-  thumbnailWrapper: { 
-    borderWidth: 3, 
-    borderColor: "rgba(255,255,255,0.3)", 
+  thumbnailWrapper: {
+    borderWidth: 3,
+    borderColor: "rgba(255,255,255,0.3)",
     borderRadius: 12,
     overflow: "hidden",
     position: "relative",
     width: 70,
     height: 70,
   },
-  thumbnailActive: { 
+  thumbnailActive: {
     borderColor: "#6D28D9",
     shadowColor: "#6D28D9",
     shadowOffset: { width: 0, height: 0 },
@@ -1007,9 +1034,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 8,
   },
-  thumbnail: { 
-    width: 70, 
-    height: 70, 
+  thumbnail: {
+    width: 70,
+    height: 70,
   },
   thumbnailBadge: {
     position: "absolute",
@@ -1099,18 +1126,16 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 8,
   },
-  
-  paletteContainer: {
-    gap: 4,
-  },
-  palette: { 
+
+  paletteContainer: { gap: 4 },
+  palette: {
     flexDirection: "row",
     gap: 10,
     flexWrap: "wrap",
   },
-  colorDot: { 
-    width: 40, 
-    height: 40, 
+  colorDot: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.2)",
@@ -1129,10 +1154,8 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.8)",
   },
 
-  toolsContainer: {
-    gap: 4,
-  },
-  tools: { 
+  toolsContainer: { gap: 4 },
+  tools: {
     flexDirection: "row",
     gap: 10,
     flexWrap: "wrap",
@@ -1147,19 +1170,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
   },
-  activeToolButton: { 
+  activeToolButton: {
     backgroundColor: "#6D28D9",
     borderColor: "#6D28D9",
     transform: [{ scale: 1.05 }],
   },
 
-  controls: { 
-    flexDirection: "row", 
-    position: "absolute", 
-    left: 20, 
-    right: 20, 
-    justifyContent: "space-around", 
-    backgroundColor: "rgba(0,0,0,0.85)", 
+  controls: {
+    flexDirection: "row",
+    position: "absolute",
+    left: 20,
+    right: 20,
+    justifyContent: "space-around",
+    backgroundColor: "rgba(0,0,0,0.85)",
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 20,
@@ -1170,16 +1193,16 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 15,
   },
-  
-  textInputOverlay: { 
-    position: "absolute", 
-    left: 20, 
-    right: 20, 
-    backgroundColor: "rgba(0,0,0,0.9)", 
-    padding: 16, 
-    borderRadius: 16, 
-    flexDirection: "row", 
-    alignItems: "center", 
+
+  textInputOverlay: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    backgroundColor: "rgba(0,0,0,0.9)",
+    padding: 16,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -1188,63 +1211,61 @@ const styles = StyleSheet.create({
     elevation: 8,
     zIndex: 15,
   },
-  textInput: { 
-    color: "white", 
-    borderBottomColor: "#6D28D9", 
-    borderBottomWidth: 2, 
-    flex: 1, 
+  textInput: {
+    color: "white",
+    borderBottomColor: "#6D28D9",
+    borderBottomWidth: 2,
+    flex: 1,
     marginRight: 10,
     fontSize: 16,
     paddingVertical: 8,
   },
-  
+
   descriptionWrapper: { position: "absolute", bottom: 0, width: "100%", zIndex: 10 },
-  descriptionContainer: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    backgroundColor: "rgba(0,0,0,0.85)", 
-    paddingHorizontal: 16, 
+  descriptionContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.85)",
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderTopWidth: 1,
     borderTopColor: "rgba(255,255,255,0.1)",
   },
-  descriptionInput: { 
-    flex: 1, 
-    color: "white", 
-    fontSize: 15, 
-    paddingVertical: 8, 
+  descriptionInput: {
+    flex: 1,
+    color: "white",
+    fontSize: 15,
+    paddingVertical: 8,
     paddingHorizontal: 12,
   },
-  
-  overlay: { 
-    position: "absolute", 
-    top: 0, 
-    left: 0, 
-    right: 0, 
-    bottom: 0, 
-    backgroundColor: "rgba(0,0,0,0.7)", 
-    justifyContent: "center", 
+
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    justifyContent: "center",
     alignItems: "center",
     zIndex: 100,
   },
-  loaderBox: { 
-    backgroundColor: "#fff", 
-    padding: 24, 
-    borderRadius: 16, 
+  loaderBox: {
+    backgroundColor: "#fff",
+    padding: 24,
+    borderRadius: 16,
     alignItems: "center",
     minWidth: 200,
   },
-  loaderText: { 
-    marginTop: 12, 
-    fontSize: 16, 
-    color: "#333", 
-    fontWeight: "600" 
+  loaderText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "600",
   },
-  
-  fontSizeContainer: {
-    gap: 4,
-  },
-  fontSizes: { 
+
+  fontSizeContainer: { gap: 4 },
+  fontSizes: {
     flexDirection: "row",
     gap: 10,
     flexWrap: "wrap",
@@ -1259,13 +1280,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
   },
-  activeFontSizeButton: { 
+  activeFontSizeButton: {
     backgroundColor: "#6D28D9",
     borderColor: "#6D28D9",
     transform: [{ scale: 1.05 }],
   },
-  
-  // Text hint
+
   textHint: {
     position: "absolute",
     left: 20,

@@ -6,7 +6,7 @@ import { Feather } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import { useNavigation } from 'expo-router';
 import { useAtom } from 'jotai';
-import { MessageSquare, Plus, Users } from 'lucide-react-native';
+import { MessageSquare, MessageSquarePlus, Users } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -129,7 +129,7 @@ export default function DiscussionsScreen() {
       headerRight: () => (
         <TouchableOpacity onPress={() => setShowCreate(true)} style={{ marginRight: 16 }}>
           <View style={styles.headerBtn}>
-            <Plus size={20} color="#FFF" />
+            <MessageSquarePlus size={20} color="#FFF" />
           </View>
         </TouchableOpacity>
       ),

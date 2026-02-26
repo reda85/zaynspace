@@ -33,19 +33,31 @@ export default function AccountScreen() {
       headerTitle: 'Compte',
       headerTitleAlign: 'center',
       headerShadowVisible: false,
-      
       headerTitleStyle: {
         fontFamily: 'Outfit_700Bold',
-        fontSize: 24,
-        color: 'black',
-        backgroundColor: '#F5F7FA',
+        fontSize: 20,
+        color: '#000',
       },
+      
+     
       headerLeft: () => (
         <TouchableOpacity
           onPress={() => router.back()}
           style={{ marginLeft: 16 }}
         >
-          <View style={styles.closeButton}>
+          <View style={{
+                      backgroundColor: 'white',
+                      width: 36,
+                      height: 36,
+                      borderRadius: 18,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      shadowColor: '#000',
+                      shadowOpacity: 0.1,
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowRadius: 2,
+                      elevation: 2,
+                    }}>
             <X size={24} color="#000" />
           </View>
         </TouchableOpacity>
@@ -278,4 +290,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Outfit_600SemiBold',
   },
+  headerBtnWhite: {
+  backgroundColor: '#FFF',
+  width: 36, height: 36, borderRadius: 18,
+  alignItems: 'center', justifyContent: 'center',
+  shadowColor: '#000', shadowOpacity: 0.06,
+  shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2,
+},
 });

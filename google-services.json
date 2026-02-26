@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "506979625308",
+    "project_id": "zaynspace",
+    "storage_bucket": "zaynspace.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:506979625308:android:49b8d408433a930adfb999",
+        "android_client_info": {
+          "package_name": "com.simplenextjs.zaynspace"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAj_-UceBjREOx0CWJGCHd0mKTB3Rd-WsM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:506979625308:android:ae1fa8a70bc520cddfb999",
+        "android_client_info": {
+          "package_name": "com.simplenextjs.zyn"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAj_-UceBjREOx0CWJGCHd0mKTB3Rd-WsM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

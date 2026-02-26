@@ -15,18 +15,7 @@ export const addPinToSupabase = async (pdfName, pin, userid) => {
   }
   if (data) {
     console.log('Pin added to Supabase:', data);
-    const {data: insertedPin, error: insertError } = await supabase.from('events').insert([
-      {
-        pin_id: data[0].id,
-        category: 'creation',
-        event: ' a cree ce pin',
-        user_id : userid,
-       // pin_photo_id: data.photoUris[0],
-     
-      },
-    ]);
-
-    if (insertError) console.error('Insert event error:', insertError);
+   const insertedPin = data[0];
 
     return {
       pin: insertedPin,
@@ -42,6 +31,7 @@ export const loadPinsFromSupabase = async (planId,user) => {
       .from('pdf_pins')
       .select('*,projects(*),categories(*),Status(*),pins_photos(*),events(*, pins_photos(*), members(*))')
       .eq('plan_id', planId)
+      .is('deleted_at', null)
       .eq('assigned_to', user.id)
 
     if (error) {
@@ -57,6 +47,7 @@ export const loadPinsFromSupabase = async (planId,user) => {
     const { data, error } = await supabase
       .from('pdf_pins')
       .select('*,projects(*),categories(*),Status(*),pins_photos(*),events(*, pins_photos(*), members(*))')
+      .is('deleted_at', null)
       .eq('plan_id', planId)
 
     if (error) {

@@ -1,20 +1,69 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useNavigation } from 'expo-router';
 import { BoxIcon, Image, Shrink, X } from 'lucide-react-native';
-import { useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+/* ---- Storage keys ---- */
+const KEYS = {
+  autoSaveImages: '@settings/autoSaveImages',
+  compressImages: '@settings/compressImages',
+  optimizeStorage: '@settings/optimizeStorage',
+};
+
 export default function StorageDataScreen() {
   const navigation = useNavigation();
+
   const [autoSaveImages, setAutoSaveImages] = useState(true);
-  const [dataOption1, setDataOption1] = useState(false);
-  const [dataOption2, setDataOption2] = useState(true);
+  const [dataOption1, setDataOption1] = useState(false);   // compressImages
+  const [dataOption2, setDataOption2] = useState(true);    // optimizeStorage
+  const [loading, setLoading] = useState(true);
+
+  /* ---------- LOAD PERSISTED VALUES ---------- */
+  useEffect(() => {
+    const loadPreferences = async () => {
+      try {
+        const [autoSave, compress, optimize] = await AsyncStorage.multiGet([
+          KEYS.autoSaveImages,
+          KEYS.compressImages,
+          KEYS.optimizeStorage,
+        ]);
+
+        // multiGet returns [key, value] pairs; value is null if not yet set
+        if (autoSave[1] !== null)   setAutoSaveImages(autoSave[1] === 'true');
+        if (compress[1] !== null)   setDataOption1(compress[1] === 'true');
+        if (optimize[1] !== null)   setDataOption2(optimize[1] === 'true');
+      } catch (e) {
+        console.warn('Failed to load storage preferences:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPreferences();
+  }, []);
+
+  /* ---------- TOGGLE HELPERS ---------- */
+  const handleToggle = async (
+    key,
+    value,
+    setter,
+  ) => {
+    setter(value);
+    try {
+      await AsyncStorage.setItem(key, String(value));
+    } catch (e) {
+      console.warn(`Failed to save preference for ${key}:`, e);
+    }
+  };
 
   /* ---------- HEADER ---------- */
   useLayoutEffect(() => {
@@ -22,7 +71,6 @@ export default function StorageDataScreen() {
       headerTitle: 'Stockage et données',
       headerTitleAlign: 'center',
       headerShadowVisible: false,
-      
       headerTitleStyle: {
         fontFamily: 'Outfit_700Bold',
         fontSize: 24,
@@ -30,10 +78,7 @@ export default function StorageDataScreen() {
         backgroundColor: '#F5F7FA',
       },
       headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ marginLeft: 16 }}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 10 }}>
           <View style={styles.closeButton}>
             <X size={24} color="#000" />
           </View>
@@ -41,6 +86,15 @@ export default function StorageDataScreen() {
       ),
     });
   }, [navigation]);
+
+  /* ---------- LOADING STATE ---------- */
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -61,7 +115,7 @@ export default function StorageDataScreen() {
           </View>
           <Switch
             value={autoSaveImages}
-            onValueChange={setAutoSaveImages}
+            onValueChange={(v) => handleToggle(KEYS.autoSaveImages, v, setAutoSaveImages)}
             trackColor={{ false: '#E5E7EB', true: '#60A5FA' }}
             thumbColor={autoSaveImages ? '#3B82F6' : '#F3F4F6'}
           />
@@ -73,20 +127,20 @@ export default function StorageDataScreen() {
 
       {/* DATA CARD */}
       <View style={styles.card}>
-        {/* First Item */}
+        {/* Compress images */}
         <View style={styles.menuItem}>
           <View style={styles.menuLeft}>
             <Shrink size={20} color="#6B7280" />
             <View style={styles.menuText}>
               <Text style={styles.menuTitle}>Compresser les images</Text>
               <Text style={styles.menuSubtitle}>
-               Envoyer des images en basse résolution pour économiser des données
+                Envoyer des images en basse résolution pour économiser des données
               </Text>
             </View>
           </View>
           <Switch
             value={dataOption1}
-            onValueChange={setDataOption1}
+            onValueChange={(v) => handleToggle(KEYS.compressImages, v, setDataOption1)}
             trackColor={{ false: '#E5E7EB', true: '#60A5FA' }}
             thumbColor={dataOption1 ? '#3B82F6' : '#F3F4F6'}
           />
@@ -95,7 +149,7 @@ export default function StorageDataScreen() {
         {/* Divider */}
         <View style={styles.divider} />
 
-        {/* Second Item */}
+        {/* Optimize storage */}
         <View style={styles.menuItem}>
           <View style={styles.menuLeft}>
             <BoxIcon size={20} color="#6B7280" />
@@ -108,14 +162,12 @@ export default function StorageDataScreen() {
           </View>
           <Switch
             value={dataOption2}
-            onValueChange={setDataOption2}
+            onValueChange={(v) => handleToggle(KEYS.optimizeStorage, v, setDataOption2)}
             trackColor={{ false: '#E5E7EB', true: '#60A5FA' }}
             thumbColor={dataOption2 ? '#3B82F6' : '#F3F4F6'}
           />
         </View>
       </View>
-
-      {/* Add more sections here following the same pattern */}
     </SafeAreaView>
   );
 }
@@ -127,6 +179,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F7FA',
     paddingHorizontal: 16,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   /* Header */

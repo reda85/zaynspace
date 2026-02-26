@@ -86,12 +86,12 @@ export default function MediaGalleryScreen() {
   useEffect(() => {
     if (!project?.id) return;
 
-    const fetchMedia = async () => {
-      let query = supabase
-        .from('pins_photos')
-        .select('*, pdf_pins(*),members(*)')
-        .eq('project_id', project.id);
-
+   const fetchMedia = async () => {
+  let query = supabase
+    .from('pins_photos')
+    .select('*, pdf_pins!inner(*), members(*)')
+    .eq('project_id', project.id)
+    .is('pdf_pins.deleted_at', null);
       // Apply plan filter
       if (selectedPlan) {
         query = query.eq('pin_id', selectedPlan);

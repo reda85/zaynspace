@@ -25,6 +25,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
+      "googleServicesFile": "./google-services.json",
       "package": "com.simplenextjs.zaynspace"
     },
     "web": {
@@ -54,6 +55,12 @@
           "ios": {
             "useModularHeaders": true
           }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "androidMode": "default"
         }
       ],
       "expo-speech-recognition"

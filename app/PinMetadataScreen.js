@@ -1,6 +1,9 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
-// Imports mis à jour pour la dictée vocale
+import {
+    ExpoSpeechRecognitionModule,
+    useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 
 import { useAtom } from 'jotai';
 import debounce from 'lodash/debounce';
@@ -31,7 +34,7 @@ import {
     UserPlus,
     ZapIcon
 } from 'lucide-react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -663,14 +666,26 @@ const handlePlanSelected = (selectedPlan) => {
         setShowActionsSheet(false);
 
         try {
-            const duplicatedPin = {
-                ...pin,
-                id: uuid.v4(),
-                name: `${pin.name} (Copie)`,
-                created_at: new Date().toISOString(),
-                x: pin.x + 0.02,
-                y: pin.y + 0.02,
-            };
+             const duplicatedPin = {
+            id: uuid.v4(),
+            name: `${pin.name || ''} (Copie)`,
+            note: pin.note,
+            pdf_name: pin.pdf_name,
+            x: pin.x != null ? pin.x + 0.01 : null,
+            y: pin.y != null ? pin.y + 0.005 : null,
+            plan_id: pin.plan_id,
+            project_id: pin.project_id,
+            status_id: pin.status_id,
+            category_id: pin.category_id,
+            assigned_to: pin.assigned_to?.id ?? pin.assigned_to ?? null,
+            due_date: pin.due_date,
+            tags: pin.tags,
+            isArchived: pin.isArchived ?? false,
+            pin_number: pin.pin_number,
+            created_by: pin.created_by,
+            created_at: new Date().toISOString(),
+            deleted_at: null,
+        };
 
             const { data, error } = await supabase
                 .from('pdf_pins')
@@ -695,7 +710,7 @@ const handlePlanSelected = (selectedPlan) => {
 
         Alert.alert(
             'Supprimer le pin',
-            'Êtes-vous sûr de vouloir supprimer ce pin ? Cette action est irréversible.',
+            'Êtes-vous sûr de vouloir supprimer ce pin ?',
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -705,7 +720,7 @@ const handlePlanSelected = (selectedPlan) => {
                         try {
                             const { error } = await supabase
                                 .from('pdf_pins')
-                                .delete()
+                                .update({ deleted_at: new Date().toISOString() })
                                 .eq('id', pin.id);
 
                             if (error) throw error;
@@ -860,7 +875,133 @@ try {
     // DICTÉE VOCALE – LOGIQUE useSpeechRecognitionEvent
     // ==================================================================
 
+   const applyFinalText = useCallback(() => {
+    console.log("applyFinalText");
+    if (!dictationTarget || !recognizedTextRef.current.trim()) return;
+
+    skipNextReloadRef.current = true;
+    const text = recognizedTextRef.current.trim();
+    console.log("text", text);
+
+    if (dictationTarget === 'name') {
+        setName(text);
+        immediateSave({ name: text });
+    } else if (dictationTarget === 'note') {
+        setNote(text);
+        immediateSave({ note: text });
+    }
+
+    recognizedTextRef.current = '';
+    setPartialResult('');
+    setDictationTarget(null);
+}, [dictationTarget]);
+
+
+
+
+    useSpeechRecognitionEvent("start", () => {
+        setIsListening(true);
+    });
+
+    useSpeechRecognitionEvent("end", () => {
+        setIsListening(false);
+        if (recognizedTextRef.current) applyFinalText();
+      // applyFinalText();
+    });
+
+    useSpeechRecognitionEvent("result", (event) => {
+        let transcript = event.results[0]?.transcript || '';
+        let isFinal = event.isFinal;
+console.log("isFinal", isFinal, event);
+        if (!transcript) return;
+
+        if (isFinal) {
+            recognizedTextRef.current += (recognizedTextRef.current ? ' ' : '') + transcript;
+            if (!ExpoSpeechRecognitionModule.isContinuous) { 
+                applyFinalText(); 
+            }
+        } else {
+            setPartialResult(transcript);
+        }
+    });
+    
+    useSpeechRecognitionEvent("error", (event) => {
+        Alert.alert('Dictée', `Erreur de reconnaissance: ${event.message}`);
+        setIsListening(false);
+        setDictationTarget(null);
+        setPartialResult('');
+        recognizedTextRef.current = '';
+    });
   
+   const onPartialResult = (text) => {
+  recognizedTextRef.current = text; // ⚡ met à jour la ref
+  setPartialResult(text);           // pour affichage live
+  setName(text);                    // si tu veux que le champ soit live
+};
+
+const startListening = async (target) => {
+    if (isSpeaking) {
+        Speech.stop();
+        setIsSpeaking(false);
+    }
+
+    // Stop any ongoing dictation
+    if (isListening) {
+        await ExpoSpeechRecognitionModule.stop().catch(() => {});
+        setIsListening(false);
+        recognizedTextRef.current = '';
+        setPartialResult('');
+        setDictationTarget(null);
+    }
+
+    // Clean state before starting new dictation
+    setDictationTarget(target);
+    recognizedTextRef.current = '';
+    setPartialResult('');
+
+    let granted = false;
+    try {
+        const perm = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+        granted = perm?.granted;
+        if (!granted) {
+            const req = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+            granted = req?.granted;
+        }
+    } catch (e) {
+        if (Platform.OS === 'android') granted = true;
+    }
+
+    if (!granted) {
+        Alert.alert('Permission refusée', 'Activez le microphone dans les réglages');
+        return;
+    }
+
+    try {
+        await ExpoSpeechRecognitionModule.start({ 
+            lang: 'fr-FR',
+            continuous: false,
+            interimResults: true,
+        });
+    } catch (e) {}
+};
+
+    const stopDictationIfNeeded = async () => {
+        if (isListening) {
+            try { await ExpoSpeechRecognitionModule.stop(); } catch (_) {}
+            setIsListening(false);
+            setDictationTarget(null);
+            setPartialResult('');
+            recognizedTextRef.current = '';
+        }
+    };
+
+   
+    const handleDictateName = () => startListening('name');
+    const handleDictateNote = () => startListening('note');
+
+    // ==================================================================
+    // FIN DICTÉE VOCALE
+    // ==================================================================
 
 
     const AssigneeSheet = () => (
@@ -1205,7 +1346,7 @@ const StatusSheet = () => {
                                     styles.micButton,
                                     isListening && dictationTarget === 'name' && styles.micButtonActive
                                 ]}
-                                
+                                onPress={handleDictateName}
                                 disabled={isListening && dictationTarget !== 'name'}
                             >
                                 <MicIcon
@@ -1235,7 +1376,7 @@ const StatusSheet = () => {
                                     styles.micButtonNote,
                                     isListening && dictationTarget === 'note' && styles.micButtonActive
                                 ]}
-                               
+                               onPress={handleDictateNote}
                                 disabled={isListening && dictationTarget !== 'note'}
                             >
                                 <MicIcon

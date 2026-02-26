@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
-import { CameraIcon, Clock, MapPin, MapPinnedIcon, MessageSquare } from 'lucide-react-native';
+import { CameraIcon, Clock, MapPin, MapPinnedIcon, MessageSquare, Pencil } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, FlatList, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Animated, FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
 import { categoriesAtom, loggedInUserAtom, membersAtom, pinsAtom, plansAtom, selectedProjectAtom, statusesAtom } from '../../store/atoms';
@@ -53,7 +53,7 @@ function EventsSkeleton() {
     <View style={styles.timelineCard}>
       {[0, 1, 2, 3].map(i => (
         <View key={i} style={[styles.eventItem, { gap: 10 }]}>
-          <SkeletonBox width={38} height={38} borderRadius={19} />
+          <SkeletonBox width={42} height={42} borderRadius={21} />
           <View style={{ flex: 1, gap: 6 }}>
             <SkeletonBox width="85%" height={13} borderRadius={4} />
             <SkeletonBox width="45%" height={11} borderRadius={4} />
@@ -73,15 +73,26 @@ export default function AcceuilScreen() {
   const [statuses, setStatuses] = useAtom(statusesAtom);
   const [members, setMembers] = useAtom(membersAtom);
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [modalVisible, setModalVisible] = useState(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const sheetAnim = useRef(new Animated.Value(0)).current;
   const [unread, setUnread] = useAtom(discussionUnreadAtom);
   const hasUnread = useMemo(() => Object.values(unread).some(n => n > 0), [unread]);
   const navigation = useNavigation();
   const router = useRouter();
   const [user] = useAtom(loggedInUserAtom);
 
-  // True while project data is loading — drives skeleton visibility
   const [loadingData, setLoadingData] = useState(false);
+
+  const openSheet = () => {
+    setSheetVisible(true);
+    Animated.spring(sheetAnim, { toValue: 1, useNativeDriver: true, bounciness: 4 }).start();
+  };
+
+  const closeSheet = () => {
+    Animated.timing(sheetAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+      setSheetVisible(false);
+    });
+  };
 
   function getUserInitials(name) {
     if (!name) return '?';
@@ -102,7 +113,6 @@ export default function AcceuilScreen() {
     navigation.setOptions({ headerShown: false });
   }, []);
 
-  // --- 1. CHARGEMENT INITIAL ROBUSTE ---
   useEffect(() => {
     if (!user?.id || !user?.organization_id) return;
 
@@ -132,14 +142,12 @@ export default function AcceuilScreen() {
     fetchProjectsAndInit();
   }, [user]);
 
-  // --- 2. SAUVEGARDE AUTOMATIQUE ---
   useEffect(() => {
     if (selectedProject?.id) {
       AsyncStorage.setItem('last_project_id', String(selectedProject.id)).catch(console.error);
     }
   }, [selectedProject]);
 
-  // --- 3. CLEAR STALE DATA + START SKELETON ON PROJECT CHANGE ---
   useEffect(() => {
     setPins([]);
     setPlans([]);
@@ -147,24 +155,25 @@ export default function AcceuilScreen() {
     setLoadingData(true);
   }, [selectedProject?.id]);
 
-  // --- 4. CHARGEMENT DES DONNÉES LIÉES ---
   useEffect(() => {
     if (!selectedProject?.id || !user?.id) return;
 
     const fetchAllData = async () => {
       try {
         const { data: plansData } = await supabase
-          .from('plans').select('*').eq('project_id', selectedProject.id);
+          .from('plans').select('*').is('deleted_at', null).eq('project_id', selectedProject.id);
         if (plansData) setPlans(plansData);
 
         if (user.role === 'guest') {
           const { data: pinsData } = await supabase
             .from('pdf_pins').select('*,Status(*),categories(*),projects(*)')
+            .is('deleted_at', null)
             .eq('project_id', selectedProject.id).eq('assigned_to', user.id);
           if (pinsData) setPins(pinsData);
         } else {
           const { data: pinsData } = await supabase
             .from('pdf_pins').select('*,Status(*),categories(*),projects(*)')
+            .is('deleted_at', null)
             .eq('project_id', selectedProject.id);
           if (pinsData) setPins(pinsData);
         }
@@ -183,41 +192,34 @@ export default function AcceuilScreen() {
           .from('categories').select('*').eq('project_id', selectedProject.id).order('order');
         if (catData) setCategories(catData);
 
-      // Step 1 — get members on this project, with their project membership details
-const { data: membersProjectsData } = await supabase
-  .from('members_projects')
-  .select(`
-    *,
-    projects(*),
-    members(*)
-  `)
-  .eq('project_id', selectedProject.id);
+        const { data: membersProjectsData } = await supabase
+          .from('members_projects')
+          .select(`*, projects(*), members(*)`)
+          .eq('project_id', selectedProject.id);
 
-// Step 2 — get roles for those members in the active org
-const memberIds = membersProjectsData?.map(mp => mp.members.id) ?? [];
+        const memberIds = membersProjectsData?.map(mp => mp.members.id) ?? [];
 
-const { data: rolesData } = await supabase
-  .from('members_organizations')
-  .select('member_id, role')
-  .eq('organization_id', user.organization_id)
-  .in('member_id', memberIds);
+        const { data: rolesData } = await supabase
+          .from('members_organizations')
+          .select('member_id, role')
+          .eq('organization_id', user.organization_id)
+          .in('member_id', memberIds);
 
-// Step 3 — merge role into each member and flatten structure
-const rolesMap = Object.fromEntries(
-  rolesData?.map(r => [r.member_id, r.role]) ?? []
-);
+        const rolesMap = Object.fromEntries(
+          rolesData?.map(r => [r.member_id, r.role]) ?? []
+        );
 
-const membersData = membersProjectsData?.map(mp => ({
-  ...mp.members,
-  role: rolesMap[mp.members.id] ?? null,
-  members_projects: mp,
-  projects: mp.projects,
-})) ?? [];
+        const membersData = membersProjectsData?.map(mp => ({
+          ...mp.members,
+          role: rolesMap[mp.members.id] ?? null,
+          members_projects: mp,
+          projects: mp.projects,
+        })) ?? [];
 
-if (membersData) {
-  console.log("Members data:", membersData); 
-  setMembers(membersData);
-}
+        if (membersData) {
+          console.log("Members data:", membersData);
+          setMembers(membersData);
+        }
 
         try {
           const groups = await fetchGroups(selectedProject.id);
@@ -241,7 +243,7 @@ if (membersData) {
     { label: 'Tous', value: 'all', color: '#1E293B' },
     { label: 'Créations', value: 'creation', color: '#3B82F6' },
     { label: 'Photos', value: 'photo_upload', color: '#10B981' },
-    { label: 'Mises à jour', value: 'update', color: '#F59E0B' },
+    { label: 'Mises à jour', value: 'modification', color: '#F59E0B' },
   ];
 
   if (!user) {
@@ -280,7 +282,7 @@ if (membersData) {
         </View>
       </View>
 
-      {/* Cards — skeleton while loading */}
+      {/* Cards */}
       {loadingData ? <CardsSkeleton /> : (
         <View style={styles.cardsRow}>
           <View style={[styles.statsCard, styles.cardLeft]}>
@@ -310,7 +312,7 @@ if (membersData) {
               styles.filterButton,
               { backgroundColor: categoryOptions.find(c => c.value === selectedCategory)?.color || '#6D28D9' },
             ]}
-            onPress={() => setModalVisible(true)}
+            onPress={openSheet}
           >
             <Text style={styles.filterText}>
               {categoryOptions.find(c => c.value === selectedCategory)?.label || 'Filtrer'}
@@ -319,7 +321,7 @@ if (membersData) {
         )}
       </View>
 
-      {/* Events list — skeleton while loading */}
+      {/* Events list */}
       {loadingData ? <EventsSkeleton /> : (
         <View style={styles.timelineCard}>
           <FlatList
@@ -329,22 +331,34 @@ if (membersData) {
               let icon, bgColor;
               switch (item.category) {
                 case 'creation':
-                  icon = <MapPin size={18} color="#000000" />;
-                  bgColor = '#DBEAFE';
+                  icon = <MapPin size={10} color="#FFFFFF" />;
+                  bgColor = '#3B82F6';
                   break;
                 case 'photo_upload':
-                  icon = <CameraIcon size={18} color="#000000" />;
-                  bgColor = '#D1FAE5';
+                  icon = <CameraIcon size={10} color="#FFFFFF" />;
+                  bgColor = '#10B981';
                   break;
+                  case 'modification':
+                  icon = <Pencil size={10} color="#FFFFFF" />;
+                  bgColor = '#F59E0B';
                 default:
-                  icon = <Clock size={18} color="#000000" />;
-                  bgColor = '#FEF3C7';
+                  icon = <Clock size={10} color="#FFFFFF" />;
+                  bgColor = '#F59E0B';
                   break;
               }
 
               return (
                 <View style={styles.eventItem}>
-                  <View style={[styles.eventIcon, { backgroundColor: bgColor }]}>{icon}</View>
+                  <View style={styles.eventAvatarWrapper}>
+                    <View style={styles.eventAvatar}>
+                      <Text style={styles.eventAvatarText}>
+                        {getUserInitials(item.members?.name)}
+                      </Text>
+                    </View>
+                    <View style={[styles.eventBadge, { backgroundColor: bgColor }]} >
+                      {icon}
+                    </View>
+                  </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.eventTitle}>
                       <Text style={styles.eventMember}>{item.members?.name}</Text>{' '}
@@ -365,33 +379,58 @@ if (membersData) {
         </View>
       )}
 
-      {/* Modal */}
-      <Modal transparent visible={modalVisible} animationType="fade" onRequestClose={() => setModalVisible(false)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
-          <View style={styles.modalContent}>
-            {categoryOptions.map(cat => (
+      {/* Bottom Sheet Backdrop */}
+      {sheetVisible && (
+        <Animated.View style={[styles.sheetBackdrop, { opacity: sheetAnim }]}>
+          <Pressable style={{ flex: 1 }} onPress={closeSheet} />
+        </Animated.View>
+      )}
+
+      {/* Bottom Sheet */}
+      {sheetVisible && (
+        <Animated.View
+          style={[
+            styles.bottomSheet,
+            {
+              transform: [{
+                translateY: sheetAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [300, 0],
+                }),
+              }],
+            },
+          ]}
+        >
+          <View style={styles.sheetHandle} />
+          <Text style={styles.sheetTitle}>Filtrer les événements</Text>
+
+          {categoryOptions.map(cat => {
+            const isSelected = selectedCategory === cat.value;
+            return (
               <Pressable
                 key={cat.value}
-                style={[
-                  styles.modalItem,
-                  selectedCategory === cat.value && { backgroundColor: cat.color + '33' },
-                ]}
+                style={[styles.sheetItem, isSelected && styles.sheetItemSelected]}
                 onPress={() => {
                   setSelectedCategory(cat.value);
-                  setModalVisible(false);
+                  closeSheet();
                 }}
               >
-                <Text style={[
-                  styles.modalItemText,
-                  selectedCategory === cat.value && { fontWeight: '700', color: cat.color },
-                ]}>
+                <View style={[styles.sheetDot, { backgroundColor: cat.color }]} />
+                <Text style={[styles.sheetItemText, isSelected && { color: cat.color, fontFamily: 'Outfit_700Bold' }]}>
                   {cat.label}
                 </Text>
+                {isSelected && (
+                  <View style={[styles.sheetCheckmark, { backgroundColor: cat.color }]}>
+                    <Text style={{ color: '#fff', fontSize: 11, fontFamily: 'Outfit_700Bold' }}>✓</Text>
+                  </View>
+                )}
               </Pressable>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
+            );
+          })}
+
+          <View style={{ height: 16 }} />
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -441,18 +480,72 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E7EB',
   },
-  eventIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  eventAvatarWrapper: {
+    width: 42, height: 42, marginRight: 10, position: 'relative',
+  },
+  eventAvatar: {
+    width: 42, height: 42, borderRadius: 21,
+    backgroundColor: '#6B7280', alignItems: 'center', justifyContent: 'center',
+  },
+  eventAvatarText: {
+    color: '#FFFFFF', fontFamily: 'Outfit_700Bold', fontSize: 18,
+  },
+  eventBadge: {
+    position: 'absolute', top: -1, right: -3,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: '#6B7280',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#FFFFFF',
+  },
   eventTitle: { fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#374151', lineHeight: 20 },
   eventMember: { fontFamily: 'Outfit_700Bold', color: '#1E293B' },
   eventTime: { fontFamily: 'Outfit_500Medium', fontSize: 13, color: '#6B7280', marginTop: 2 },
   noEvents: { textAlign: 'center', fontFamily: 'Outfit_500Medium', color: '#9CA3AF', marginTop: 20 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(30,41,59,0.25)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#FFFFFF', borderRadius: 16, width: 200, paddingVertical: 12 },
-  modalItem: { paddingVertical: 10, paddingHorizontal: 16 },
-  modalItemText: { fontFamily: 'Outfit_500Medium', fontSize: 14 },
   unreadDot: {
     position: 'absolute', top: 8, right: 8,
     width: 9, height: 9, borderRadius: 5,
     backgroundColor: '#6D28D9', borderWidth: 1.5, borderColor: '#F5F7FA',
+  },
+  // Bottom sheet
+  sheetBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(15,23,42,0.4)',
+    zIndex: 10,
+  },
+  bottomSheet: {
+    position: 'absolute',
+    bottom: 0, left: 0, right: 0,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 20, paddingTop: 12,
+    zIndex: 11,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1, shadowRadius: 12, elevation: 20,
+  },
+  sheetHandle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: '#E5E7EB', alignSelf: 'center', marginBottom: 16,
+  },
+  sheetTitle: {
+    fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#1E293B', marginBottom: 12,
+  },
+  sheetItem: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#F1F5F9',
+    gap: 12,
+  },
+  sheetItemSelected: {
+    backgroundColor: '#F8FAFC',
+    marginHorizontal: -20, paddingHorizontal: 20,
+  },
+  sheetDot: { width: 10, height: 10, borderRadius: 5 },
+  sheetItemText: {
+    flex: 1, fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#374151',
+  },
+  sheetCheckmark: {
+    width: 20, height: 20, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
   },
 });
