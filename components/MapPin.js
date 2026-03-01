@@ -1,38 +1,69 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
-
 import { useAtom } from 'jotai';
 import {
-  CheckIcon, DoorClosedIcon, DropletsIcon, FireExtinguisherIcon, GripIcon,
+  AirVentIcon,
+  AlarmSmokeIcon,
+  BrickWallIcon,
+  BrushIcon,
+  CheckCircle,
+  CheckIcon,
+  ConstructionIcon,
+  DoorClosedIcon,
+  DoorOpenIcon,
+  DropletOffIcon,
+  DropletsIcon,
+  FireExtinguisherIcon,
+  FlameIcon,
+  FolderIcon,
+  GripIcon,
+  PackageIcon,
   PaintRoller,
   SnowflakeIcon,
-  ZapIcon
+  TrendingDownIcon,
+  TrendingUpIcon,
+  WifiIcon,
+  ZapIcon,
 } from 'lucide-react-native';
 import { categoriesAtom, statusesAtom } from '../store/atoms';
 
 const categoriesIcons = {
-  'Non assigné' : <CheckIcon style={{ color: 'white' }}  />,
-  'zap': <ZapIcon style={{ color: 'white' }} />,
-  'droplets': <DropletsIcon style={{ color: 'white' }} />,
-  'paint': <PaintRoller style={{ color: 'white' }} />,
-  'carrelage': <GripIcon style={{ color: 'white' }} />,
-  'fire-extinguisher': <FireExtinguisherIcon style={{ color: 'white' }} />,
-  'doors': <DoorClosedIcon style={{ color: 'white' }} />,
-  'snowflake': <SnowflakeIcon style={{ color: 'white' }} />,
-}
-
-const statusColors = {
-  'En cours': '#16a34a',   // green-600
-  'A valider': '#2563eb',  // blue-600
-  'Termine': '#dc2626',    // red-600
+  'zap':               <ZapIcon color="white" />,
+  'fire-extinguisher': <FireExtinguisherIcon color="white" />,
+  'droplets':          <DropletsIcon color="white" />,
+  'snowflake':         <SnowflakeIcon color="white" />,
+  'doors':             <DoorClosedIcon color="white" />,
+  'paint':             <PaintRoller color="white" />,
+  'unassigned':        <CheckIcon color="white" />,
+  'Non assigné':       <CheckIcon color="white" />,
+  'carrelage':         <GripIcon color="white" />,
+  'folder':            <FolderIcon color="white" />,
+  'air-vent':          <AirVentIcon color="white" />,
+  'alarm-smoke':       <AlarmSmokeIcon color="white" />,
+  'check-circle':      <CheckCircle color="white" />,
+  'package':           <PackageIcon color="white" />,
+  'brick-wall':        <BrickWallIcon color="white" />,
+  'brush-cleaning':    <BrushIcon color="white" />,
+  'construction':      <ConstructionIcon color="white" />,
+  'droplet-off':       <DropletOffIcon color="white" />,
+  'door-open':         <DoorOpenIcon color="white" />,
+  'trending-up':       <TrendingUpIcon color="white" />,
+  'flame':             <FlameIcon color="white" />,
+  'trending-down':     <TrendingDownIcon color="white" />,
+  'wifi':              <WifiIcon color="white" />,
 };
 
 export default function MapPin({ pin, onPinPress }) {
   const [selectedPin, setSelectedPin] = React.useState(null);
-  const [statuses, setStatuses] = useAtom(statusesAtom);
-  const [categories, setCategories] = useAtom(categoriesAtom);
+  const [statuses] = useAtom(statusesAtom);
+  const [categories] = useAtom(categoriesAtom);
   const isSelected = selectedPin?.id === pin.id;
+
+  const iconName = categories.find(c => c.id === pin?.category_id)?.icon;
+  const icon = categoriesIcons[iconName] ?? <CheckIcon color="white" />;
+
+  const statusColor = statuses.find(s => s.id === pin?.status_id)?.color || 'gray';
 
   return (
     <TouchableOpacity
@@ -40,13 +71,6 @@ export default function MapPin({ pin, onPinPress }) {
       onPress={() => onPinPress(pin)}
       activeOpacity={0.8}
     >
-      {/* Popover */}
-   {/*   <View style={styles.popover}>
-        <Text style={styles.popoverText}>{pin.category} - {pin.status}</Text>
-        <Text style={styles.popoverText}>{pin.x} - {pin.y}</Text>
-      </View>
-*/}
-      {/* Pin */}
       <View style={styles.pinWrapper}>
         {isSelected && <View style={styles.tailLine} />}
 
@@ -54,21 +78,16 @@ export default function MapPin({ pin, onPinPress }) {
           style={[
             styles.circle,
             {
-              backgroundColor: statuses.find(s => s.id === pin?.status_id)?.color || 'gray',
+              backgroundColor: statusColor,
               transform: [{ scale: isSelected ? 1.25 : 1 }],
             },
           ]}
         >
-          {categoriesIcons[categories.find(c => c.id === pin?.category_id)?.icon] || <CheckIcon style={{ color: 'white' }}  />}
+          {icon}
         </View>
 
         {isSelected && (
-          <View
-            style={[
-              styles.tailBar,
-              { backgroundColor: statusColors[pin.status] },
-            ]}
-          />
+          <View style={[styles.tailBar, { backgroundColor: statusColor }]} />
         )}
       </View>
     </TouchableOpacity>
@@ -78,21 +97,6 @@ export default function MapPin({ pin, onPinPress }) {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-  },
-  popover: {
-    position: 'absolute',
-    bottom: '100%',
-    marginBottom: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: '#1f2937', // Tailwind gray-800
-    borderRadius: 4,
-    zIndex: 10,
-  },
-  popoverText: {
-    fontSize: 12,
-    color: 'white',
-    textAlign: 'center',
   },
   pinWrapper: {
     alignItems: 'center',

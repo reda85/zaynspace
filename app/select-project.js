@@ -20,7 +20,7 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'; // ✅ added useSafeAreaInsets
 import { fetchRoleForOrg } from '../lib/fetchRoleForOrg';
 import { supabase } from '../lib/supabase';
 import {
@@ -36,11 +36,11 @@ import {
 
 export default function SelectProjectScreen() {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets(); // ✅
 
   const [user, setLoggedInUser] = useAtom(loggedInUserAtom);
   const [selectedOrg, setSelectedOrg] = useAtom(selectedOrganizationAtom);
 
-  // Reset atoms on org switch (same as AuthGate SIGNED_OUT reset)
   const setPlans      = useSetAtom(plansAtom);
   const setPins       = useSetAtom(pinsAtom);
   const setCategories = useSetAtom(categoriesAtom);
@@ -48,17 +48,15 @@ export default function SelectProjectScreen() {
   const setMembers    = useSetAtom(membersAtom);
   const [, setSelectedProject] = useAtom(selectedProjectAtom);
 
-  const [projects, setProjects]       = useState([]);
+  const [projects, setProjects]             = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
   const [orgs, setOrgs]               = useState([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [orgModalVisible, setOrgModalVisible] = useState(false);
 
-  // The org currently being displayed (may differ from selectedOrg mid-switch)
   const activeOrgId = selectedOrg?.id ?? user?.organization_id;
 
-  /* ─── load organizations this member belongs to ─── */
   const fetchOrgs = async () => {
     setLoadingOrgs(true);
     const { data, error } = await supabase
@@ -71,87 +69,69 @@ export default function SelectProjectScreen() {
     setLoadingOrgs(false);
   };
 
-  /* ─── load projects for the active org ─── */
- /* ─── load projects for the active org where user is a member ─── */
-const fetchProjects = async (orgId) => {
-  setLoadingProjects(true);
-  
-  try {
-    // First get all project IDs where this user is a member
-    const { data: memberProjects, error: memberError } = await supabase
-      .from('members_projects')
-      .select('project_id')
-      .eq('member_id', user.id);
+  const fetchProjects = async (orgId) => {
+    setLoadingProjects(true);
+    try {
+      const { data: memberProjects, error: memberError } = await supabase
+        .from('members_projects')
+        .select('project_id')
+        .eq('member_id', user.id);
 
-    if (memberError) throw memberError;
+      if (memberError) throw memberError;
 
-    const projectIds = memberProjects?.map(mp => mp.project_id) ?? [];
+      const projectIds = memberProjects?.map(mp => mp.project_id) ?? [];
 
-    if (projectIds.length === 0) {
-      // User is not a member of any projects
+      if (projectIds.length === 0) {
+        setProjects([]);
+        setLoadingProjects(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('organization_id', orgId)
+        .in('id', projectIds)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setProjects(data ?? []);
+    } catch (error) {
+      console.error('Error loading projects:', error);
       setProjects([]);
+    } finally {
       setLoadingProjects(false);
-      return;
     }
+  };
 
-    // Then fetch full project details for those IDs + org filter
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('organization_id', orgId)
-      .in('id', projectIds)
-      .order('created_at', { ascending: false });
+  useEffect(() => { fetchOrgs(); }, []);
+  useEffect(() => { if (activeOrgId) fetchProjects(activeOrgId); }, [activeOrgId]);
 
-    if (error) throw error;
-    setProjects(data ?? []);
-  } catch (error) {
-    console.error('Error loading projects:', error);
-    setProjects([]);
-  } finally {
-    setLoadingProjects(false);
-  }
-};
-
-  useEffect(() => {
-    fetchOrgs();
-  }, []);
-
-  useEffect(() => {
-    if (activeOrgId) fetchProjects(activeOrgId);
-  }, [activeOrgId]);
-
-  /* ─── switch org ─── */
   const handleOrgSelect = async (org) => {
-  setOrgModalVisible(false);
-  if (org.id === activeOrgId) return;
+    setOrgModalVisible(false);
+    if (org.id === activeOrgId) return;
 
-  // 1. Persist new org
-  await AsyncStorage.setItem('last_organization_id', org.id.toString());
+    await AsyncStorage.setItem(`last_organization_id_${user.id}`, org.id.toString());
 
-  // 2. Fetch role for the new org
-  const role = await fetchRoleForOrg(user.id, org.id);
+    const role = await fetchRoleForOrg(user.id, org.id);
 
-  // 3. Reset all org-scoped atoms
-  setPlans([]);
-  setPins([]);
-  setCategories([]);
-  setStatuses([]);
-  setMembers([]);
-  setSelectedProject(null);
+    setPlans([]);
+    setPins([]);
+    setCategories([]);
+    setStatuses([]);
+    setMembers([]);
+    setSelectedProject(null);
 
-  // 4. Update atoms — role is now org-specific
-  setLoggedInUser((prev) => ({ ...prev, organization_id: org.id, role }));
-  setSelectedOrg(org);
-};
+    setLoggedInUser((prev) => ({ ...prev, organization_id: org.id, role }));
+    setSelectedOrg(org);
+  };
 
-  /* ─── select project ─── */
   const handleSelectProject = async (project) => {
     await AsyncStorage.setItem('last_project_id', project.id.toString());
     setSelectedProject(project);
     router.back();
   };
 
-  /* ─── header ─── */
   const activeOrgName =
     selectedOrg?.name ??
     orgs.find((o) => o.id === user?.organization_id)?.name ??
@@ -163,7 +143,7 @@ const fetchProjects = async (orgId) => {
         <TouchableOpacity
           style={styles.orgPicker}
           onPress={() => {
-            fetchOrgs();          // refresh list each time modal opens
+            fetchOrgs();
             setOrgModalVisible(true);
           }}
           activeOpacity={0.7}
@@ -179,10 +159,7 @@ const fetchProjects = async (orgId) => {
       headerShadowVisible: false,
       headerStyle: { backgroundColor: '#F5F7FA' },
       headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ marginLeft: 16 }}
-        >
+        <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 16 }}>
           <View style={styles.closeButton}>
             <X size={24} color="#000" />
           </View>
@@ -191,10 +168,8 @@ const fetchProjects = async (orgId) => {
     });
   }, [navigation, activeOrgName, orgs]);
 
-  /* ─── render ─── */
   return (
     <SafeAreaView style={styles.container}>
-      {/* ── Project list ── */}
       {loadingProjects ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#111827" />
@@ -241,7 +216,6 @@ const fetchProjects = async (orgId) => {
         />
       )}
 
-      {/* ── Org picker modal ── */}
       <Modal
         visible={orgModalVisible}
         transparent
@@ -251,16 +225,13 @@ const fetchProjects = async (orgId) => {
         <TouchableWithoutFeedback onPress={() => setOrgModalVisible(false)}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
-              <View style={styles.modalSheet}>
+              {/* ✅ paddingBottom respects home indicator — replaces hardcoded 36 */}
+              <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
                 <View style={styles.modalHandle} />
                 <Text style={styles.modalTitle}>Changer d'organisation</Text>
 
                 {loadingOrgs ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#111827"
-                    style={{ marginVertical: 24 }}
-                  />
+                  <ActivityIndicator size="small" color="#111827" style={{ marginVertical: 24 }} />
                 ) : (
                   orgs.map((org) => {
                     const isActive = org.id === activeOrgId;
@@ -272,23 +243,10 @@ const fetchProjects = async (orgId) => {
                         activeOpacity={0.7}
                       >
                         <View style={styles.orgItemLeft}>
-                          <View
-                            style={[
-                              styles.orgIcon,
-                              isActive && styles.orgIconActive,
-                            ]}
-                          >
-                            <Building2
-                              size={18}
-                              color={isActive ? '#fff' : '#6B7280'}
-                            />
+                          <View style={[styles.orgIcon, isActive && styles.orgIconActive]}>
+                            <Building2 size={18} color={isActive ? '#fff' : '#6B7280'} />
                           </View>
-                          <Text
-                            style={[
-                              styles.orgItemText,
-                              isActive && styles.orgItemTextActive,
-                            ]}
-                          >
+                          <Text style={[styles.orgItemText, isActive && styles.orgItemTextActive]}>
                             {org.name}
                           </Text>
                         </View>
@@ -306,11 +264,9 @@ const fetchProjects = async (orgId) => {
   );
 }
 
-/* ─────────────────── STYLES ─────────────────── */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
 
-  /* Header org picker */
   orgPicker: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -344,20 +300,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  /* Loading */
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
-  },
-  loadingText: {
-    fontFamily: 'Outfit_500Medium',
-    fontSize: 16,
-    color: '#6B7280',
-  },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  loadingText: { fontFamily: 'Outfit_500Medium', fontSize: 16, color: '#6B7280' },
 
-  /* List */
   listContent: { padding: 16, gap: 12 },
 
   card: {
@@ -373,12 +318,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 16,
   },
-  projectLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
+  projectLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   iconContainer: {
     width: 40,
     height: 40,
@@ -388,39 +328,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   projectText: { flex: 1, gap: 4 },
-  projectTitle: {
-    fontFamily: 'Outfit_600SemiBold',
-    fontSize: 16,
-    color: '#111827',
-  },
-  projectSubtitle: {
-    fontFamily: 'Outfit_400Regular',
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-  },
+  projectTitle: { fontFamily: 'Outfit_600SemiBold', fontSize: 16, color: '#111827' },
+  projectSubtitle: { fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#6B7280', lineHeight: 20 },
 
-  /* Empty */
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
-    gap: 12,
-  },
-  emptyTitle: {
-    fontFamily: 'Outfit_600SemiBold',
-    fontSize: 18,
-    color: '#111827',
-    marginTop: 8,
-  },
-  emptySubtitle: {
-    fontFamily: 'Outfit_400Regular',
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
+  emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
+  emptyTitle: { fontFamily: 'Outfit_600SemiBold', fontSize: 18, color: '#111827', marginTop: 8 },
+  emptySubtitle: { fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#6B7280', textAlign: 'center' },
 
-  /* Org modal */
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',
@@ -431,9 +345,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     paddingHorizontal: 20,
-    paddingBottom: 36,
     paddingTop: 12,
     gap: 8,
+    // ✅ paddingBottom set inline — removed hardcoded 36
   },
   modalHandle: {
     width: 40,
@@ -443,12 +357,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 12,
   },
-  modalTitle: {
-    fontFamily: 'Outfit_700Bold',
-    fontSize: 18,
-    color: '#111827',
-    marginBottom: 8,
-  },
+  modalTitle: { fontFamily: 'Outfit_700Bold', fontSize: 18, color: '#111827', marginBottom: 8 },
 
   orgItem: {
     flexDirection: 'row',
@@ -458,14 +367,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 10,
   },
-  orgItemActive: {
-    backgroundColor: '#F3F4F6',
-  },
-  orgItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
+  orgItemActive: { backgroundColor: '#F3F4F6' },
+  orgItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   orgIcon: {
     width: 36,
     height: 36,
@@ -474,16 +377,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  orgIconActive: {
-    backgroundColor: '#111827',
-  },
-  orgItemText: {
-    fontFamily: 'Outfit_500Medium',
-    fontSize: 15,
-    color: '#374151',
-  },
-  orgItemTextActive: {
-    fontFamily: 'Outfit_600SemiBold',
-    color: '#111827',
-  },
+  orgIconActive: { backgroundColor: '#111827' },
+  orgItemText: { fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#374151' },
+  orgItemTextActive: { fontFamily: 'Outfit_600SemiBold', color: '#111827' },
 });

@@ -1,12 +1,39 @@
 // PdfViewerWithTiles.jsx
 // COMPLETE FIXED VERSION - No jumping during pinch zoom, pins always sharp on iOS + Android
+// KEY FIX: Pins are inside the GestureDetector view tree (as a sibling of the PDF container)
+// Icons synced with IconPicker component
 
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useCameraPermissions } from "expo-camera";
 import { Image } from 'expo-image';
 import { router } from "expo-router";
 import { useAtom } from "jotai";
-import { CheckIcon, DropletsIcon, FireExtinguisherIcon, GripIcon, MapPinPlusIcon, PaintRoller, X, ZapIcon } from 'lucide-react-native';
+import {
+  AirVentIcon,
+  AlarmSmokeIcon,
+  BrickWallIcon,
+  BrushIcon,
+  CheckCircle,
+  CheckIcon,
+  ConstructionIcon,
+  DoorClosedIcon,
+  DoorOpenIcon,
+  DropletOffIcon,
+  DropletsIcon,
+  FireExtinguisherIcon,
+  FlameIcon,
+  FolderIcon,
+  GripIcon,
+  MapPinPlusIcon,
+  PackageIcon,
+  PaintRoller,
+  SnowflakeIcon,
+  TrendingDownIcon,
+  TrendingUpIcon,
+  WifiIcon,
+  X,
+  ZapIcon,
+} from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
@@ -35,18 +62,33 @@ const FLOATING_BUTTON_SIZE = 56;
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const USE_BACKEND = API_URL && !API_URL.includes('localhost');
 
+// ✅ Synced with IconPicker — every name from iconOptions is handled
 const categoriesIcons = {
-  unassigned: <CheckIcon color="white" size={24} />,
-  zap: <ZapIcon color="white" size={24} />,
-  droplets: <DropletsIcon color="white" size={24} />,
-  paint: <PaintRoller color="white" size={24} />,
-  carrelage: <GripIcon color="white" size={24} />,
+  'zap':               <ZapIcon color="white" size={24} />,
   'fire-extinguisher': <FireExtinguisherIcon color="white" size={24} />,
+  'droplets':          <DropletsIcon color="white" size={24} />,
+  'snowflake':         <SnowflakeIcon color="white" size={24} />,
+  'doors':             <DoorClosedIcon color="white" size={24} />,
+  'paint':             <PaintRoller color="white" size={24} />,
+  'unassigned':        <CheckIcon color="white" size={24} />,
+  'carrelage':         <GripIcon color="white" size={24} />,
+  'folder':            <FolderIcon color="white" size={24} />,
+  'air-vent':          <AirVentIcon color="white" size={24} />,
+  'alarm-smoke':       <AlarmSmokeIcon color="white" size={24} />,
+  'check-circle':      <CheckCircle color="white" size={24} />,
+  'package':           <PackageIcon color="white" size={24} />,
+  'brick-wall':        <BrickWallIcon color="white" size={24} />,
+  'brush-cleaning':    <BrushIcon color="white" size={24} />,
+  'construction':      <ConstructionIcon color="white" size={24} />,
+  'droplet-off':       <DropletOffIcon color="white" size={24} />,
+  'door-open':         <DoorOpenIcon color="white" size={24} />,
+  'trending-up':       <TrendingUpIcon color="white" size={24} />,
+  'flame':             <FlameIcon color="white" size={24} />,
+  'trending-down':     <TrendingDownIcon color="white" size={24} />,
+  'wifi':              <WifiIcon color="white" size={24} />,
 };
 
 // ─── Single animated pin ─────────────────────────────────────────────────────
-// Each pin gets its own useAnimatedStyle driven by the shared values.
-// This runs on the UI thread every frame — zero lag during pinch/pan.
 const AnimatedPin = React.memo(({ pin, pdfWidth, pdfHeight, scale, translateX, translateY, onPress }) => {
   const animatedStyle = useAnimatedStyle(() => {
     const screenX = pin.x * pdfWidth * scale.value + translateX.value - PIN_SIZE / 2;
@@ -146,23 +188,19 @@ export default function PdfViewerWithTiles({
     };
   }, [pdfInfo.width, pdfInfo.height, initialScale]);
 
-  // ✅ These shared values drive BOTH the PDF container AND the pins
   const scale = useSharedValue(initialScale);
   const translateX = useSharedValue(initialTranslate.x);
   const translateY = useSharedValue(initialTranslate.y);
 
-  // Saved values for PAN
   const panSavedTranslateX = useSharedValue(initialTranslate.x);
   const panSavedTranslateY = useSharedValue(initialTranslate.y);
 
-  // Saved values for PINCH
   const pinchSavedScale = useSharedValue(initialScale);
   const pinchSavedTranslateX = useSharedValue(initialTranslate.x);
   const pinchSavedTranslateY = useSharedValue(initialTranslate.y);
   const pinchStartFocalX = useSharedValue(0);
   const pinchStartFocalY = useSharedValue(0);
 
-  // Viewport state — only used for tile culling, updated on gesture end only
   const [viewport, setViewport] = useState({
     scale: initialScale,
     translateX: initialTranslate.x,
@@ -272,7 +310,6 @@ export default function PdfViewerWithTiles({
     return tiles;
   }, [pdfInfo.width, pdfInfo.height, maxLevel, viewport, getTileUrl]);
 
-  // Pin callbacks
   const startCameraForPin = useCallback((pin) => {
     setSelectedPin(pin);
     setEditingPin(pin);
@@ -509,13 +546,18 @@ export default function PdfViewerWithTiles({
     opacity: isDragging.value ? 0.8 : 1
   }));
 
+  // ✅ Resolve icon from category, with fallback to 'unassigned'
+  const getCategoryIcon = (pin) => {
+    const iconName =
+      categories.find(c => c.id === pin?.category_id)?.icon ||
+      pin?.categories?.icon ||
+      'unassigned';
+    return categoriesIcons[iconName] ?? categoriesIcons['unassigned'];
+  };
+
   return (
     <GestureHandlerRootView style={styles.container}>
-      <View style={styles.modeIndicator}>
-        <Text style={styles.modeText}>
-          {USE_BACKEND ? '🌐 Backend' : '☁️ Supabase'}
-        </Text>
-      </View>
+     
 
       <PdfViewerFilterOverlay
         pins={normalizedPins}
@@ -523,15 +565,20 @@ export default function PdfViewerWithTiles({
         fabOffset={0}
       />
 
+      {/*
+        KEY FIX: GestureDetector wraps BOTH the PDF tiles AND the pins.
+        Pins are absolute siblings of the PDF container — inside the gesture
+        responder tree — so pinch/pan is never blocked by a pin touch.
+      */}
       <GestureDetector gesture={composedGesture}>
         <View ref={pdfWrapperRef} style={styles.gestureContainer}>
+
+          {/* PDF tile layers (transformed) */}
           <Animated.View style={[styles.pdfContainer, pdfContainerStyle]}>
-            {/* Base layer */}
             <View style={StyleSheet.absoluteFill} pointerEvents="none">
               {renderLayer(baseLevel, true)}
             </View>
 
-            {/* Current zoom level */}
             {zoomLevels.current !== baseLevel && (
               <View
                 style={[
@@ -544,7 +591,6 @@ export default function PdfViewerWithTiles({
               </View>
             )}
 
-            {/* Next zoom level */}
             {zoomLevels.next !== null && zoomLevels.next !== zoomLevels.current && zoomLevels.next !== baseLevel && (
               <View
                 style={[StyleSheet.absoluteFill, { opacity: (zoomLevels.percent - 0.5) * 2 }]}
@@ -553,27 +599,26 @@ export default function PdfViewerWithTiles({
                 {renderLayer(zoomLevels.next, false)}
               </View>
             )}
-
-            {/* ✅ NO PINS INSIDE THE TRANSFORM */}
           </Animated.View>
+
+          {/* Pins: absolute, inside GestureDetector, outside the PDF transform */}
+          <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+            {filteredPins.map((pin) => (
+              <AnimatedPin
+                key={pin.id}
+                pin={pin}
+                pdfWidth={pdfInfo.width}
+                pdfHeight={pdfInfo.height}
+                scale={scale}
+                translateX={translateX}
+                translateY={translateY}
+                onPress={handlePinPress}
+              />
+            ))}
+          </View>
+
         </View>
       </GestureDetector>
-
-      {/* ✅ Pins outside transform, each driven by shared values on the UI thread */}
-      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-        {filteredPins.map((pin) => (
-          <AnimatedPin
-            key={pin.id}
-            pin={pin}
-            pdfWidth={pdfInfo.width}
-            pdfHeight={pdfInfo.height}
-            scale={scale}
-            translateX={translateX}
-            translateY={translateY}
-            onPress={handlePinPress}
-          />
-        ))}
-      </View>
 
       {enablePinDrop && (
         <View style={[styles.buttonWrapper, { paddingBottom: insets.bottom }]} pointerEvents="box-none">
@@ -630,11 +675,7 @@ export default function PdfViewerWithTiles({
                       },
                     ]}
                   >
-                    {categoriesIcons[
-                      categories.find(c => c.id === bottomSheetPin.category_id)?.icon ||
-                      bottomSheetPin.categories?.icon ||
-                      'unassigned'
-                    ]}
+                    {getCategoryIcon(bottomSheetPin)}
                   </TouchableOpacity>
 
                   <View style={[
@@ -669,7 +710,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#222' },
   gestureContainer: { flex: 1, overflow: 'hidden' },
   pdfContainer: { position: 'absolute', backgroundColor: 'white' },
-  // Pins anchored at top-left, translateX/Y positions them in screen space
   pinScreenWrapper: {
     position: 'absolute',
     top: 0,

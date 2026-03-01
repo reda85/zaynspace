@@ -20,12 +20,15 @@ import {
     View
 } from 'react-native';
 import { Checkbox } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CategoryFilter from '../../components/FilterPanel/CategoryFilter';
 import DateFilter from '../../components/FilterPanel/DateFilter';
 import OverdueFilter from '../../components/FilterPanel/OverdueFilter';
+import PlanFilter from '../../components/FilterPanel/PlanFilter';
 import StatusFilter from '../../components/FilterPanel/StatusFilter';
 import TaskListItem from '../../components/TaskListItem';
 import { supabase } from '../../lib/supabase';
+
 import { loggedInUserAtom, pinsAtom, selectedProjectAtom, statusesAtom } from '../../store/atoms';
 
 // --- CONFIGURATION DU TRI ---
@@ -131,7 +134,7 @@ export default function TasksScreen() {
     const [searchTerm, setSearchTerm] = useState('');
     const navigation = useNavigation();
     const isFocused = useIsFocused();
-
+const insets = useSafeAreaInsets();
     const [showFilterPanel, setShowFilterPanel] = useState(false);
     const [createdByMe, setCreatedByMe] = useState(false);
     const [overdue, setOverdue] = useState(false);
@@ -140,6 +143,8 @@ export default function TasksScreen() {
     const [activeStatuses, setActiveStatuses] = useState([]);
     const [categoryTags, setCategoryTags] = useState([]);
     const [categoryActive, setCategoryActive] = useState(false);
+    const [planActive, setPlanActive] = useState(false);
+const [selectedPlans, setSelectedPlans] = useState([]);
 
     const [sortField, setSortField] = useState(SORT_FIELDS[0].key);
     const [sortDirection, setSortDirection] = useState('asc'); 
@@ -415,6 +420,8 @@ export default function TasksScreen() {
         setActiveStatuses([]);
         setCategoryActive(false);
         setCategoryTags([]);
+        setPlanActive(false);
+setSelectedPlans([]);
     }, []);
 
     const onClose = useCallback(() => setShowFilterPanel(false), []);
@@ -487,12 +494,15 @@ export default function TasksScreen() {
                     );
                 });
             }
+            if (planActive && selectedPlans.length > 0) {
+    result = result.filter((p) => selectedPlans.includes(p.pdf_name));
+}
             result = sortPins(result);
             setFilteredPins(result);
         };
     }, [
         pins, searchTerm, createdByMe, activeStatuses, overdue, dateActive, dateTags,
-        loggedInUser, categoryActive, categoryTags, sortPins
+        loggedInUser, categoryActive, planActive, selectedPlans, categoryTags, sortPins
     ]);
 
     useEffect(() => applyAllFilters(), [applyAllFilters]);
@@ -653,7 +663,7 @@ export default function TasksScreen() {
             {/* Filter modal */}
             <Modal visible={showFilterPanel} transparent animationType="slide" onRequestClose={onClose}>
                 <View style={styles.modalOverlay}>
-                    <View style={styles.filterContainer}>
+                   <View style={[styles.filterContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
                         <View style={styles.header}>
                             <View>
                                 <Text style={styles.title}>Filtres</Text>
@@ -672,6 +682,12 @@ export default function TasksScreen() {
                         <DateFilter active={dateActive} onToggle={setDateActive} tags={dateTags} setTags={setDateTags} />
                         <CategoryFilter active={categoryActive} onToggle={setCategoryActive} tags={categoryTags} setTags={setCategoryTags} />
                         <StatusFilter activeStatuses={activeStatuses} setActiveStatuses={setActiveStatuses} selectedProject={projects} />
+                        <PlanFilter
+    active={planActive}
+    onToggle={setPlanActive}
+    selectedPlans={selectedPlans}
+    setSelectedPlans={setSelectedPlans}
+/>
                     </View>
                 </View>
             </Modal>

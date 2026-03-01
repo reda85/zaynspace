@@ -261,10 +261,12 @@ export default function AcceuilScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      {/* ✅ Header: left side shrinks, right side never wraps */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.projectName}>{selectedProject?.name || 'Aucun projet'}</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.projectName} numberOfLines={1} ellipsizeMode="tail">
+            {selectedProject?.name || 'Aucun projet'}
+          </Text>
           <TouchableOpacity onPress={() => router.push('/select-project')} style={styles.changeProjectButton}>
             <Text style={styles.changeProjectText}>Changer de projet</Text>
             <Text style={styles.arrow}>▼</Text>
@@ -338,9 +340,10 @@ export default function AcceuilScreen() {
                   icon = <CameraIcon size={10} color="#FFFFFF" />;
                   bgColor = '#10B981';
                   break;
-                  case 'modification':
+                case 'modification':
                   icon = <Pencil size={10} color="#FFFFFF" />;
                   bgColor = '#F59E0B';
+                  break;
                 default:
                   icon = <Clock size={10} color="#FFFFFF" />;
                   bgColor = '#F59E0B';
@@ -355,7 +358,7 @@ export default function AcceuilScreen() {
                         {getUserInitials(item.members?.name)}
                       </Text>
                     </View>
-                    <View style={[styles.eventBadge, { backgroundColor: bgColor }]} >
+                    <View style={[styles.eventBadge, { backgroundColor: bgColor }]}>
                       {icon}
                     </View>
                   </View>
@@ -437,12 +440,37 @@ export default function AcceuilScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA', paddingHorizontal: 16, paddingTop: 8 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  projectName: { fontFamily: 'Outfit_700Bold', fontSize: 28, color: '#1E293B' },
+
+  // ✅ Header fix: left shrinks, right stays fixed
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  headerLeft: {
+    flex: 1,          // takes all remaining space
+    minWidth: 0,      // allows text to shrink below its natural width
+    marginRight: 12,  // keeps gap between text and icons
+  },
+
+  projectName: {
+    fontFamily: 'Outfit_700Bold',
+    fontSize: 28,
+    color: '#1E293B',
+    // numberOfLines + ellipsizeMode handled inline
+  },
   changeProjectButton: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   changeProjectText: { fontFamily: 'Outfit_500Medium', fontSize: 14, color: '#6B7280', marginRight: 4 },
   arrow: { fontSize: 14, color: '#6B7280' },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flexShrink: 0,   // ✅ never shrinks — icons always visible
+  },
+
   messageButton: {
     width: 44, height: 44, borderRadius: 22,
     backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
@@ -506,7 +534,6 @@ const styles = StyleSheet.create({
     width: 9, height: 9, borderRadius: 5,
     backgroundColor: '#6D28D9', borderWidth: 1.5, borderColor: '#F5F7FA',
   },
-  // Bottom sheet
   sheetBackdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(15,23,42,0.4)',

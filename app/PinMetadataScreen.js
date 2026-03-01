@@ -8,31 +8,45 @@ import {
 import { useAtom } from 'jotai';
 import debounce from 'lodash/debounce';
 import {
+    AirVentIcon,
+    AlarmSmokeIcon,
+    BrickWallIcon,
+    BrushIcon,
     Calendar,
     Camera,
+    CheckCircle,
     CheckIcon,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
     X as CloseIcon,
+    ConstructionIcon,
     Copy,
-    DoorClosedLocked,
+    DoorClosedIcon,
+    DoorOpenIcon,
+    DropletOffIcon,
     DropletsIcon,
     EllipsisVertical,
     EyeOff,
     FireExtinguisherIcon,
+    FlameIcon,
+    FolderIcon,
     FolderOpen,
     GripIcon,
     MapPin,
     Mic as MicIcon,
+    PackageIcon,
     PaintRoller,
     Scissors,
     SendIcon,
     SnowflakeIcon,
     Trash2,
+    TrendingDownIcon,
+    TrendingUpIcon,
     User,
     UserPlus,
-    ZapIcon
+    WifiIcon,
+    ZapIcon,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -70,17 +84,32 @@ const formatDate = (dateString) => {
     });
 };
 
+// ✅ Synced with IconPicker — all 22 icons covered
 const getCategoryIconComponent = (iconName, color = 'white', size = 20) => {
     switch (iconName) {
-        case 'zap': return <ZapIcon color={color} size={size} />;
-        case 'droplets': return <DropletsIcon color={color} size={size} />;
-        case 'paint': return <PaintRoller color={color} size={size} />;
-        case 'carrelage': return <GripIcon color={color} size={size} />;
+        case 'zap':               return <ZapIcon color={color} size={size} />;
         case 'fire-extinguisher': return <FireExtinguisherIcon color={color} size={size} />;
-        case 'doors': return <DoorClosedLocked color={color} size={size} />;
-        case 'snowflake': return <SnowflakeIcon color={color} size={size} />;
-        case 'unassigned':
-        default: return <CheckIcon color={color} size={size} />;
+        case 'droplets':          return <DropletsIcon color={color} size={size} />;
+        case 'snowflake':         return <SnowflakeIcon color={color} size={size} />;
+        case 'doors':             return <DoorClosedIcon color={color} size={size} />;
+        case 'paint':             return <PaintRoller color={color} size={size} />;
+        case 'unassigned':        return <CheckIcon color={color} size={size} />;
+        case 'carrelage':         return <GripIcon color={color} size={size} />;
+        case 'folder':            return <FolderIcon color={color} size={size} />;
+        case 'air-vent':          return <AirVentIcon color={color} size={size} />;
+        case 'alarm-smoke':       return <AlarmSmokeIcon color={color} size={size} />;
+        case 'check-circle':      return <CheckCircle color={color} size={size} />;
+        case 'package':           return <PackageIcon color={color} size={size} />;
+        case 'brick-wall':        return <BrickWallIcon color={color} size={size} />;
+        case 'brush-cleaning':    return <BrushIcon color={color} size={size} />;
+        case 'construction':      return <ConstructionIcon color={color} size={size} />;
+        case 'droplet-off':       return <DropletOffIcon color={color} size={size} />;
+        case 'door-open':         return <DoorOpenIcon color={color} size={size} />;
+        case 'trending-up':       return <TrendingUpIcon color={color} size={size} />;
+        case 'flame':             return <FlameIcon color={color} size={size} />;
+        case 'trending-down':     return <TrendingDownIcon color={color} size={size} />;
+        case 'wifi':              return <WifiIcon color={color} size={size} />;
+        default:                  return <CheckIcon color={color} size={size} />;
     }
 };
 
@@ -99,12 +128,11 @@ export default function PinMetadataScreen() {
     const [selectedProject] = useAtom(selectedProjectAtom);
 
     const [showPlanSelector, setShowPlanSelector] = useState(false);
-const [availablePlans, setAvailablePlans] = useState([]);
-const [loadingPlans, setLoadingPlans] = useState(false);
-
+    const [availablePlans, setAvailablePlans] = useState([]);
+    const [loadingPlans, setLoadingPlans] = useState(false);
 
     const [currentPinId, setCurrentPinId] = useState(pinId);
-    const [currentRole, setCurrentRole] = useState(null); // 'admin' | 'editor' | 'guest' | 'observateur'
+    const [currentRole, setCurrentRole] = useState(null);
     const pin = pins?.find((p) => p.id === currentPinId) ?? {};
 
     const currentPinIndex = pins?.findIndex((p) => p.id === currentPinId) ?? -1;
@@ -157,67 +185,43 @@ const [loadingPlans, setLoadingPlans] = useState(false);
     const [showCategorySheet, setShowCategorySheet] = useState(false);
     const [showActionsSheet, setShowActionsSheet] = useState(false);
     const [comments, setComments] = useState([]);
-    // ÉTATS POUR LA DICTÉE VOCALE (STT)
     const [isListening, setIsListening] = useState(false);
     const [dictationTarget, setDictationTarget] = useState(null);
     const [partialResult, setPartialResult] = useState('');
     const [metapin, setMetapin] = useAtom(MetaPinAtom);
-
-    // ÉTAT POUR LA SYNTHÈSE VOCALE (TTS)
     const [isSpeaking, setIsSpeaking] = useState(false);
 
-    const recognizedTextRef = useRef(''); // Ref pour accumuler le texte reconnu
+    const recognizedTextRef = useRef('');
 
     const SWIPE_VELOCITY_THRESHOLD = 500;
     const SWIPE_DISTANCE_THRESHOLD = 50;
     const skipNextReloadRef = useRef(false);
 
     useEffect(() => {
-  const loadRole = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    const member = selectedMembers?.find(m => m.auth_id === user?.id);
-    console.log("Current member:", member, selectedMembers);
-    setCurrentRole(member?.role); // 'admin' | 'editor' | 'guest' | 'observateur'
-  };
+        const loadRole = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            const member = selectedMembers?.find(m => m.auth_id === user?.id);
+            console.log("Current member:", member, selectedMembers);
+            setCurrentRole(member?.role);
+        };
+        loadRole();
+    }, [selectedMembers]);
 
-  loadRole();
-}, [selectedMembers]);
+    useEffect(() => {
+        if (metapin.id === pinId) {
+            setXcoordinate(metapin.x);
+            setYcoordinate(metapin.y);
+            console.log("metapin", metapin);
+        }
+    }, [metapin]);
 
-  useEffect(() => {
-  if (metapin.id === pinId) {
-    setXcoordinate(metapin.x)
-    setYcoordinate(metapin.y)
-    console.log("metapin", metapin);
-  }
-}, [metapin])
+    const isReadOnly = currentRole === 'guest' || currentRole === 'observateur';
+    const canEditEverythingElse = !isReadOnly;
 
-const isReadOnly =
-  currentRole === 'guest' || currentRole === 'observateur';
-
-const canEditStatus = true;      // explicitly allowed
-const canComment = true;         // explicitly allowed
-const canEditEverythingElse = !isReadOnly;
-
-const FORBIDDEN_FIELDS_FOR_READONLY = [
-  'name',
-  'note',
-  'category_id',
-  'assigned_to_id',
-  'due_date',
-  'x',
-  'y',
-];
-
-const isAllowedPatch = (patch) => {
-  if (!isReadOnly) return true;
-
-  // Only allow status_id for readonly users
-  return Object.keys(patch).every(
-    key => key === 'status_id'
-  );
-};
-
-
+    const isAllowedPatch = (patch) => {
+        if (!isReadOnly) return true;
+        return Object.keys(patch).every(key => key === 'status_id');
+    };
 
     const router = useRouter();
 
@@ -233,7 +237,6 @@ const isAllowedPatch = (patch) => {
                     refresh: Date.now(),
                 },
             });
-           
         } else {
             router.back();
         }
@@ -246,59 +249,52 @@ const isAllowedPatch = (patch) => {
             .select('*,projects(*),events(*,pins_photos(*),members(*)),assigned_to(*),categories(*),Status(*),plans(*)')
             .eq('id', id)
             .single();
-       if (data) {
-//console.log("Fetched pin data:", data);
-    if (skipNextReloadRef.current) {
-        // ⛔ Empêche écrasement juste après dictée vocale
-        skipNextReloadRef.current = false;
-    } else {
-        setName(data.name);
-        setNote(data.note);
-    }
+        if (data) {
+            if (skipNextReloadRef.current) {
+                skipNextReloadRef.current = false;
+            } else {
+                setName(data.name);
+                setNote(data.note);
+            }
 
-    setProjectNumber(data.projects?.project_number || '');
-    setPinNumber(data.pin_number || '');
-    setSelectedPin(data);
-    setCategory(categories.find((c) => c.id === data.category_id) || categories[0]);
-    setStatus(statuses.find((s) => s.id === data.status_id) || statuses[0]);
-    setPhotos(data.photoUris || parsedPhotoUris || []);
-    setAssignee(data.assigned_to || null);
-    setDue_date(data.due_date || null);
-    setEvents(data.events || []);
-    setPlanId(data.plan_id || null);
-    setPlanName(data.plans?.name || '');
-    setPlanUri(data.plans?.file_url || '');
-    
-    setPlan(data.plans || null);
-    setXcoordinate(data.x || null);
-    setYcoordinate(data.y || null);
-    console.log("plans", data.plans);
+            setProjectNumber(data.projects?.project_number || '');
+            setPinNumber(data.pin_number || '');
+            setSelectedPin(data);
+            setCategory(categories.find((c) => c.id === data.category_id) || categories[0]);
+            setStatus(statuses.find((s) => s.id === data.status_id) || statuses[0]);
+            setPhotos(data.photoUris || parsedPhotoUris || []);
+            setAssignee(data.assigned_to || null);
+            setDue_date(data.due_date || null);
+            setEvents(data.events || []);
+            setPlanId(data.plan_id || null);
+            setPlanName(data.plans?.name || '');
+            setPlanUri(data.plans?.file_url || '');
+            setPlan(data.plans || null);
+            setXcoordinate(data.x || null);
+            setYcoordinate(data.y || null);
+            console.log("plans", data.plans);
 
-    if (data.plans?.png_url) {
-    const { data: urlData } = supabase
-        .storage
-        .from('project-plans')
-        .getPublicUrl(data.plans.png_url);
-    setPlanPngPublicUrl(urlData.publicUrl);
-}
-    const { data: commentsData, error: commentsError } = await supabase
-        .from('comments')
-        .select('*, members(*)')
-        .eq('pin_id', id)
-        .order('created_at', { ascending: false });
-    
-    if (commentsData) {
-        setComments(commentsData);
-    }
-}
+            if (data.plans?.png_url) {
+                const { data: urlData } = supabase
+                    .storage
+                    .from('project-plans')
+                    .getPublicUrl(data.plans.png_url);
+                setPlanPngPublicUrl(urlData.publicUrl);
+            }
+            const { data: commentsData } = await supabase
+                .from('comments')
+                .select('*, members(*)')
+                .eq('pin_id', id)
+                .order('created_at', { ascending: false });
 
+            if (commentsData) setComments(commentsData);
+        }
     }
 
     useEffect(() => {
         if (currentPinId) {
             getPinFromId(currentPinId);
-        } else{
-            // Setup for NEW task
+        } else {
             setName('');
             setNote('');
             setCategory(categories[0]);
@@ -309,272 +305,197 @@ const isAllowedPatch = (patch) => {
     }, [currentPinId]);
 
     useEffect(() => {
-      
-      console.log("xcoordinate", xcoordinate);
-      console.log("ycoordinate", ycoordinate);
-    }, [ xcoordinate,ycoordinate]);
+        console.log("xcoordinate", xcoordinate);
+        console.log("ycoordinate", ycoordinate);
+    }, [xcoordinate, ycoordinate]);
 
     const applyLocalPinUpdate = (updatedPin) => {
         setPins((prev) => (prev ? prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)) : [updatedPin]));
     };
 
     const debouncedSaveRef = useRef(
-  debounce(async (pdfName, fieldPatch) => {
-    if (!isAllowedPatch(fieldPatch)) return;
-    setPins((prevPins) => {
-      const latestPin = prevPins.find(p => p.id === pin.id);
-      if (!latestPin) return prevPins;
-
-      const updatedPin = {
-        ...latestPin,
-        ...fieldPatch,
-      };
-
-      delete updatedPin.assigned_to;
-
-      updatePinInSupabase(pdfName, updatedPin);
-      return prevPins.map(p => p.id === pin.id ? updatedPin : p);
-    });
-  }, 600)
-).current;
-
+        debounce(async (pdfName, fieldPatch) => {
+            if (!isAllowedPatch(fieldPatch)) return;
+            setPins((prevPins) => {
+                const latestPin = prevPins.find(p => p.id === pin.id);
+                if (!latestPin) return prevPins;
+                const updatedPin = { ...latestPin, ...fieldPatch };
+                delete updatedPin.assigned_to;
+                updatePinInSupabase(pdfName, updatedPin);
+                return prevPins.map(p => p.id === pin.id ? updatedPin : p);
+            });
+        }, 600)
+    ).current;
 
     const immediateSave = async (fieldPatch) => {
         if (!isAllowedPatch(fieldPatch)) {
-    Alert.alert('Accès limité', 'Vous ne pouvez pas modifier ce champ.');
-    return;
-  }
-  try {
-    if (!currentPinId) {
-                // --- CREATE LOGIC ---
+            Alert.alert('Accès limité', 'Vous ne pouvez pas modifier ce champ.');
+            return;
+        }
+        try {
+            if (!currentPinId) {
                 const newTask = {
-                    name: name,
-                    note: note,
-                    project_id: projectId || selectedProject?.id,
+                    name,
+                    note,
+                    project_id: selectedProject?.id,
                     status_id: status?.id,
                     category_id: category?.id,
-                    due_date: due_date,
+                    due_date,
                     assigned_to_id: assignee?.id,
                     x: null,
                     y: null,
                     ...fieldPatch
                 };
-
                 const { data, error } = await supabase
                     .from('pdf_pins')
                     .insert([newTask])
                     .select()
                     .single();
-
                 if (error) throw error;
                 setCurrentPinId(data.id);
                 setPins(prev => [...prev, data]);
                 return;
             }
             console.log("immediateSave fieldPatch:", fieldPatch);
-    const pdfName = pin?.pdf_name;
-    console.log("pdfName:", pdfName, "pin:", pin);
-    if (!pdfName || !pin?.id) return;
+            const pdfName = pin?.pdf_name;
+            console.log("pdfName:", pdfName, "pin:", pin);
+            if (!pdfName || !pin?.id) return;
 
-    setPins((prevPins) => {
-      const latestPin = prevPins.find(p => p.id === pin.id);
-      if (!latestPin) return prevPins;
-
-      const updatedPin = {
-        ...latestPin,
-        ...fieldPatch,
-      };
-
-      // 🚫 Remove relational objects before sending to Supabase
-      const pinToSave = { ...updatedPin };
-      delete pinToSave.assigned_to;
-      delete pinToSave.projects;
-      delete pinToSave.events;
-      delete pinToSave.categories;
-      delete pinToSave.Status;
-      console.log("pinToSave:", pinToSave);
-
-      updatePinInSupabase(pdfName, pinToSave);
-      
-      return prevPins.map(p => p.id === pin.id ? updatedPin : p);
-    });
-
-  } catch {
-    Alert.alert('Erreur', 'Échec de mise à jour du pin');
-  }
-};
-
-const assignPin = async ({ pinId, assignedByName, assigneeId,assignedUserEmail,assignedUserName }) => {
-
-    const response = await fetch('https://zaynspace.com/api/send-task-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          deepLink: `https://zaynspace.com/task/${pinId}`,
-          taskId: pinId,
-          projectId: selectedPin.project_id,
-          assignedBy: assignedByName,
-          assignedUserEmail: assignedUserEmail,
-          assignedUserName: assignedUserName,
-           dueDate: selectedPin.due_date,
-           taskName: selectedPin?.name || 'Sans nom',
-        })
-      })
-
-      const result = await response.json()
-
-       if (response.ok) {
-      console.log('✅ Email sent successfully:', result);
-      
-    } else {
-      console.error('❌ Error sending email:', result);
-      
-    }
-      
-  const res = await fetch('https://zaynbackend-production.up.railway.app/api/pins/assign', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      pinId: pinId,
-        type: 'pin_assigned',
-        taskName: pin?.name || 'Sans nom',
-     assignedToUserId : assigneeId,
-      assignedBy: assignedByName,
-      deepLink: `https://zaynspace.com/pin/${pinId}`,
-      
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || 'Failed to assign pin');
-  }
-
-  return res.json();
-};
-
-const fetchProjectPlans = async () => {
-    setLoadingPlans(true);
-    try {
-        const { data, error } = await supabase
-            .from('plans')
-            .select('*')
-            .eq('project_id', selectedProject?.id || pin?.project_id)
-            .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        setAvailablePlans(data || []);
-    } catch (err) {
-        console.error('Error fetching plans:', err);
-        Alert.alert('Erreur', 'Impossible de charger les plans');
-    } finally {
-        setLoadingPlans(false);
-    }
-};
-
-// Add this function to handle plan selection:
-const handlePlanSelected = (selectedPlan) => {
-    setShowPlanSelector(false);
-
-     const pdfInfo = {
-        width: selectedPlan.width,
-        height: selectedPlan.height,
-        tilesPath: selectedPlan.tiles_path,
-    };
-    
-    router.push({
-        pathname: '/PinPlacementScreen',
-      
-        params: {
-    myplanid: selectedPlan.id,
-    pinIdToPlace: pin.id,
-    x: pin.x,
-    y: pin.y,
-    userRole: currentRole,
-    pdfInfo: JSON.stringify(pdfInfo)  // Same pdfInfo object!
-  }
-    });
-};
-
-    // 🚨 CORRECTION: Assure que la valeur actuelle de 'name' est envoyée à la sauvegarde
-    const handleNameBlur = () => {
-        debouncedSaveRef(pin?.pdf_name, { name });
+            setPins((prevPins) => {
+                const latestPin = prevPins.find(p => p.id === pin.id);
+                if (!latestPin) return prevPins;
+                const updatedPin = { ...latestPin, ...fieldPatch };
+                const pinToSave = { ...updatedPin };
+                delete pinToSave.assigned_to;
+                delete pinToSave.projects;
+                delete pinToSave.events;
+                delete pinToSave.categories;
+                delete pinToSave.Status;
+                console.log("pinToSave:", pinToSave);
+                updatePinInSupabase(pdfName, pinToSave);
+                return prevPins.map(p => p.id === pin.id ? updatedPin : p);
+            });
+        } catch {
+            Alert.alert('Erreur', 'Échec de mise à jour du pin');
+        }
     };
 
-    // 🚨 CORRECTION: Assure que la valeur actuelle de 'note' est envoyée à la sauvegarde
-    const handleNoteBlur = () => {
-        debouncedSaveRef(pin?.pdf_name, { note });
+    const assignPin = async ({ pinId, assignedByName, assigneeId, assignedUserEmail, assignedUserName }) => {
+        const response = await fetch('https://zaynspace.com/api/send-task-notification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                deepLink: `https://zaynspace.com/task/${pinId}`,
+                taskId: pinId,
+                projectId: selectedPin.project_id,
+                assignedBy: assignedByName,
+                assignedUserEmail,
+                assignedUserName,
+                dueDate: selectedPin.due_date,
+                taskName: selectedPin?.name || 'Sans nom',
+            })
+        });
+        const result = await response.json();
+        if (response.ok) console.log('✅ Email sent successfully:', result);
+        else console.error('❌ Error sending email:', result);
+
+        const res = await fetch('https://zaynbackend-production.up.railway.app/api/pins/assign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pinId,
+                type: 'pin_assigned',
+                taskName: pin?.name || 'Sans nom',
+                assignedToUserId: assigneeId,
+                assignedBy: assignedByName,
+                deepLink: `https://zaynspace.com/pin/${pinId}`,
+            }),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || 'Failed to assign pin');
+        }
+        return res.json();
     };
 
-    const handleOpenStatusSheet = () => {
-        setShowStatusSheet(true);
+    const fetchProjectPlans = async () => {
+        setLoadingPlans(true);
+        try {
+            const { data, error } = await supabase
+                .from('plans')
+                .select('*')
+                .eq('project_id', selectedProject?.id || pin?.project_id)
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            setAvailablePlans(data || []);
+        } catch (err) {
+            console.error('Error fetching plans:', err);
+            Alert.alert('Erreur', 'Impossible de charger les plans');
+        } finally {
+            setLoadingPlans(false);
+        }
     };
 
+    const handlePlanSelected = (selectedPlan) => {
+        setShowPlanSelector(false);
+        const pdfInfo = {
+            width: selectedPlan.width,
+            height: selectedPlan.height,
+            tilesPath: selectedPlan.tiles_path,
+        };
+        router.push({
+            pathname: '/PinPlacementScreen',
+            params: {
+                myplanid: selectedPlan.id,
+                pinIdToPlace: pin.id,
+                x: pin.x,
+                y: pin.y,
+                userRole: currentRole,
+                pdfInfo: JSON.stringify(pdfInfo)
+            }
+        });
+    };
+
+    const handleNameBlur = () => { debouncedSaveRef(pin?.pdf_name, { name }); };
+    const handleNoteBlur = () => { debouncedSaveRef(pin?.pdf_name, { note }); };
+    const handleOpenStatusSheet = () => { setShowStatusSheet(true); };
     const handleSelectStatus = (newStatus) => {
         setStatus(newStatus);
         setShowStatusSheet(false);
         immediateSave({ status_id: newStatus.id });
     };
-
-    const handleOpenCategorySheet = () => {
-        setShowCategorySheet(true);
-    };
-
+    const handleOpenCategorySheet = () => { setShowCategorySheet(true); };
     const handleSelectCategory = (newCat) => {
         setCategory(newCat);
         setShowCategorySheet(false);
         immediateSave({ category_id: newCat.id });
     };
 
-  const handleSendComment = async () => {
-    if (!commentText.trim()) return;
-    
-    try {
-        // Get current user info (adjust based on your auth setup)
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        // Find the member associated with this user
-        const currentMember = selectedMembers?.find(m => m.auth_id === user?.id);
-       
-        
-        if (!currentMember) {
-            Alert.alert('Erreur', 'Utilisateur non trouvé');
-            return;
+    const handleSendComment = async () => {
+        if (!commentText.trim()) return;
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const currentMember = selectedMembers?.find(m => m.auth_id === user?.id);
+            if (!currentMember) { Alert.alert('Erreur', 'Utilisateur non trouvé'); return; }
+            const newComment = {
+                pin_id: pin.id,
+                sender_id: currentMember.id,
+                comment: commentText.trim(),
+                created_at: new Date().toISOString(),
+            };
+            const { data, error } = await supabase
+                .from('comments')
+                .insert([newComment])
+                .select('*, members(*)')
+                .single();
+            if (error) throw error;
+            setComments(prev => [data, ...prev]);
+            setCommentText('');
+        } catch (err) {
+            console.error('Erreur ajout commentaire:', err);
+            Alert.alert('Erreur', 'Impossible d\'ajouter le commentaire');
         }
-
-        // Create the comment object
-        const newComment = {
-           
-            pin_id: pin.id,
-            sender_id: currentMember.id,
-            comment: commentText.trim(),
-            created_at: new Date().toISOString(),
-        };
-
-        // Insert into Supabase
-        const { data, error } = await supabase
-            .from('comments')
-            .insert([newComment])
-            .select('*, members(*)')
-            .single();
-
-        if (error) throw error;
-
-        // Update local comments state
-        setComments(prev => [data, ...prev]);
-        
-        // Clear the input
-        setCommentText('');
-
-    } catch (err) {
-        console.error('Erreur ajout commentaire:', err);
-        Alert.alert('Erreur', 'Impossible d\'ajouter le commentaire');
-    }
-};
+    };
 
     const handleOpenAssigneeSheet = () => {
         if (!selectedMembers || selectedMembers.length === 0) {
@@ -585,40 +506,30 @@ const handlePlanSelected = (selectedPlan) => {
     };
 
     const handleSelectAssignee = async (member) => {
-         const { data: { user } } = await supabase.auth.getUser();
-  setAssignee(member);
-  setShowAssigneeSheet(false);
-
-  immediateSave({
-    assigned_to_id: member?.id ?? null,
-  });
-
-  try {
-      await assignPin({
-        pinId: pin.id,
-        assignedByName: user?.name,
-        assigneeId: member?.id,
-        assignedUserEmail: member?.email,
-        assignedUserName: member?.name,
-      });
-
-      console.log('Assignment notification + email sent');
-    } catch (err) {
-      console.error('Assignment notification failed:', err);
-    }
-
-};
-
+        const { data: { user } } = await supabase.auth.getUser();
+        setAssignee(member);
+        setShowAssigneeSheet(false);
+        immediateSave({ assigned_to_id: member?.id ?? null });
+        try {
+            await assignPin({
+                pinId: pin.id,
+                assignedByName: user?.name,
+                assigneeId: member?.id,
+                assignedUserEmail: member?.email,
+                assignedUserName: member?.name,
+            });
+            console.log('Assignment notification + email sent');
+        } catch (err) {
+            console.error('Assignment notification failed:', err);
+        }
+    };
 
     const handleClearAssignee = () => {
         setAssignee(null);
         immediateSave({ assigned_to_id: null });
     };
 
-    const handleOpenDatePicker = () => {
-        setShowDatePicker(true);
-    };
-
+    const handleOpenDatePicker = () => { setShowDatePicker(true); };
     const onChangeDate = (event, selectedDate) => {
         setShowDatePicker(false);
         if (event.type === 'set' && selectedDate) {
@@ -627,32 +538,22 @@ const handlePlanSelected = (selectedPlan) => {
             immediateSave({ due_date: dateString });
         }
     };
-
     const handleClearDueDate = () => {
         setDue_date(null);
         immediateSave({ due_date: null });
     };
 
     const handleNavigateToPrevious = () => {
-        if (hasPrevious && pins) {
-            const previousPin = pins[currentPinIndex - 1];
-            setCurrentPinId(previousPin.id);
-        }
+        if (hasPrevious && pins) setCurrentPinId(pins[currentPinIndex - 1].id);
     };
-
     const handleNavigateToNext = () => {
-        if (hasNext && pins) {
-            const nextPin = pins[currentPinIndex + 1];
-            setCurrentPinId(nextPin.id);
-        }
+        if (hasNext && pins) setCurrentPinId(pins[currentPinIndex + 1].id);
     };
-
 
     const swipeGesture = Gesture.Pan()
         .minDistance(SWIPE_DISTANCE_THRESHOLD)
         .onEnd((e) => {
             const isHorizontalSwipe = Math.abs(e.translationX) > Math.abs(e.translationY);
-
             if (isHorizontalSwipe) {
                 if (e.velocityX > SWIPE_VELOCITY_THRESHOLD && e.translationX > SWIPE_DISTANCE_THRESHOLD) {
                     runOnJS(handleNavigateToPrevious)();
@@ -664,40 +565,35 @@ const handlePlanSelected = (selectedPlan) => {
 
     const handleDuplicatePin = async () => {
         setShowActionsSheet(false);
-
         try {
-             const duplicatedPin = {
-            id: uuid.v4(),
-            name: `${pin.name || ''} (Copie)`,
-            note: pin.note,
-            pdf_name: pin.pdf_name,
-            x: pin.x != null ? pin.x + 0.01 : null,
-            y: pin.y != null ? pin.y + 0.005 : null,
-            plan_id: pin.plan_id,
-            project_id: pin.project_id,
-            status_id: pin.status_id,
-            category_id: pin.category_id,
-            assigned_to: pin.assigned_to?.id ?? pin.assigned_to ?? null,
-            due_date: pin.due_date,
-            tags: pin.tags,
-            isArchived: pin.isArchived ?? false,
-            pin_number: pin.pin_number,
-            created_by: pin.created_by,
-            created_at: new Date().toISOString(),
-            deleted_at: null,
-        };
-
+            const duplicatedPin = {
+                id: uuid.v4(),
+                name: `${pin.name || ''} (Copie)`,
+                note: pin.note,
+                pdf_name: pin.pdf_name,
+                x: pin.x != null ? pin.x + 0.01 : null,
+                y: pin.y != null ? pin.y + 0.005 : null,
+                plan_id: pin.plan_id,
+                project_id: pin.project_id,
+                status_id: pin.status_id,
+                category_id: pin.category_id,
+                assigned_to: pin.assigned_to?.id ?? pin.assigned_to ?? null,
+                due_date: pin.due_date,
+                tags: pin.tags,
+                isArchived: pin.isArchived ?? false,
+                pin_number: pin.pin_number,
+                created_by: pin.created_by,
+                created_at: new Date().toISOString(),
+                deleted_at: null,
+            };
             const { data, error } = await supabase
                 .from('pdf_pins')
                 .insert([duplicatedPin])
                 .select()
                 .single();
-
             if (error) throw error;
-
             setPins((prev) => [...(prev || []), data]);
             Alert.alert('Succès', 'Pin dupliqué avec succès');
-
             setCurrentPinId(data.id);
         } catch (err) {
             console.error('Erreur duplication:', err);
@@ -707,7 +603,6 @@ const handlePlanSelected = (selectedPlan) => {
 
     const handleDeletePin = async () => {
         setShowActionsSheet(false);
-
         Alert.alert(
             'Supprimer le pin',
             'Êtes-vous sûr de vouloir supprimer ce pin ?',
@@ -722,12 +617,9 @@ const handlePlanSelected = (selectedPlan) => {
                                 .from('pdf_pins')
                                 .update({ deleted_at: new Date().toISOString() })
                                 .eq('id', pin.id);
-
                             if (error) throw error;
-
                             setPins((prev) => prev?.filter((p) => p.id !== pin.id) || []);
                             Alert.alert('Succès', 'Pin supprimé avec succès');
-
                             handleClose();
                         } catch (err) {
                             console.error('Erreur suppression:', err);
@@ -740,114 +632,69 @@ const handlePlanSelected = (selectedPlan) => {
     };
 
     const handleAddPhotosToCurrentPin = () => {
-    // On utilise le pin actuel (celui déjà chargé dans l'écran)
-    if (!pin || !pin.id) {
-        Alert.alert('Erreur', 'Pin non chargé');
-        return;
-    }
-
-    // On met à jour l'atom pour que CameraScreen sache sur quel pin travailler
-    setSelectedPin(pin);
-
-    // Navigation vers CameraScreen avec les infos nécessaires
-    router.push({
-        pathname: "CameraScreen",
-        params: {
-            myuri: params.myuri,
-            myname: params.myname,
-            myplanid: params.myplanid || pin.plan_id,
-            // Important : on indique qu'on reviendra sur ce pin précis
-            // (CameraScreen devra utiliser ce param pour re-naviguer correctement)
-            returnToPinId: pin.id,
-        },
-    });
-};
-
- const handleAddSnippetToCurrentPin = async () => {
-    // On utilise le pin actuel (celui déjà chargé dans l'écran)
-    if (!pin || !pin.id) {
-        Alert.alert('Erreur', 'Pin non chargé');
-        return;
-    }
-
-    // On met à jour l'atom pour que CameraScreen sache sur quel pin travailler
-    setSelectedPin(pin);
-
-    // Navigation vers CameraScreen avec les infos nécessaires
-   // Check if pin has a plan
-if (!planId) {
-    Alert.alert('Erreur', 'Ce pin n\'est pas associé à un plan');
-    return;
-}
-
-try {
-    // Fetch plan data to get pdfInfo
-    const { data: planData, error } = await supabase
-        .from('plans')
-        .select('width, height, tiles_path, png_url, name, file_url')
-        .eq('id', planId)
-        .single();
-    
-    if (error) throw error;
-    
-    if (!planData) {
-        Alert.alert('Erreur', 'Plan introuvable');
-        return;
-    }
-
-    // Validate plan has required fields
-    if (!planData.width || !planData.height || !planData.tiles_path) {
-        Alert.alert('Erreur', 'Informations du plan incomplètes');
-        return;
-    }
-
-    // Construct pdfInfo
-    const pdfInfo = {
-        width: planData.width,
-        height: planData.height,
-        tilesPath: planData.tiles_path,
+        if (!pin || !pin.id) { Alert.alert('Erreur', 'Pin non chargé'); return; }
+        setSelectedPin(pin);
+        router.push({
+            pathname: "CameraScreen",
+            params: {
+                myuri: params.myuri,
+                myname: params.myname,
+                myplanid: params.myplanid || pin.plan_id,
+                returnToPinId: pin.id,
+            },
+        });
     };
 
-    console.log('📊 Navigating to ImageSnippetScreen with pdfInfo:', pdfInfo);
-
-    setSelectedPin(pin);
-
-    router.push({
-        pathname: '/ImageSnippetScreen',
-        params: {
-            pinId: pin.id,
-            myuri: planData.file_url,
-            myname: planData.name,
-            myplanid: planId,
-            returnToPinId: pin.id,
-            pdfInfo: JSON.stringify(pdfInfo)
-        },
-    });
-} catch (err) {
-    console.error('Error loading plan for snippet:', err);
-    Alert.alert('Erreur', 'Impossible de charger le plan');
-}
-};
+    const handleAddSnippetToCurrentPin = async () => {
+        if (!pin || !pin.id) { Alert.alert('Erreur', 'Pin non chargé'); return; }
+        setSelectedPin(pin);
+        if (!planId) { Alert.alert('Erreur', 'Ce pin n\'est pas associé à un plan'); return; }
+        try {
+            const { data: planData, error } = await supabase
+                .from('plans')
+                .select('width, height, tiles_path, png_url, name, file_url')
+                .eq('id', planId)
+                .single();
+            if (error) throw error;
+            if (!planData) { Alert.alert('Erreur', 'Plan introuvable'); return; }
+            if (!planData.width || !planData.height || !planData.tiles_path) {
+                Alert.alert('Erreur', 'Informations du plan incomplètes');
+                return;
+            }
+            const pdfInfo = { width: planData.width, height: planData.height, tilesPath: planData.tiles_path };
+            setSelectedPin(pin);
+            router.push({
+                pathname: '/ImageSnippetScreen',
+                params: {
+                    pinId: pin.id,
+                    myuri: planData.file_url,
+                    myname: planData.name,
+                    myplanid: planId,
+                    returnToPinId: pin.id,
+                    pdfInfo: JSON.stringify(pdfInfo)
+                },
+            });
+        } catch (err) {
+            console.error('Error loading plan for snippet:', err);
+            Alert.alert('Erreur', 'Impossible de charger le plan');
+        }
+    };
 
     const isDatePast = () => {
         if (!due_date) return false;
-
         const dueDate = new Date(due_date);
         const today = new Date();
-
         dueDate.setHours(0, 0, 0, 0);
         today.setHours(0, 0, 0, 0);
-
         return dueDate.getTime() < today.getTime();
     };
 
     const currentStatus = statuses.find((s) => s.id === status?.id) || statuses[0];
     const currentStatusColor = currentStatus.color || '#ccc';
     const currentCategory = categories.find((c) => c.id === category?.id) || categories[0];
-
     const initialDate = due_date ? new Date(due_date) : new Date();
-
     const isPast = isDatePast();
+
     const dateButtonStyles = [
         styles.actionButton,
         due_date && styles.dateSelectedButton,
@@ -859,72 +706,40 @@ try {
         due_date && styles.dateSelectedText,
         isPast && styles.pastDueText,
     ];
-
-    const assigneeButtonStyles = [
-        styles.actionButton,
-        assignee && styles.dateSelectedButton,
-    ];
-    const assigneeTextStyles = [
-        styles.actionButtonText,
-        assignee && styles.dateSelectedText,
-    ];
-
+    const assigneeButtonStyles = [styles.actionButton, assignee && styles.dateSelectedButton];
+    const assigneeTextStyles = [styles.actionButtonText, assignee && styles.dateSelectedText];
     const assigneeName = assignee?.name || 'Ajouter intervenant';
 
-    // ==================================================================
-    // DICTÉE VOCALE – LOGIQUE useSpeechRecognitionEvent
-    // ==================================================================
+    const applyFinalText = useCallback(() => {
+        console.log("applyFinalText");
+        if (!dictationTarget || !recognizedTextRef.current.trim()) return;
+        skipNextReloadRef.current = true;
+        const text = recognizedTextRef.current.trim();
+        console.log("text", text);
+        if (dictationTarget === 'name') { setName(text); immediateSave({ name: text }); }
+        else if (dictationTarget === 'note') { setNote(text); immediateSave({ note: text }); }
+        recognizedTextRef.current = '';
+        setPartialResult('');
+        setDictationTarget(null);
+    }, [dictationTarget]);
 
-   const applyFinalText = useCallback(() => {
-    console.log("applyFinalText");
-    if (!dictationTarget || !recognizedTextRef.current.trim()) return;
-
-    skipNextReloadRef.current = true;
-    const text = recognizedTextRef.current.trim();
-    console.log("text", text);
-
-    if (dictationTarget === 'name') {
-        setName(text);
-        immediateSave({ name: text });
-    } else if (dictationTarget === 'note') {
-        setNote(text);
-        immediateSave({ note: text });
-    }
-
-    recognizedTextRef.current = '';
-    setPartialResult('');
-    setDictationTarget(null);
-}, [dictationTarget]);
-
-
-
-
-    useSpeechRecognitionEvent("start", () => {
-        setIsListening(true);
-    });
-
+    useSpeechRecognitionEvent("start", () => { setIsListening(true); });
     useSpeechRecognitionEvent("end", () => {
         setIsListening(false);
         if (recognizedTextRef.current) applyFinalText();
-      // applyFinalText();
     });
-
     useSpeechRecognitionEvent("result", (event) => {
         let transcript = event.results[0]?.transcript || '';
         let isFinal = event.isFinal;
-console.log("isFinal", isFinal, event);
+        console.log("isFinal", isFinal, event);
         if (!transcript) return;
-
         if (isFinal) {
             recognizedTextRef.current += (recognizedTextRef.current ? ' ' : '') + transcript;
-            if (!ExpoSpeechRecognitionModule.isContinuous) { 
-                applyFinalText(); 
-            }
+            if (!ExpoSpeechRecognitionModule.isContinuous) applyFinalText();
         } else {
             setPartialResult(transcript);
         }
     });
-    
     useSpeechRecognitionEvent("error", (event) => {
         Alert.alert('Dictée', `Erreur de reconnaissance: ${event.message}`);
         setIsListening(false);
@@ -932,114 +747,59 @@ console.log("isFinal", isFinal, event);
         setPartialResult('');
         recognizedTextRef.current = '';
     });
-  
-   const onPartialResult = (text) => {
-  recognizedTextRef.current = text; // ⚡ met à jour la ref
-  setPartialResult(text);           // pour affichage live
-  setName(text);                    // si tu veux que le champ soit live
-};
 
-const startListening = async (target) => {
-    if (isSpeaking) {
-        Speech.stop();
-        setIsSpeaking(false);
-    }
-
-    // Stop any ongoing dictation
-    if (isListening) {
-        await ExpoSpeechRecognitionModule.stop().catch(() => {});
-        setIsListening(false);
+    const startListening = async (target) => {
+        if (isSpeaking) { setIsSpeaking(false); }
+        if (isListening) {
+            await ExpoSpeechRecognitionModule.stop().catch(() => {});
+            setIsListening(false);
+            recognizedTextRef.current = '';
+            setPartialResult('');
+            setDictationTarget(null);
+        }
+        setDictationTarget(target);
         recognizedTextRef.current = '';
         setPartialResult('');
-        setDictationTarget(null);
-    }
-
-    // Clean state before starting new dictation
-    setDictationTarget(target);
-    recognizedTextRef.current = '';
-    setPartialResult('');
-
-    let granted = false;
-    try {
-        const perm = await ExpoSpeechRecognitionModule.getPermissionsAsync();
-        granted = perm?.granted;
-        if (!granted) {
-            const req = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-            granted = req?.granted;
+        let granted = false;
+        try {
+            const perm = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+            granted = perm?.granted;
+            if (!granted) {
+                const req = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+                granted = req?.granted;
+            }
+        } catch (e) {
+            if (Platform.OS === 'android') granted = true;
         }
-    } catch (e) {
-        if (Platform.OS === 'android') granted = true;
-    }
-
-    if (!granted) {
-        Alert.alert('Permission refusée', 'Activez le microphone dans les réglages');
-        return;
-    }
-
-    try {
-        await ExpoSpeechRecognitionModule.start({ 
-            lang: 'fr-FR',
-            continuous: false,
-            interimResults: true,
-        });
-    } catch (e) {}
-};
-
-    const stopDictationIfNeeded = async () => {
-        if (isListening) {
-            try { await ExpoSpeechRecognitionModule.stop(); } catch (_) {}
-            setIsListening(false);
-            setDictationTarget(null);
-            setPartialResult('');
-            recognizedTextRef.current = '';
-        }
+        if (!granted) { Alert.alert('Permission refusée', 'Activez le microphone dans les réglages'); return; }
+        try {
+            await ExpoSpeechRecognitionModule.start({ lang: 'fr-FR', continuous: false, interimResults: true });
+        } catch (e) {}
     };
 
-   
     const handleDictateName = () => startListening('name');
     const handleDictateNote = () => startListening('note');
 
-    // ==================================================================
-    // FIN DICTÉE VOCALE
-    // ==================================================================
-
-
     const AssigneeSheet = () => (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={showAssigneeSheet}
-            onRequestClose={() => setShowAssigneeSheet(false)}
-        >
+        <Modal animationType="slide" transparent visible={showAssigneeSheet} onRequestClose={() => setShowAssigneeSheet(false)}>
             <View style={styles.modalOverlay}>
                 <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
                     <View style={styles.sheetHeader}>
                         <Text style={styles.sheetTitle}>Choisir un intervenant</Text>
-                        <TouchableOpacity onPress={() => setShowAssigneeSheet(false)}>
-                            <CloseIcon size={24} color="#333" />
-                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setShowAssigneeSheet(false)}><CloseIcon size={24} color="#333" /></TouchableOpacity>
                     </View>
-
                     <FlatList
                         data={selectedMembers || []}
                         keyExtractor={(item) => item.id.toString()}
                         renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.memberItem}
-                                onPress={() => handleSelectAssignee(item)}
-                            >
+                            <TouchableOpacity style={styles.memberItem} onPress={() => handleSelectAssignee(item)}>
                                 <User size={18} color="#2563eb" />
                                 <Text style={styles.memberText}>{item.name}</Text>
-                                {assignee?.id === item.id && (
-                                    <CheckIcon size={18} color="#2563eb" style={{ marginLeft: 'auto' }} />
-                                )}
+                                {assignee?.id === item.id && <CheckIcon size={18} color="#2563eb" style={{ marginLeft: 'auto' }} />}
                             </TouchableOpacity>
                         )}
                         ListHeaderComponent={() => (
-                            <TouchableOpacity
-                                style={styles.memberItem}
-                                onPress={() => handleSelectAssignee({ id: null, name: null })}
-                            >
+                            <TouchableOpacity style={styles.memberItem} onPress={() => handleSelectAssignee({ id: null, name: null })}>
                                 <CloseIcon size={18} color="#999" />
                                 <Text style={[styles.memberText, { color: '#999' }]}>Désassigner (Aucun)</Text>
                             </TouchableOpacity>
@@ -1051,103 +811,68 @@ const startListening = async (target) => {
         </Modal>
     );
 
-// Replace your existing StatusSheet component with this updated version
-
-const StatusSheet = () => {
-    // Filter statuses based on user role
-    const getFilteredStatuses = () => {
-        if (currentRole === 'guest') {
-            // For guests, show only current status and "A valider" status
-            return statuses.filter(s => 
-                s.id === status?.id || 
-                s.name.toLowerCase() === 'a valider' ||
-                s.name.toLowerCase() === 'à valider'
-            );
-        }
-        // For other roles, show all statuses
-        return statuses || [];
+    const StatusSheet = () => {
+        const getFilteredStatuses = () => {
+            if (currentRole === 'guest') {
+                return statuses.filter(s =>
+                    s.id === status?.id ||
+                    s.name.toLowerCase() === 'a valider' ||
+                    s.name.toLowerCase() === 'à valider'
+                );
+            }
+            return statuses || [];
+        };
+        const filteredStatuses = getFilteredStatuses();
+        return (
+            <Modal animationType="slide" transparent visible={showStatusSheet} onRequestClose={() => setShowStatusSheet(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
+                        <View style={styles.sheetHeader}>
+                            <Text style={styles.sheetTitle}>Choisir un statut</Text>
+                            <TouchableOpacity onPress={() => setShowStatusSheet(false)}><CloseIcon size={24} color="#333" /></TouchableOpacity>
+                        </View>
+                        {filteredStatuses.length === 0 ? (
+                            <View style={{ padding: 40, alignItems: 'center' }}>
+                                <Text style={{ color: '#6B7280', textAlign: 'center' }}>Aucun statut disponible</Text>
+                            </View>
+                        ) : (
+                            <FlatList
+                                data={filteredStatuses}
+                                keyExtractor={(item) => item.id.toString()}
+                                renderItem={({ item }) => (
+                                    <TouchableOpacity style={styles.memberItem} onPress={() => handleSelectStatus(item)}>
+                                        <View style={[styles.statusIndicator, { backgroundColor: item.color || '#ccc' }]} />
+                                        <Text style={styles.memberText}>{item.name}</Text>
+                                        {status?.id === item.id && <CheckIcon size={18} color="#2563eb" style={{ marginLeft: 'auto' }} />}
+                                    </TouchableOpacity>
+                                )}
+                                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                            />
+                        )}
+                    </View>
+                </View>
+            </Modal>
+        );
     };
 
-    const filteredStatuses = getFilteredStatuses();
-
-    return (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={showStatusSheet}
-            onRequestClose={() => setShowStatusSheet(false)}
-        >
-            <View style={styles.modalOverlay}>
-                <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
-                    <View style={styles.sheetHeader}>
-                        <Text style={styles.sheetTitle}>Choisir un statut</Text>
-                        <TouchableOpacity onPress={() => setShowStatusSheet(false)}>
-                            <CloseIcon size={24} color="#333" />
-                        </TouchableOpacity>
-                    </View>
-
-                    {filteredStatuses.length === 0 ? (
-                        <View style={{ padding: 40, alignItems: 'center' }}>
-                            <Text style={{ color: '#6B7280', textAlign: 'center' }}>
-                                Aucun statut disponible
-                            </Text>
-                        </View>
-                    ) : (
-                        <FlatList
-                            data={filteredStatuses}
-                            keyExtractor={(item) => item.id.toString()}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={styles.memberItem}
-                                    onPress={() => handleSelectStatus(item)}
-                                >
-                                    <View style={[styles.statusIndicator, { backgroundColor: item.color || '#ccc' }]} />
-                                    <Text style={styles.memberText}>{item.name}</Text>
-                                    {status?.id === item.id && (
-                                        <CheckIcon size={18} color="#2563eb" style={{ marginLeft: 'auto' }} />
-                                    )}
-                                </TouchableOpacity>
-                            )}
-                            ItemSeparatorComponent={() => <View style={styles.separator} />}
-                        />
-                    )}
-                </View>
-            </View>
-        </Modal>
-    );
-};
-
     const CategorySheet = () => (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={showCategorySheet}
-            onRequestClose={() => setShowCategorySheet(false)}
-        >
+        <Modal animationType="slide" transparent visible={showCategorySheet} onRequestClose={() => setShowCategorySheet(false)}>
             <View style={styles.modalOverlay}>
                 <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
                     <View style={styles.sheetHeader}>
                         <Text style={styles.sheetTitle}>Choisir une catégorie</Text>
-                        <TouchableOpacity onPress={() => setShowCategorySheet(false)}>
-                            <CloseIcon size={24} color="#333" />
-                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setShowCategorySheet(false)}><CloseIcon size={24} color="#333" /></TouchableOpacity>
                     </View>
-
                     <FlatList
                         data={categories || []}
                         keyExtractor={(item) => item.id.toString()}
                         renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.memberItem}
-                                onPress={() => handleSelectCategory(item)}
-                            >
+                            <TouchableOpacity style={styles.memberItem} onPress={() => handleSelectCategory(item)}>
                                 <View style={[styles.categoryIconCircleSheet, { backgroundColor: currentStatusColor }]}>
                                     {getCategoryIconComponent(item.icon, '#fff', 18)}
                                 </View>
                                 <Text style={styles.memberText}>{item.name}</Text>
-                                {category?.id === item.id && (
-                                    <CheckIcon size={18} color="#2563eb" style={{ marginLeft: 'auto' }} />
-                                )}
+                                {category?.id === item.id && <CheckIcon size={18} color="#2563eb" style={{ marginLeft: 'auto' }} />}
                             </TouchableOpacity>
                         )}
                         ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -1158,35 +883,19 @@ const StatusSheet = () => {
     );
 
     const ActionsSheet = () => (
-        <Modal
-            animationType="slide"
-            transparent={true}
-            visible={showActionsSheet}
-            onRequestClose={() => setShowActionsSheet(false)}
-        >
+        <Modal animationType="slide" transparent visible={showActionsSheet} onRequestClose={() => setShowActionsSheet(false)}>
             <View style={styles.modalOverlay}>
                 <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
                     <View style={styles.sheetHeader}>
                         <Text style={styles.sheetTitle}>Actions</Text>
-                        <TouchableOpacity onPress={() => setShowActionsSheet(false)}>
-                            <CloseIcon size={24} color="#333" />
-                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => setShowActionsSheet(false)}><CloseIcon size={24} color="#333" /></TouchableOpacity>
                     </View>
-
-                    <TouchableOpacity
-                        style={styles.actionItem}
-                        onPress={handleDuplicatePin}
-                    >
+                    <TouchableOpacity style={styles.actionItem} onPress={handleDuplicatePin}>
                         <Copy size={20} color="#2563eb" />
                         <Text style={styles.actionText}>Dupliquer le pin</Text>
                     </TouchableOpacity>
-
                     <View style={styles.separator} />
-
-                    <TouchableOpacity
-                        style={styles.actionItem}
-                        onPress={handleDeletePin}
-                    >
+                    <TouchableOpacity style={styles.actionItem} onPress={handleDeletePin}>
                         <Trash2 size={20} color="#ef4444" />
                         <Text style={[styles.actionText, { color: '#ef4444' }]}>Supprimer le pin</Text>
                     </TouchableOpacity>
@@ -1196,203 +905,141 @@ const StatusSheet = () => {
     );
 
     const PlanSelectorSheet = () => (
-    <Modal
-        animationType="slide"
-        transparent={true}
-        visible={showPlanSelector}
-        onRequestClose={() => setShowPlanSelector(false)}
-    >
-        <View style={styles.modalOverlay}>
-            <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
-                <View style={styles.sheetHeader}>
-                    <Text style={styles.sheetTitle}>Choisir un plan</Text>
-                    <TouchableOpacity onPress={() => setShowPlanSelector(false)}>
-                        <CloseIcon size={24} color="#333" />
-                    </TouchableOpacity>
+        <Modal animationType="slide" transparent visible={showPlanSelector} onRequestClose={() => setShowPlanSelector(false)}>
+            <View style={styles.modalOverlay}>
+                <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
+                    <View style={styles.sheetHeader}>
+                        <Text style={styles.sheetTitle}>Choisir un plan</Text>
+                        <TouchableOpacity onPress={() => setShowPlanSelector(false)}><CloseIcon size={24} color="#333" /></TouchableOpacity>
+                    </View>
+                    {loadingPlans ? (
+                        <View style={{ padding: 40, alignItems: 'center' }}>
+                            <ActivityIndicator size="large" color="#2563eb" />
+                            <Text style={{ marginTop: 12, color: '#6B7280' }}>Chargement des plans...</Text>
+                        </View>
+                    ) : availablePlans.length === 0 ? (
+                        <View style={{ padding: 40, alignItems: 'center' }}>
+                            <Text style={{ color: '#6B7280', textAlign: 'center' }}>Aucun plan disponible pour ce projet</Text>
+                        </View>
+                    ) : (
+                        <FlatList
+                            data={availablePlans}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity style={styles.planItem} onPress={() => handlePlanSelected(item)}>
+                                    <View style={styles.planIconCircle}>
+                                        <FolderOpen size={20} color="#2563eb" />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.planItemTitle}>{item.name}</Text>
+                                        {item.description && (
+                                            <Text style={styles.planItemSubtitle} numberOfLines={1}>{item.description}</Text>
+                                        )}
+                                    </View>
+                                    <ChevronRight size={20} color="#9CA3AF" />
+                                </TouchableOpacity>
+                            )}
+                            ItemSeparatorComponent={() => <View style={styles.separator} />}
+                        />
+                    )}
                 </View>
-
-                {loadingPlans ? (
-                    <View style={{ padding: 40, alignItems: 'center' }}>
-                        <ActivityIndicator size="large" color="#2563eb" />
-                        <Text style={{ marginTop: 12, color: '#6B7280' }}>
-                            Chargement des plans...
-                        </Text>
-                    </View>
-                ) : availablePlans.length === 0 ? (
-                    <View style={{ padding: 40, alignItems: 'center' }}>
-                        <Text style={{ color: '#6B7280', textAlign: 'center' }}>
-                            Aucun plan disponible pour ce projet
-                        </Text>
-                    </View>
-                ) : (
-                    <FlatList
-                        data={availablePlans}
-                        keyExtractor={(item) => item.id.toString()}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.planItem}
-                                onPress={() => handlePlanSelected(item)}
-                            >
-                                <View style={styles.planIconCircle}>
-                                    <FolderOpen size={20} color="#2563eb" />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.planItemTitle}>{item.name}</Text>
-                                    {item.description && (
-                                        <Text style={styles.planItemSubtitle} numberOfLines={1}>
-                                            {item.description}
-                                        </Text>
-                                    )}
-                                </View>
-                                <ChevronRight size={20} color="#9CA3AF" />
-                            </TouchableOpacity>
-                        )}
-                        ItemSeparatorComponent={() => <View style={styles.separator} />}
-                    />
-                )}
             </View>
-        </View>
-    </Modal>
-);
-
+        </Modal>
+    );
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'left', 'right']}>
             <View style={styles.container}>
                 <View style={styles.header}>
-    <TouchableOpacity onPress={() => handleClose()} style={styles.iconCircle}>
-        <CloseIcon size={20} color="#111" />
-    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleClose()} style={styles.iconCircle}>
+                        <CloseIcon size={20} color="#111" />
+                    </TouchableOpacity>
+                    <View style={styles.middleIcons}>
+                        <TouchableOpacity onPress={handleNavigateToPrevious} style={[styles.iconCircle, !hasPrevious && styles.disabledButton]} disabled={!hasPrevious}>
+                            <ChevronLeft size={20} color={hasPrevious ? "#111" : "#ccc"} />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={handleNavigateToNext} style={[styles.iconCircle, !hasNext && styles.disabledButton]} disabled={!hasNext}>
+                            <ChevronRight size={20} color={hasNext ? "#111" : "#ccc"} />
+                        </TouchableOpacity>
+                    </View>
+                    {isReadOnly && (
+                        <View style={styles.readOnlyBadge}>
+                            <EyeOff size={14} color="#dc2626" />
+                            <Text style={styles.readOnlyBadgeText}>Lecture seule</Text>
+                        </View>
+                    )}
+                    <View style={{ flex: 1 }} />
+                    <TouchableOpacity onPress={() => setShowActionsSheet(true)} style={styles.iconCircle}>
+                        <EllipsisVertical size={20} color="#111" />
+                    </TouchableOpacity>
+                </View>
 
-    {/* Navigation arrows */}
-    <View style={styles.middleIcons}>
-        <TouchableOpacity
-            onPress={handleNavigateToPrevious}
-            style={[styles.iconCircle, !hasPrevious && styles.disabledButton]}
-            disabled={!hasPrevious}
-        >
-            <ChevronLeft size={20} color={hasPrevious ? "#111" : "#ccc"} />
-        </TouchableOpacity>
-        <TouchableOpacity
-            onPress={handleNavigateToNext}
-            style={[styles.iconCircle, !hasNext && styles.disabledButton]}
-            disabled={!hasNext}
-        >
-            <ChevronRight size={20} color={hasNext ? "#111" : "#ccc"} />
-        </TouchableOpacity>
-    </View>
-
-    {/* Read-only badge - centered when visible */}
-    {isReadOnly && (
-        <View style={styles.readOnlyBadge}>
-            <EyeOff size={14} color="#dc2626" />
-            <Text style={styles.readOnlyBadgeText}>Lecture seule</Text>
-        </View>
-    )}
-
-    {/* Spacer to push actions menu to the right */}
-    <View style={{ flex: 1 }} />
-
-    <TouchableOpacity onPress={() => setShowActionsSheet(true)} style={styles.iconCircle}>
-        <EllipsisVertical size={20} color="#111" />
-    </TouchableOpacity>
-</View>
                 <GestureDetector gesture={swipeGesture}>
                     <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 80 + insets.bottom }]}>
-
-   
                         <View style={styles.statusRow}>
-                            <View
-                                style={[
-                                    styles.statusIconCircle,
-                                    { backgroundColor: currentStatusColor },
-                                ]}
-                            >
+                            <View style={[styles.statusIconCircle, { backgroundColor: currentStatusColor }]}>
                                 {getCategoryIconComponent(currentCategory.icon, 'white', 20)}
                             </View>
-
-                            <TouchableOpacity
-                                style={[styles.statusButton, { backgroundColor: currentStatusColor }]}
-                                onPress={handleOpenStatusSheet}
-                            >
+                            <TouchableOpacity style={[styles.statusButton, { backgroundColor: currentStatusColor }]} onPress={handleOpenStatusSheet}>
                                 <Text style={styles.statusButtonText}>{currentStatus.name}</Text>
                                 <ChevronDown size={20} color="white" />
                             </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.idText}>
-                            ID : {project_number} - {pin_number}
-                        </Text>
+                        <Text style={styles.idText}>ID : {project_number} - {pin_number}</Text>
 
-                        {/* CHAMP NOM AVEC BOUTON DICTÉE */}
                         <View style={styles.inputContainerDictation}>
                             <TextInput
-                                 editable={canEditEverythingElse}
-  selectTextOnFocus={canEditEverythingElse}
-  pointerEvents={canEditEverythingElse ? 'auto' : 'none'}
-  style={[
-    styles.textAreaDictation,
-    !canEditEverythingElse && styles.readOnlyInput
-  ]}
-                                // Affiche le résultat partiel ou le nom
-                                value={ isListening && dictationTarget === 'name' ? (partialResult || name) : name}
+                                editable={canEditEverythingElse}
+                                selectTextOnFocus={canEditEverythingElse}
+                                pointerEvents={canEditEverythingElse ? 'auto' : 'none'}
+                                style={[styles.textAreaDictation, !canEditEverythingElse && styles.readOnlyInput]}
+                                value={isListening && dictationTarget === 'name' ? (partialResult || name) : name}
                                 onChangeText={setName}
                                 onBlur={handleNameBlur}
                                 placeholder="Ajouter un nom ici..."
                                 placeholderTextColor="#999"
+                                multiline
                             />
-                          {canEditEverythingElse &&  <TouchableOpacity
-                                style={[
-                                    styles.micButton,
-                                    isListening && dictationTarget === 'name' && styles.micButtonActive
-                                ]}
-                                onPress={handleDictateName}
-                                disabled={isListening && dictationTarget !== 'name'}
-                            >
-                                <MicIcon
-                                    size={20}
-                                    color={isListening && dictationTarget === 'name' ? "#fff" : "#6B7280"}
-                                />
-                            </TouchableOpacity> }
+                            {canEditEverythingElse && (
+                                <TouchableOpacity
+                                    style={[styles.micButton, isListening && dictationTarget === 'name' && styles.micButtonActive]}
+                                    onPress={handleDictateName}
+                                    disabled={isListening && dictationTarget !== 'name'}
+                                >
+                                    <MicIcon size={20} color={isListening && dictationTarget === 'name' ? "#fff" : "#6B7280"} />
+                                </TouchableOpacity>
+                            )}
                         </View>
 
-                        {/* CHAMP DESCRIPTION/NOTE AVEC BOUTON DICTÉE */}
                         <View style={[styles.inputContainerDictation, !canEditEverythingElse && styles.readOnlyInput]}>
                             <TextInput
-                             editable={canEditEverythingElse}
-  selectTextOnFocus={canEditEverythingElse}
-  pointerEvents={canEditEverythingElse ? 'auto' : 'none'}
+                                editable={canEditEverythingElse}
+                                selectTextOnFocus={canEditEverythingElse}
+                                pointerEvents={canEditEverythingElse ? 'auto' : 'none'}
                                 style={styles.noteInputDictation}
-                                // Affiche le résultat partiel ou la note
-                                value={ isListening && dictationTarget === 'note' ? (partialResult || note) : note}
+                                value={isListening && dictationTarget === 'note' ? (partialResult || note) : note}
                                 onChangeText={setNote}
                                 onBlur={handleNoteBlur}
                                 placeholder="Ajouter une description ici..."
                                 placeholderTextColor="#999"
                                 multiline
                             />
-                           {canEditEverythingElse &&  <TouchableOpacity
-                                style={[
-                                    styles.micButtonNote,
-                                    isListening && dictationTarget === 'note' && styles.micButtonActive
-                                ]}
-                               onPress={handleDictateNote}
-                                disabled={isListening && dictationTarget !== 'note'}
-                            >
-                                <MicIcon
-                                    size={20}
-                                    color={isListening && dictationTarget === 'note' ? "#fff" : "#6B7280"}
-                                />
-                            </TouchableOpacity> }
+                            {canEditEverythingElse && (
+                                <TouchableOpacity
+                                    style={[styles.micButtonNote, isListening && dictationTarget === 'note' && styles.micButtonActive]}
+                                    onPress={handleDictateNote}
+                                    disabled={isListening && dictationTarget !== 'note'}
+                                >
+                                    <MicIcon size={20} color={isListening && dictationTarget === 'note' ? "#fff" : "#6B7280"} />
+                                </TouchableOpacity>
+                            )}
                         </View>
-
-                        
-                       
 
                         <TouchableOpacity
                             disabled={!canEditEverythingElse}
-  onPress={handleOpenCategorySheet}
-  style={[styles.categoryButton, !canEditEverythingElse && styles.readOnlyButton]}
+                            onPress={handleOpenCategorySheet}
+                            style={[styles.categoryButton, !canEditEverythingElse && styles.readOnlyButton]}
                         >
                             <View style={[styles.iconWrapper, { borderColor: currentStatusColor, borderWidth: 1 }]}>
                                 {getCategoryIconComponent(currentCategory.icon, currentStatusColor, 16)}
@@ -1401,20 +1048,14 @@ const StatusSheet = () => {
                             <ChevronDown size={16} color="#333" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
 
-                                               <View style={styles.assigneeDueDateRow}>
+                        <View style={styles.assigneeDueDateRow}>
                             <TouchableOpacity
                                 disabled={!canEditEverythingElse}
-  onPress={handleOpenAssigneeSheet}
-  style={[assigneeButtonStyles, !canEditEverythingElse && styles.readOnlyButton]}
+                                onPress={handleOpenAssigneeSheet}
+                                style={[assigneeButtonStyles, !canEditEverythingElse && styles.readOnlyButton]}
                             >
-                                <View style={styles.iconWrapper}>
-                                    <UserPlus size={16} color="#333" />
-                                </View>
-
-                                <Text style={assigneeTextStyles}>
-                                    {assigneeName}
-                                </Text>
-
+                                <View style={styles.iconWrapper}><UserPlus size={16} color="#333" /></View>
+                                <Text style={assigneeTextStyles}>{assigneeName}</Text>
                                 {assignee && (
                                     <TouchableOpacity style={styles.clearIconWrapper} onPress={handleClearAssignee}>
                                         <CloseIcon size={16} color="#333" />
@@ -1423,18 +1064,14 @@ const StatusSheet = () => {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                               disabled={!canEditEverythingElse}
-  onPress={handleOpenDatePicker}
-  style={[dateButtonStyles, !canEditEverythingElse && styles.readOnlyButton]}
+                                disabled={!canEditEverythingElse}
+                                onPress={handleOpenDatePicker}
+                                style={[dateButtonStyles, !canEditEverythingElse && styles.readOnlyButton]}
                             >
                                 <View style={[styles.iconWrapper, isPast && styles.pastDueIconBorder]}>
                                     <Calendar size={16} color={isPast ? styles.pastDueText.color : "#333"} />
                                 </View>
-
-                                <Text style={dateTextStyles}>
-                                    {due_date ? formatDate(due_date) : 'Date échéance'}
-                                </Text>
-
+                                <Text style={dateTextStyles}>{due_date ? formatDate(due_date) : 'Date échéance'}</Text>
                                 {due_date && (
                                     <TouchableOpacity style={styles.clearIconWrapper} onPress={handleClearDueDate}>
                                         <CloseIcon size={16} color="#333" />
@@ -1443,154 +1080,91 @@ const StatusSheet = () => {
                             </TouchableOpacity>
                         </View>
 
-                        {/* === NOUVEAUX BOUTONS "AJOUTER PHOTOS" ET "AJOUTER SNIPPET" === */}
-                                                {/* === NOUVEAUX BOUTONS "AJOUTER PHOTOS" ET "AJOUTER SNIPPET" === */}
                         <View style={styles.assigneeDueDateRow}>
-                            {/* Bouton Ajouter photos - BLEU */}
-                            <TouchableOpacity
-                                style={[
-                                    styles.actionButton,
-                                    { borderColor: '#2563eb' } // Bordure bleue
-                                ]}
-                                onPress={handleAddPhotosToCurrentPin}
-                               
-                            >
-                                <View style={[
-                                    styles.iconWrapper,
-                                    { borderColor: '#2563eb', borderWidth: 1 } // Cercle icône bleu
-                                ]}>
+                            <TouchableOpacity style={[styles.actionButton, { borderColor: '#2563eb' }]} onPress={handleAddPhotosToCurrentPin}>
+                                <View style={[styles.iconWrapper, { borderColor: '#2563eb', borderWidth: 1 }]}>
                                     <Camera size={16} color="#2563eb" />
                                 </View>
                                 <Text style={[styles.actionButtonText, { color: '#2563eb' }]}>Ajouter photos</Text>
                             </TouchableOpacity>
 
-                            {/* Bouton Ajouter snippet - PINK */}
-                            <TouchableOpacity
-                                style={[
-                                    styles.actionButton,
-                                    { borderColor: '#ec4899' } // Bordure pink
-                                ]}
-                                onPress={handleAddSnippetToCurrentPin}
-                               
-                            >
-                                <View style={[
-                                    styles.iconWrapper,
-                                    { borderColor: '#ec4899', borderWidth: 1 } // Cercle icône pink
-                                ]}>
+                            <TouchableOpacity style={[styles.actionButton, { borderColor: '#ec4899' }]} onPress={handleAddSnippetToCurrentPin}>
+                                <View style={[styles.iconWrapper, { borderColor: '#ec4899', borderWidth: 1 }]}>
                                     <Scissors size={16} color="#ec4899" />
                                 </View>
                                 <Text style={[styles.actionButtonText, { color: '#ec4899' }]}>Ajouter snippet</Text>
                             </TouchableOpacity>
                         </View>
-                        {/* ============================================================== */}
 
-                        {/* Pin Location Section */}
-<View style={styles.pinLocationSection}>
-    {xcoordinate !== null && xcoordinate !== undefined && 
-    ycoordinate !== null && ycoordinate !== undefined ? (
-        // Pin is already placed - show preview
-        <TouchableOpacity 
-            style={styles.pinLocationCard}
-            onPress={() => {
-                 const pdfInfo = {
-        width: plan.width,
-        height: plan.height,
-        tilesPath: plan.tiles_path,
-    };
-
-    console.log('📊 Plan data:', plan);
-console.log('📊 pdfInfo:', pdfInfo);
-
-    
-    router.push({
-        pathname: '/PinPlacementScreen',
-      
-        params: {
-    myplanid: planId,
-    pinIdToPlace: pin.id,
-    x: pin.x,
-    y: pin.y,
-    userRole: currentRole,
-    pdfInfo: JSON.stringify(pdfInfo)  // Same pdfInfo object!
-  }
-    });
-            }}
-        >
-            <View style={styles.pinLocationHeader}>
-                <View style={[styles.locationIconCircle, { backgroundColor: currentStatusColor }]}>
-                    <MapPin size={20} color="#fff" />
-                </View>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.pinLocationTitle}>Position sur le plan</Text>
-                   
-                </View>
-                <ChevronRight size={20} color="#6B7280" />
-            </View>
-            
-            {/* Optional: Mini preview thumbnail */}
-            <View style={styles.pinPreviewContainer}>
-                 <PlanMiniSnapshot
-        pngUrl={planPngPublicUrl}
-        x={xcoordinate}
-        y={ycoordinate}
-        pinColor={currentStatusColor}
-    />
-            </View>
-        </TouchableOpacity>
-    ) : (
-        // Pin not placed - show button to place it
-        <TouchableOpacity
-            style={[styles.placePinButton, !canEditEverythingElse && styles.disabledButton]}
-            onPress={() => {
-                if (!canEditEverythingElse) return;
-                
-                // Navigate to PDF screen in "place pin" mode
-                fetchProjectPlans();
-        setShowPlanSelector(true);
-            }}
-            disabled={!canEditEverythingElse}
-        >
-            <View style={styles.placePinContent}>
-                <View style={styles.placePinIconCircle}>
-                    <MapPin size={20} color="#2563eb" />
-                </View>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.placePinTitle}>Localiser sur le plan</Text>
-                    <Text style={styles.placePinSubtitle}>
-                        Placer cette tâche sur le plan PDF
-                    </Text>
-                </View>
-                <ChevronRight size={20} color="#2563eb" />
-            </View>
-        </TouchableOpacity>
-    )}
-</View>
-
-                        {/* ============================================================== */}
+                        <View style={styles.pinLocationSection}>
+                            {xcoordinate !== null && xcoordinate !== undefined &&
+                            ycoordinate !== null && ycoordinate !== undefined ? (
+                                <TouchableOpacity
+                                    style={styles.pinLocationCard}
+                                    onPress={() => {
+                                        const pdfInfo = { width: plan.width, height: plan.height, tilesPath: plan.tiles_path };
+                                        console.log('📊 Plan data:', plan);
+                                        console.log('📊 pdfInfo:', pdfInfo);
+                                        router.push({
+                                            pathname: '/PinPlacementScreen',
+                                            params: {
+                                                myplanid: planId,
+                                                pinIdToPlace: pin.id,
+                                                x: pin.x,
+                                                y: pin.y,
+                                                userRole: currentRole,
+                                                pdfInfo: JSON.stringify(pdfInfo)
+                                            }
+                                        });
+                                    }}
+                                >
+                                    <View style={styles.pinLocationHeader}>
+                                        <View style={[styles.locationIconCircle, { backgroundColor: currentStatusColor }]}>
+                                            <MapPin size={20} color="#fff" />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.pinLocationTitle}>Position sur le plan</Text>
+                                        </View>
+                                        <ChevronRight size={20} color="#6B7280" />
+                                    </View>
+                                    <View style={styles.pinPreviewContainer}>
+                                        <PlanMiniSnapshot pngUrl={planPngPublicUrl} x={xcoordinate} y={ycoordinate} pinColor={currentStatusColor} />
+                                    </View>
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity
+                                    style={[styles.placePinButton, !canEditEverythingElse && styles.disabledButton]}
+                                    onPress={() => {
+                                        if (!canEditEverythingElse) return;
+                                        fetchProjectPlans();
+                                        setShowPlanSelector(true);
+                                    }}
+                                    disabled={!canEditEverythingElse}
+                                >
+                                    <View style={styles.placePinContent}>
+                                        <View style={styles.placePinIconCircle}><MapPin size={20} color="#2563eb" /></View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.placePinTitle}>Localiser sur le plan</Text>
+                                            <Text style={styles.placePinSubtitle}>Placer cette tâche sur le plan PDF</Text>
+                                        </View>
+                                        <ChevronRight size={20} color="#2563eb" />
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+                        </View>
 
                         <View style={styles.tabContainer}>
-                            <TouchableOpacity
-                                style={[styles.tab, !showAllEvents && styles.activeTab]}
-                                onPress={() => setShowAllEvents(false)}
-                            >
+                            <TouchableOpacity style={[styles.tab, !showAllEvents && styles.activeTab]} onPress={() => setShowAllEvents(false)}>
                                 <Text style={[styles.tabText, !showAllEvents && styles.activeTabText]}>Moins de mises à jour</Text>
                             </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.tab, showAllEvents && styles.activeTab]}
-                                onPress={() => setShowAllEvents(true)}
-                            >
+                            <TouchableOpacity style={[styles.tab, showAllEvents && styles.activeTab]} onPress={() => setShowAllEvents(true)}>
                                 <Text style={[styles.tabText, showAllEvents && styles.activeTabText]}>Plus de mises à jour</Text>
                             </TouchableOpacity>
                         </View>
 
-                       {(events || comments) && (
-    <Timeline 
-        events={events} 
-        comments={comments}
-        showAllEvents={showAllEvents} 
-    />
-)}
+                        {(events || comments) && (
+                            <Timeline events={events} comments={comments} showAllEvents={showAllEvents} />
+                        )}
                     </ScrollView>
                 </GestureDetector>
 
@@ -1605,7 +1179,6 @@ console.log('📊 pdfInfo:', pdfInfo);
                     />
                 )}
 
-                {/* MODALES / SHEETS */}
                 <AssigneeSheet />
                 <StatusSheet />
                 <CategorySheet />
@@ -1614,8 +1187,8 @@ console.log('📊 pdfInfo:', pdfInfo);
 
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                  style={[styles.commentBarWrapper, { paddingBottom: insets.bottom }]}
-    keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
+                    style={[styles.commentBarWrapper, { paddingBottom: insets.bottom }]}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
                 >
                     <View style={styles.commentBar}>
                         <TextInput
@@ -1640,484 +1213,115 @@ console.log('📊 pdfInfo:', pdfInfo);
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
- header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
-    gap: 8, // Add consistent spacing between elements
-},
-  iconCircle: {
-    backgroundColor: '#f3f4f6',
-    borderRadius: 9999,
-    padding: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 36,
-    height: 36,
-},
-  middleIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  scroll: {
-    padding: 20,
-  },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  statusIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statusButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 9999,
-    justifyContent: 'space-between',
-    width: 150,
-  },
-  statusButtonText: {
-    color: 'white',
-    fontFamily: 'Outfit_400Regular',
-    fontSize: 16,
-  },
-  textArea: { fontSize: 24, fontFamily: 'Outfit_400Regular', marginTop: 12 },
-  noteInput: { fontSize: 18, fontFamily: 'Outfit_400Regular', marginTop: 8 },
-  idText: { color: '#6B7280', fontSize: 12, marginTop: 8 },
-  
-  categoryButton: {
-    marginTop: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  categoryButtonText: {
-    color: '#333',
-    fontFamily: 'Outfit_400Regular',
-    fontSize: 14,
-    marginLeft: 8,
-  },
-  
-  assigneeDueDateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-    gap: 10,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    backgroundColor: '#f5f5f5',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  pastDueBackground: {
-      backgroundColor: '#fdecec',
-  },
-  pastDueBorder: {
-      borderColor: '#f05252',
-  },
-  pastDueText: {
-      color: '#f05252',
-  },
-  pastDueIconBorder: {
-      borderColor: '#f05252',
-      borderWidth: 1,
-  },
-  dateSelectedButton: {
-    justifyContent: 'space-between',
-    paddingRight: 8,
-  },
-  iconWrapper: {
-    backgroundColor: 'white',
-    borderRadius: 9999,
-    padding: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8, 
-  },
-  actionButtonText: {
-    color: '#333',
-    fontFamily: 'Outfit_400Regular',
-    fontSize: 14,
-  },
-  dateSelectedText: {
-      flexShrink: 1,
-      marginRight: 8,
-  },
-  clearIconWrapper: {
-      backgroundColor: 'white',
-      borderRadius: 9999,
-      padding: 6,
-      justifyContent: 'center',
-      alignItems: 'center',
-  },
-  
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  bottomSheet: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
-    maxHeight: '70%',
-    width: '100%',
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 15,
-  },
-  sheetTitle: {
-    fontSize: 18,
-    fontFamily: 'Outfit_600SemiBold',
-    color: '#111',
-  },
-  memberItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-  },
-  memberText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: '#333',
-    fontFamily: 'Outfit_400Regular',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginHorizontal: 20,
-  },
-  statusIndicator: {
-      width: 12,
-      height: 12,
-      borderRadius: 6,
-      marginLeft: 6, 
-      marginRight: 6,
-  },
-  categoryIconCircleSheet: {
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      justifyContent: 'center',
-      alignItems: 'center',
-  },
-  actionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-  },
-  actionText: {
-    marginLeft: 10,
-    fontSize: 16,
-    color: '#333',
-    fontFamily: 'Outfit_400Regular',
-  },
-  
-  tabContainer: {
-    flexDirection: 'row',
-    alignSelf: 'center',
-    borderRadius: 9999,
-    backgroundColor: '#f3f4f6',
-    marginVertical: 20,
-  },
-  tab: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 9999 },
-  activeTab: { backgroundColor: '#2563eb' },
-  tabText: { color: '#374151', fontSize: 14, fontFamily: 'Outfit_400Regular' },
-  activeTabText: { color: '#fff', fontWeight: '600' },
-  commentStickyWrapper: {
-    borderTopWidth: 1,
-    borderColor: '#eee',
-    backgroundColor: '#fff',
-    padding: 8,
-  },
-  commentInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#f9fafb',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-  },
-  commentInput: { flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 16 },
-  sendButton: {
-    marginLeft: 8,
-    backgroundColor: '#2563eb',
-    padding: 8,
-    borderRadius: 9999,
-  },
-  // STYLES VOCAUX
-  inputContainerDictation: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    position: 'relative',
-    marginBottom: 10,
-  },
-  textAreaDictation: {
-    flex: 1,
-    fontSize: 24,
-    fontFamily: 'Outfit_400Regular',
-    marginTop: 12,
-    marginRight: 40, // Espace pour le bouton micro
-  },
-  noteInputDictation: {
-    flex: 1,
-    fontSize: 18,
-    fontFamily: 'Outfit_400Regular',
-    marginTop: 8,
-    marginRight: 40, // Espace pour le bouton micro
-  },
-  idText: { color: '#6B7280', fontSize: 12, marginTop: 8, marginBottom: 10 },
-  micButton: {
-    position: 'absolute',
-    right: 0,
-    top: 18,
-    padding: 5,
-    borderRadius: 999,
-    backgroundColor: '#f3f4f6',
-    opacity: 1,
-  },
-  micButtonNote: {
-    position: 'absolute',
-    right: 0,
-    top: 14,
-    padding: 5,
-    borderRadius: 999,
-    backgroundColor: '#f3f4f6',
-    opacity: 1,
-  },
-  micButtonActive: {
-    backgroundColor: '#2563eb', // Active color for STT
-  },
-  listenButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    borderColor: '#2563eb',
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginTop: 5,
-    marginBottom: 10,
-  },
-  listenButtonActive: {
-    backgroundColor: '#2563eb',
-  },
-  listenButtonText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#2563eb',
-    fontFamily: 'Outfit_600SemiBold',
-  },
-  listenButtonTextActive: {
-    color: '#fff',
-  },
-
-  
-  commentBarWrapper: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#fff',
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12, // Will be overridden by inline style with insets.bottom
-},
-  commentBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  commentInput: {
-    flex: 1,
-    backgroundColor: '#f9fafb',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 16,
-    fontFamily: 'Outfit_400Regular',
-  },
-  sendButton: {
-    backgroundColor: '#2563eb',
-    padding: 10,
-    borderRadius: 9999,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-    pinLocationSection: {
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    pinLocationCard: {
-        backgroundColor: '#f9fafb',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#e5e7eb',
-        padding: 16,
-        gap: 12,
-    },
-    pinLocationHeader: {
+    container: { flex: 1, backgroundColor: '#fff' },
+    header: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        backgroundColor: '#fff',
+        gap: 8,
     },
-    locationIconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+    iconCircle: {
+        backgroundColor: '#f3f4f6',
+        borderRadius: 9999,
+        padding: 6,
         justifyContent: 'center',
         alignItems: 'center',
+        width: 36,
+        height: 36,
     },
-    pinLocationTitle: {
-        fontSize: 16,
-        fontFamily: 'Outfit_600SemiBold',
-        color: '#111',
-    },
-    pinLocationCoords: {
-        fontSize: 13,
-        fontFamily: 'Outfit_400Regular',
-        color: '#6B7280',
-        marginTop: 2,
-    },
-    pinPreviewContainer: {
+    middleIcons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    disabledButton: { opacity: 0.5 },
+    scroll: { padding: 20 },
+    statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    statusIconCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+    statusButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 9999, justifyContent: 'space-between', width: 150 },
+    statusButtonText: { color: 'white', fontFamily: 'Outfit_400Regular', fontSize: 16 },
+    textArea: { fontSize: 24, fontFamily: 'Outfit_400Regular', marginTop: 12 },
+    noteInput: { fontSize: 18, fontFamily: 'Outfit_400Regular', marginTop: 8 },
+    idText: { color: '#6B7280', fontSize: 12, marginTop: 8, marginBottom: 10 },
+    categoryButton: {
+        marginTop: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f5f5f5',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
         borderRadius: 8,
-        overflow: 'hidden',
     },
-    pinPreviewPlaceholder: {
-        height: 100,
-        backgroundColor: '#e5e7eb',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    pinPreviewText: {
-        fontSize: 14,
-        fontFamily: 'Outfit_400Regular',
-        color: '#6B7280',
-    },
-    placePinButton: {
-        backgroundColor: '#eff6ff',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#bfdbfe',
-        padding: 16,
-    },
-    placePinContent: {
+    categoryButtonText: { color: '#333', fontFamily: 'Outfit_400Regular', fontSize: 14, marginLeft: 8 },
+    assigneeDueDateRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, gap: 10 },
+    actionButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
+        justifyContent: 'flex-start',
+        backgroundColor: '#f5f5f5',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
     },
-    placePinIconCircle: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#dbeafe',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    placePinTitle: {
-        fontSize: 16,
-        fontFamily: 'Outfit_600SemiBold',
-        color: '#2563eb',
-    },
-    placePinSubtitle: {
-        fontSize: 13,
-        fontFamily: 'Outfit_400Regular',
-        color: '#6B7280',
-        marginTop: 2,
-    },planItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    gap: 12,
-},
-planIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-},
-planItemTitle: {
-    fontSize: 16,
-    fontFamily: 'Outfit_600SemiBold',
-    color: '#111',
-},
-planItemSubtitle: {
-    fontSize: 13,
-    fontFamily: 'Outfit_400Regular',
-    color: '#6B7280',
-    marginTop: 2,
-},
-readOnlyInput: {
-        backgroundColor: '#f5f5f5', // Fond gris clair
-        color: '#71717a',           // Texte estompé
-        borderColor: '#e4e4e7',
-    },
-    readOnlyButton: {
-        backgroundColor: '#f8fafc',
-        borderColor: '#e2e8f0',
-        opacity: 0.7,
-    },
-    readOnlyText: {
-        color: '#94a3b8',
-    },
-   readOnlyBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fef2f2',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#fecaca',
-    gap: 4,
-},
-readOnlyBadgeText: {
-    color: '#dc2626',
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: 'Outfit_600SemiBold',
-},
-
+    pastDueBackground: { backgroundColor: '#fdecec' },
+    pastDueBorder: { borderColor: '#f05252' },
+    pastDueText: { color: '#f05252' },
+    pastDueIconBorder: { borderColor: '#f05252', borderWidth: 1 },
+    dateSelectedButton: { justifyContent: 'space-between', paddingRight: 8 },
+    iconWrapper: { backgroundColor: 'white', borderRadius: 9999, padding: 6, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+    actionButtonText: { color: '#333', fontFamily: 'Outfit_400Regular', fontSize: 14 },
+    dateSelectedText: { flexShrink: 1, marginRight: 8 },
+    clearIconWrapper: { backgroundColor: 'white', borderRadius: 9999, padding: 6, justifyContent: 'center', alignItems: 'center' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+    bottomSheet: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 20, maxHeight: '70%', width: '100%' },
+    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 15 },
+    sheetTitle: { fontSize: 18, fontFamily: 'Outfit_600SemiBold', color: '#111' },
+    memberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20 },
+    memberText: { marginLeft: 10, fontSize: 16, color: '#333', fontFamily: 'Outfit_400Regular' },
+    separator: { height: 1, backgroundColor: '#f0f0f0', marginHorizontal: 20 },
+    statusIndicator: { width: 12, height: 12, borderRadius: 6, marginLeft: 6, marginRight: 6 },
+    categoryIconCircleSheet: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+    actionItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20 },
+    actionText: { marginLeft: 10, fontSize: 16, color: '#333', fontFamily: 'Outfit_400Regular' },
+    tabContainer: { flexDirection: 'row', alignSelf: 'center', borderRadius: 9999, backgroundColor: '#f3f4f6', marginVertical: 20 },
+    tab: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 9999 },
+    activeTab: { backgroundColor: '#2563eb' },
+    tabText: { color: '#374151', fontSize: 14, fontFamily: 'Outfit_400Regular' },
+    activeTabText: { color: '#fff', fontWeight: '600' },
+    commentInput: { flex: 1, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, fontFamily: 'Outfit_400Regular' },
+    sendButton: { backgroundColor: '#2563eb', padding: 10, borderRadius: 9999, justifyContent: 'center', alignItems: 'center' },
+    inputContainerDictation: { flexDirection: 'row', alignItems: 'flex-start', position: 'relative', marginBottom: 10 },
+    textAreaDictation: { flex: 1, fontSize: 24, fontFamily: 'Outfit_400Regular', marginTop: 12, marginRight: 40 },
+    noteInputDictation: { flex: 1, fontSize: 18, fontFamily: 'Outfit_400Regular', marginTop: 8, marginRight: 40 },
+    micButton: { position: 'absolute', right: 0, top: 18, padding: 5, borderRadius: 999, backgroundColor: '#f3f4f6' },
+    micButtonNote: { position: 'absolute', right: 0, top: 14, padding: 5, borderRadius: 999, backgroundColor: '#f3f4f6' },
+    micButtonActive: { backgroundColor: '#2563eb' },
+    commentBarWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 },
+    commentBar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    pinLocationSection: { marginTop: 16, marginBottom: 8 },
+    pinLocationCard: { backgroundColor: '#f9fafb', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', padding: 16, gap: 12 },
+    pinLocationHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    locationIconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
+    pinLocationTitle: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#111' },
+    pinLocationCoords: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 2 },
+    pinPreviewContainer: { borderRadius: 8, overflow: 'hidden' },
+    placePinButton: { backgroundColor: '#eff6ff', borderRadius: 12, borderWidth: 1, borderColor: '#bfdbfe', padding: 16 },
+    placePinContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    placePinIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#dbeafe', justifyContent: 'center', alignItems: 'center' },
+    placePinTitle: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#2563eb' },
+    placePinSubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 2 },
+    planItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20, gap: 12 },
+    planIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center' },
+    planItemTitle: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#111' },
+    planItemSubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 2 },
+    readOnlyInput: { backgroundColor: '#f5f5f5', color: '#71717a', borderColor: '#e4e4e7' },
+    readOnlyButton: { backgroundColor: '#f8fafc', borderColor: '#e2e8f0', opacity: 0.7 },
+    readOnlyText: { color: '#94a3b8' },
+    readOnlyBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1, borderColor: '#fecaca', gap: 4 },
+    readOnlyBadgeText: { color: '#dc2626', fontSize: 12, fontWeight: '600', fontFamily: 'Outfit_600SemiBold' },
 });

@@ -19,6 +19,8 @@ import {
   statusesAtom,
 } from '../store/atoms';
 
+const lastOrgKey = (memberId) => `last_organization_id_${memberId}`;
+
 async function fetchMember(authId, retryOnce = true) {
   const { data: user, error } = await supabase
     .from('members')
@@ -43,13 +45,13 @@ export function AuthGate({ children }) {
   const [session, setSession] = useState(undefined);
   const [loggedInUser, setLoggedInUser] = useAtom(loggedInUserAtom);
 
-  const setPlans          = useSetAtom(plansAtom);
-  const setPins           = useSetAtom(pinsAtom);
-  const setCategories     = useSetAtom(categoriesAtom);
-  const setStatuses       = useSetAtom(statusesAtom);
-  const setMembers        = useSetAtom(membersAtom);
+  const setPlans           = useSetAtom(plansAtom);
+  const setPins            = useSetAtom(pinsAtom);
+  const setCategories      = useSetAtom(categoriesAtom);
+  const setStatuses        = useSetAtom(statusesAtom);
+  const setMembers         = useSetAtom(membersAtom);
   const setSelectedProject = useSetAtom(selectedProjectAtom);
-  const setSelectedOrg    = useSetAtom(selectedOrganizationAtom);
+  const setSelectedOrg     = useSetAtom(selectedOrganizationAtom);
 
   const authStateHandled = useRef(false);
   const loggedInUserRef  = useRef(loggedInUser);
@@ -67,37 +69,40 @@ export function AuthGate({ children }) {
       if (newSession?.user) {
         if (loggedInUserRef.current) return;
 
-        // 1. Fetch base member row (no role here anymore)
+        // 1. Fetch base member row
         const user = await fetchMember(newSession.user.id);
         if (!mounted || !user) return;
 
-        // 2. Determine which org to activate
-        //    — prefer last used org from AsyncStorage, fall back to user.organization_id
-        const lastOrgId = await AsyncStorage.getItem('last_organization_id');
+        // 2. Determine which org to activate, scoped to THIS member
+        const lastOrgId = await AsyncStorage.getItem(lastOrgKey(user.id));
         const activeOrgId = lastOrgId ?? user.organization_id;
 
-        // 3. Fetch role for that org from members_organizations
+        // 3. Fetch role for that org
         const role = await fetchRoleForOrg(user.id, activeOrgId);
 
-        // 4. If we restored a different org, also fetch its name for the atom
-        let restoredOrg = null;
-        if (lastOrgId && lastOrgId !== user.organization_id) {
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('id, name')
-            .eq('id', lastOrgId)
-            .single();
-          restoredOrg = org ?? null;
+        // 4. If role is null the stored org is invalid for this user — fall back
+        //    to their default org and clear the stale key
+        const verifiedOrgId = role ? activeOrgId : user.organization_id;
+        const verifiedRole  = role ?? user.role;
+
+        if (!role && lastOrgId) {
+          await AsyncStorage.removeItem(lastOrgKey(user.id));
         }
 
+        // 5. Always fetch and set the active org so the org picker is never empty
+        const { data: activeOrg } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .eq('id', verifiedOrgId)
+          .single();
+
         if (mounted) {
-          // Patch user with the correct role + active org
           setLoggedInUser({
             ...user,
-            organization_id: activeOrgId,
-            role: role ?? user.role, // graceful fallback while you migrate
+            organization_id: verifiedOrgId,
+            role: verifiedRole,
           });
-          if (restoredOrg) setSelectedOrg(restoredOrg);
+          if (activeOrg) setSelectedOrg(activeOrg);
         }
       } else {
         setLoggedInUser(null);
