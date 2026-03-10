@@ -10,7 +10,6 @@ import {
   MessageSquare,
   Table as TableOutline, Table as TableSolid
 } from 'lucide-react-native';
-import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function Layout() {
@@ -37,13 +36,13 @@ export default function Layout() {
         tabBarActiveTintColor: 'black',
         tabBarInactiveTintColor: 'gray',
         tabBarStyle: {
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowColor: 'transparent',
-          backgroundColor: '#F5F7FA',
-          paddingBottom: Platform.OS === 'ios' ? 20 : insets.bottom + 5,
-          height: Platform.OS === 'ios' ? 85 : 60 + insets.bottom,
-        },
+  borderTopWidth: 0,
+  elevation: 0,
+  shadowColor: 'transparent',
+  backgroundColor: '#F5F7FA',
+  paddingBottom: insets.bottom || 8,
+  height: 60 + (insets.bottom || 8),
+},
         tabBarLabelStyle: {
           fontFamily: 'Outfit_500Medium',
         },
