@@ -4,12 +4,14 @@ import { ListFilter } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AssignedToFilter from '../components/FilterPanel/AssignedToFilter';
 import DateFilter from '../components/FilterPanel/DateFilter';
 import OverdueFilter from '../components/FilterPanel/OverdueFilter';
 import StatusFilter from '../components/FilterPanel/StatusFilter';
 import { usePinFilters } from '../hooks/usePinFilters';
 import { selectedProjectAtom } from '../store/atoms';
 import CategoryFilter from './FilterPanel/CategoryFilter';
+import TagFilter from './FilterPanel/TagFilter';
 
 export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0, fabOffset = 0 }) {
   const {
@@ -24,15 +26,24 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0
     setDateTags,
     activeStatuses,
     setActiveStatuses,
+    categoryActive,
+    setCategoryActive,
     categoryTags,
     setCategoryTags,
+    tagActive,
+    setTagActive,
+    tagIds,
+    setTagIds,
+    assignedToActive,
+    setAssignedToActive,
+    selectedAssignees,
+    setSelectedAssignees,
     hasActiveFilter,
     clearFilters,
   } = usePinFilters(pins);
 
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [selectedProject] = useAtom(selectedProjectAtom);
-  const [categoryActive, setCategoryActive] = useState(false);
   const insets = useSafeAreaInsets();
 
   React.useEffect(() => {
@@ -60,13 +71,11 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0
         transparent
         animationType="slide"
         onRequestClose={() => setShowFilterPanel(false)}
-        // KEY: lets nested modals (CategoryFilter, PlanFilter sheets) render
-        // above this modal on Android
         statusBarTranslucent
       >
         <View style={styles.modalOverlay}>
           <View style={styles.filterContainer}>
-            {/* Header — fixed, never scrolls */}
+            {/* Header */}
             <View style={styles.header}>
               <View>
                 <Text style={styles.title}>Filtres</Text>
@@ -82,7 +91,6 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0
               </View>
             </View>
 
-            {/* Scrollable filters — safe area padding lives here */}
             <ScrollView
               contentContainerStyle={[
                 styles.scrollContent,
@@ -103,6 +111,18 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0
                 onToggle={setCategoryActive}
                 tags={categoryTags}
                 setTags={setCategoryTags}
+              />
+              <TagFilter
+                active={tagActive}
+                onToggle={setTagActive}
+                selectedTags={tagIds}
+                setSelectedTags={setTagIds}
+              />
+              <AssignedToFilter
+                active={assignedToActive}
+                onToggle={setAssignedToActive}
+                selectedMembers={selectedAssignees}
+                setSelectedMembers={setSelectedAssignees}
               />
               <StatusFilter
                 activeStatuses={activeStatuses}
@@ -155,7 +175,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     maxHeight: '80%',
-    // No paddingBottom here — handled by ScrollView contentContainerStyle
   },
   header: {
     flexDirection: 'row',

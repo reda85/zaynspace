@@ -7,20 +7,25 @@ import {
   ChevronDown,
   ChevronRight,
   FolderOpen,
+  Plus,
   X,
 } from 'lucide-react-native';
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'; // ✅ added useSafeAreaInsets
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchRoleForOrg } from '../lib/fetchRoleForOrg';
 import { supabase } from '../lib/supabase';
 import {
@@ -36,7 +41,7 @@ import {
 
 export default function SelectProjectScreen() {
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets(); // ✅
+  const insets = useSafeAreaInsets();
 
   const [user, setLoggedInUser] = useAtom(loggedInUserAtom);
   const [selectedOrg, setSelectedOrg] = useAtom(selectedOrganizationAtom);
@@ -48,13 +53,21 @@ export default function SelectProjectScreen() {
   const setMembers    = useSetAtom(membersAtom);
   const [, setSelectedProject] = useAtom(selectedProjectAtom);
 
-  const [projects, setProjects]             = useState([]);
+  const [projects, setProjects]               = useState([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
 
   const [orgs, setOrgs]               = useState([]);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [orgModalVisible, setOrgModalVisible] = useState(false);
 
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [newProjectName, setNewProjectName]           = useState('');
+  const [newProjectDescription, setNewProjectDescription] = useState('');
+  const [creating, setCreating]                       = useState(false);
+  const [createError, setCreateError]                 = useState('');
+  const nameInputRef = useRef(null);
+
+  const isAdmin = user?.role === 'admin';
   const activeOrgId = selectedOrg?.id ?? user?.organization_id;
 
   const fetchOrgs = async () => {
@@ -79,7 +92,7 @@ export default function SelectProjectScreen() {
 
       if (memberError) throw memberError;
 
-      const projectIds = memberProjects?.map(mp => mp.project_id) ?? [];
+      const projectIds = memberProjects?.map((mp) => mp.project_id) ?? [];
 
       if (projectIds.length === 0) {
         setProjects([]);
@@ -96,8 +109,8 @@ export default function SelectProjectScreen() {
 
       if (error) throw error;
       setProjects(data ?? []);
-    } catch (error) {
-      console.error('Error loading projects:', error);
+    } catch (err) {
+      console.error('Error loading projects:', err);
       setProjects([]);
     } finally {
       setLoadingProjects(false);
@@ -112,7 +125,6 @@ export default function SelectProjectScreen() {
     if (org.id === activeOrgId) return;
 
     await AsyncStorage.setItem(`last_organization_id_${user.id}`, org.id.toString());
-
     const role = await fetchRoleForOrg(user.id, org.id);
 
     setPlans([]);
@@ -130,6 +142,46 @@ export default function SelectProjectScreen() {
     await AsyncStorage.setItem('last_project_id', project.id.toString());
     setSelectedProject(project);
     router.back();
+  };
+
+  const openCreateModal = () => {
+    setNewProjectName('');
+    setNewProjectDescription('');
+    setCreateError('');
+    setCreateModalVisible(true);
+    setTimeout(() => nameInputRef.current?.focus(), 300);
+  };
+
+  const closeCreateModal = () => {
+    Keyboard.dismiss();
+    setCreateModalVisible(false);
+  };
+
+  const handleCreateProject = async () => {
+    const name = newProjectName.trim();
+    if (!name) {
+      setCreateError('Le nom du projet est requis.');
+      return;
+    }
+    setCreateError('');
+    setCreating(true);
+
+    try {
+      const { data, error } = await supabase.rpc('create_project_with_defaults', {
+        p_name: name,
+        p_organization_id: activeOrgId,
+      });
+
+      if (error) throw error;
+
+      await fetchProjects(activeOrgId);
+      closeCreateModal();
+    } catch (err) {
+      console.error('Error creating project:', err);
+      setCreateError('Une erreur est survenue. Veuillez réessayer.');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const activeOrgName =
@@ -165,8 +217,16 @@ export default function SelectProjectScreen() {
           </View>
         </TouchableOpacity>
       ),
+      headerRight: () =>
+        isAdmin ? (
+          <TouchableOpacity onPress={openCreateModal} style={{ marginRight: 16 }}>
+            <View style={styles.addButton}>
+              <Plus size={20} color="#fff" />
+            </View>
+          </TouchableOpacity>
+        ) : null,
     });
-  }, [navigation, activeOrgName, orgs]);
+  }, [navigation, activeOrgName, orgs, isAdmin]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -209,13 +269,16 @@ export default function SelectProjectScreen() {
               <FolderOpen size={48} color="#D1D5DB" />
               <Text style={styles.emptyTitle}>Aucun projet</Text>
               <Text style={styles.emptySubtitle}>
-                Créez votre premier projet pour commencer
+                {isAdmin
+                  ? 'Appuyez sur + pour créer votre premier projet'
+                  : 'Aucun projet ne vous a été assigné pour le moment'}
               </Text>
             </View>
           }
         />
       )}
 
+      {/* ── Organisation picker modal ── */}
       <Modal
         visible={orgModalVisible}
         transparent
@@ -225,7 +288,6 @@ export default function SelectProjectScreen() {
         <TouchableWithoutFeedback onPress={() => setOrgModalVisible(false)}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
-              {/* ✅ paddingBottom respects home indicator — replaces hardcoded 36 */}
               <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
                 <View style={styles.modalHandle} />
                 <Text style={styles.modalTitle}>Changer d'organisation</Text>
@@ -260,6 +322,90 @@ export default function SelectProjectScreen() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* ── Create Project modal — admin only ── */}
+      {isAdmin && (
+        <Modal
+          visible={createModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={closeCreateModal}
+        >
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+            <TouchableWithoutFeedback onPress={closeCreateModal}>
+              <View style={styles.modalOverlay}>
+                <TouchableWithoutFeedback>
+                  <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+                    <View style={styles.modalHandle} />
+
+                    <View style={styles.createModalHeader}>
+                      <Text style={styles.modalTitle}>Nouveau projet</Text>
+                      <TouchableOpacity onPress={closeCreateModal} hitSlop={8}>
+                        <X size={20} color="#6B7280" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>Nom du projet *</Text>
+                      <TextInput
+                        ref={nameInputRef}
+                        style={[styles.textInput, createError && newProjectName.trim() === '' && styles.textInputError]}
+                        placeholder="Ex: Résidence Al Amal"
+                        placeholderTextColor="#9CA3AF"
+                        value={newProjectName}
+                        onChangeText={(t) => {
+                          setNewProjectName(t);
+                          if (createError) setCreateError('');
+                        }}
+                        returnKeyType="next"
+                        maxLength={100}
+                      />
+                    </View>
+
+                    <View style={styles.fieldGroup}>
+                      <Text style={styles.fieldLabel}>Description (optionnel)</Text>
+                      <TextInput
+                        style={[styles.textInput, styles.textArea]}
+                        placeholder="Décrivez brièvement le projet..."
+                        placeholderTextColor="#9CA3AF"
+                        value={newProjectDescription}
+                        onChangeText={setNewProjectDescription}
+                        multiline
+                        numberOfLines={3}
+                        textAlignVertical="top"
+                        maxLength={300}
+                      />
+                    </View>
+
+                    {createError ? (
+                      <Text style={styles.errorText}>{createError}</Text>
+                    ) : null}
+
+                    <TouchableOpacity
+                      style={[styles.createButton, creating && styles.createButtonDisabled]}
+                      onPress={handleCreateProject}
+                      activeOpacity={0.8}
+                      disabled={creating}
+                    >
+                      {creating ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <>
+                          <Plus size={18} color="#fff" />
+                          <Text style={styles.createButtonText}>Créer le projet</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </TouchableWithoutFeedback>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
@@ -298,6 +444,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowRadius: 2,
     elevation: 2,
+  },
+
+  addButton: {
+    backgroundColor: '#111827',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 3,
   },
 
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
@@ -347,7 +507,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     gap: 8,
-    // ✅ paddingBottom set inline — removed hardcoded 36
   },
   modalHandle: {
     width: 40,
@@ -380,4 +539,59 @@ const styles = StyleSheet.create({
   orgIconActive: { backgroundColor: '#111827' },
   orgItemText: { fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#374151' },
   orgItemTextActive: { fontFamily: 'Outfit_600SemiBold', color: '#111827' },
+
+  createModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  fieldGroup: { gap: 6, marginTop: 8 },
+  fieldLabel: {
+    fontFamily: 'Outfit_500Medium',
+    fontSize: 13,
+    color: '#374151',
+    letterSpacing: 0.2,
+  },
+  textInput: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 15,
+    color: '#111827',
+  },
+  textInputError: {
+    borderColor: '#EF4444',
+    backgroundColor: '#FEF2F2',
+  },
+  textArea: {
+    minHeight: 80,
+    paddingTop: 12,
+  },
+  errorText: {
+    fontFamily: 'Outfit_400Regular',
+    fontSize: 13,
+    color: '#EF4444',
+    marginTop: 2,
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  createButtonDisabled: { opacity: 0.6 },
+  createButtonText: {
+    fontFamily: 'Outfit_600SemiBold',
+    fontSize: 16,
+    color: '#fff',
+  },
 });

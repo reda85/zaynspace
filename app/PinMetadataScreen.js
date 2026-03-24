@@ -53,7 +53,7 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
-    KeyboardAvoidingView,
+    Keyboard,
     Modal,
     Platform,
     StyleSheet,
@@ -67,6 +67,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import uuid from 'react-native-uuid';
 
 import { runOnJS } from 'react-native-reanimated';
+import PinTagEditor from '../components/PinTagEditor';
 import PlanMiniSnapshot from '../components/PlanMiniSnapshot';
 import Timeline from '../components/TimeLine';
 import { supabase } from '../lib/supabase';
@@ -84,7 +85,6 @@ const formatDate = (dateString) => {
     });
 };
 
-// ✅ Synced with IconPicker — all 22 icons covered
 const getCategoryIconComponent = (iconName, color = 'white', size = 20) => {
     switch (iconName) {
         case 'zap':               return <ZapIcon color={color} size={size} />;
@@ -134,10 +134,13 @@ export default function PinMetadataScreen() {
     const [currentPinId, setCurrentPinId] = useState(pinId);
     const [currentRole, setCurrentRole] = useState(null);
     const pin = pins?.find((p) => p.id === currentPinId) ?? {};
+    console.log('🧩 pin derived from atom, pin.pin_tags:', JSON.stringify(pin?.pin_tags));
 
     const currentPinIndex = pins?.findIndex((p) => p.id === currentPinId) ?? -1;
     const hasPrevious = currentPinIndex > 0;
     const hasNext = currentPinIndex >= 0 && currentPinIndex < (pins?.length ?? 0) - 1;
+
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
 
     let parsedPhotoUris = [];
     try {
@@ -198,10 +201,19 @@ export default function PinMetadataScreen() {
     const skipNextReloadRef = useRef(false);
 
     useEffect(() => {
+        const show = Keyboard.addListener('keyboardDidShow', (e) => {
+            setKeyboardHeight(e.endCoordinates.height);
+        });
+        const hide = Keyboard.addListener('keyboardDidHide', () => {
+            setKeyboardHeight(0);
+        });
+        return () => { show.remove(); hide.remove(); };
+    }, []);
+
+    useEffect(() => {
         const loadRole = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             const member = selectedMembers?.find(m => m.auth_id === user?.id);
-            console.log("Current member:", member, selectedMembers);
             setCurrentRole(member?.role);
         };
         loadRole();
@@ -211,7 +223,6 @@ export default function PinMetadataScreen() {
         if (metapin.id === pinId) {
             setXcoordinate(metapin.x);
             setYcoordinate(metapin.y);
-            console.log("metapin", metapin);
         }
     }, [metapin]);
 
@@ -243,20 +254,26 @@ export default function PinMetadataScreen() {
     };
 
     async function getPinFromId(id) {
+        console.log('🔍 getPinFromId called, id:', id, 'skipFlag:', skipNextReloadRef.current);
         if (!id) return;
         const { data, error } = await supabase
             .from('pdf_pins')
-            .select('*,projects(*),events(*,pins_photos(*),members(*)),assigned_to(*),categories(*),Status(*),plans(*)')
+            .select('*,projects(*),events(*,pins_photos(*),members(*)),assigned_to(*),categories(*),Status(*),plans(*),pin_tags(tag_id, tags(*))')
             .eq('id', id)
             .single();
+            console.log('📦 DB returned pin_tags:', JSON.stringify(data?.pin_tags));
         if (data) {
             if (skipNextReloadRef.current) {
                 skipNextReloadRef.current = false;
-            } else {
-                setName(data.name);
-                setNote(data.note);
-            }
-
+                return;
+            } 
+            // WITH — only protect name/note, always update everything else:
+if (!skipNextReloadRef.current) {
+    setName(data.name);
+    setNote(data.note);
+}
+              
+            
             setProjectNumber(data.projects?.project_number || '');
             setPinNumber(data.pin_number || '');
             setSelectedPin(data);
@@ -272,7 +289,16 @@ export default function PinMetadataScreen() {
             setPlan(data.plans || null);
             setXcoordinate(data.x || null);
             setYcoordinate(data.y || null);
-            console.log("plans", data.plans);
+            const flatTags = (data.pin_tags ?? []).map((pt) => pt.tags).filter(Boolean);
+            console.log('🏷️ flatTags after mapping:', JSON.stringify(flatTags));
+            const pinWithTags = { ...data, tags: flatTags };
+setSelectedPin(pinWithTags);
+ setPins((prev) => {
+            const updated = prev.map((p) => p.id === data.id ? pinWithTags : p);
+            const found = updated.find(p => p.id === data.id);
+            console.log('📌 pins atom updated, pin_tags in atom:', JSON.stringify(found?.pin_tags));
+            return updated;
+        });
 
             if (data.plans?.png_url) {
                 const { data: urlData } = supabase
@@ -303,15 +329,6 @@ export default function PinMetadataScreen() {
             setYcoordinate(null);
         }
     }, [currentPinId]);
-
-    useEffect(() => {
-        console.log("xcoordinate", xcoordinate);
-        console.log("ycoordinate", ycoordinate);
-    }, [xcoordinate, ycoordinate]);
-
-    const applyLocalPinUpdate = (updatedPin) => {
-        setPins((prev) => (prev ? prev.map((p) => (p.id === updatedPin.id ? updatedPin : p)) : [updatedPin]));
-    };
 
     const debouncedSaveRef = useRef(
         debounce(async (pdfName, fieldPatch) => {
@@ -356,9 +373,7 @@ export default function PinMetadataScreen() {
                 setPins(prev => [...prev, data]);
                 return;
             }
-            console.log("immediateSave fieldPatch:", fieldPatch);
             const pdfName = pin?.pdf_name;
-            console.log("pdfName:", pdfName, "pin:", pin);
             if (!pdfName || !pin?.id) return;
 
             setPins((prevPins) => {
@@ -371,7 +386,6 @@ export default function PinMetadataScreen() {
                 delete pinToSave.events;
                 delete pinToSave.categories;
                 delete pinToSave.Status;
-                console.log("pinToSave:", pinToSave);
                 updatePinInSupabase(pdfName, pinToSave);
                 return prevPins.map(p => p.id === pin.id ? updatedPin : p);
             });
@@ -518,7 +532,6 @@ export default function PinMetadataScreen() {
                 assignedUserEmail: member?.email,
                 assignedUserName: member?.name,
             });
-            console.log('Assignment notification + email sent');
         } catch (err) {
             console.error('Assignment notification failed:', err);
         }
@@ -711,11 +724,9 @@ export default function PinMetadataScreen() {
     const assigneeName = assignee?.name || 'Ajouter intervenant';
 
     const applyFinalText = useCallback(() => {
-        console.log("applyFinalText");
         if (!dictationTarget || !recognizedTextRef.current.trim()) return;
         skipNextReloadRef.current = true;
         const text = recognizedTextRef.current.trim();
-        console.log("text", text);
         if (dictationTarget === 'name') { setName(text); immediateSave({ name: text }); }
         else if (dictationTarget === 'note') { setNote(text); immediateSave({ note: text }); }
         recognizedTextRef.current = '';
@@ -731,7 +742,6 @@ export default function PinMetadataScreen() {
     useSpeechRecognitionEvent("result", (event) => {
         let transcript = event.results[0]?.transcript || '';
         let isFinal = event.isFinal;
-        console.log("isFinal", isFinal, event);
         if (!transcript) return;
         if (isFinal) {
             recognizedTextRef.current += (recognizedTextRef.current ? ' ' : '') + transcript;
@@ -947,9 +957,12 @@ export default function PinMetadataScreen() {
         </Modal>
     );
 
+    // Comment bar height estimate for scroll padding
+    const COMMENT_BAR_HEIGHT = 64;
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'left', 'right']}>
-            <View style={styles.container}>
+            <View style={{ flex: 1 }}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => handleClose()} style={styles.iconCircle}>
                         <CloseIcon size={20} color="#111" />
@@ -975,7 +988,11 @@ export default function PinMetadataScreen() {
                 </View>
 
                 <GestureDetector gesture={swipeGesture}>
-                    <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: 80 + insets.bottom }]}>
+                    <ScrollView
+                        contentContainerStyle={[styles.scroll, { paddingBottom: COMMENT_BAR_HEIGHT + insets.bottom + 20 }]}
+                        keyboardShouldPersistTaps="handled"
+                        style={{ flex: 1 }}
+                    >
                         <View style={styles.statusRow}>
                             <View style={[styles.statusIconCircle, { backgroundColor: currentStatusColor }]}>
                                 {getCategoryIconComponent(currentCategory.icon, 'white', 20)}
@@ -1048,6 +1065,17 @@ export default function PinMetadataScreen() {
                             <ChevronDown size={16} color="#333" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
 
+                        <PinTagEditor
+                            pinId={pin.id}
+                            initialTags={(pin.pin_tags ?? []).map((pt) => pt.tags).filter(Boolean)}
+                            onChange={(tags) => {
+                                console.log('🔁 onChange called with tags:', JSON.stringify(tags));
+    console.log('🚩 setting skipNextReloadRef = true');
+                                skipNextReloadRef.current = true;
+                                setPins((prev) => prev.map((p) => p.id === pin.id ? { ...p, pin_tags: tags.map(t => ({ tags: t })) } : p));
+                            }}
+                        />
+
                         <View style={styles.assigneeDueDateRow}>
                             <TouchableOpacity
                                 disabled={!canEditEverythingElse}
@@ -1103,8 +1131,6 @@ export default function PinMetadataScreen() {
                                     style={styles.pinLocationCard}
                                     onPress={() => {
                                         const pdfInfo = { width: plan.width, height: plan.height, tilesPath: plan.tiles_path };
-                                        console.log('📊 Plan data:', plan);
-                                        console.log('📊 pdfInfo:', pdfInfo);
                                         router.push({
                                             pathname: '/PinPlacementScreen',
                                             params: {
@@ -1185,35 +1211,37 @@ export default function PinMetadataScreen() {
                 <ActionsSheet />
                 <PlanSelectorSheet />
 
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={[styles.commentBarWrapper, { paddingBottom: insets.bottom }]}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? insets.bottom : 0}
-                >
-                    <View style={styles.commentBar}>
-                        <TextInput
-                            style={styles.commentInput}
-                            value={commentText}
-                            onChangeText={setCommentText}
-                            placeholder="Ajouter un commentaire..."
-                            placeholderTextColor="#999"
-                        />
-                        <TouchableOpacity
-                            style={[styles.sendButton, !commentText.trim() && styles.disabledButton]}
-                            onPress={handleSendComment}
-                            disabled={!commentText.trim()}
-                        >
-                            <SendIcon size={20} color={commentText.trim() ? "#fff" : "#ccc"} />
-                        </TouchableOpacity>
-                    </View>
-                </KeyboardAvoidingView>
+                {/* Absolutely positioned comment bar — sits above keyboard on Android */}
+                <View style={[
+                    styles.commentBar,
+                    {
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                       bottom: keyboardHeight > 0 ? keyboardHeight + insets.bottom : insets.bottom,
+                    }
+                ]}>
+                    <TextInput
+                        style={styles.commentInput}
+                        value={commentText}
+                        onChangeText={setCommentText}
+                        placeholder="Ajouter un commentaire..."
+                        placeholderTextColor="#999"
+                    />
+                    <TouchableOpacity
+                        style={[styles.sendButton, !commentText.trim() && styles.disabledButton]}
+                        onPress={handleSendComment}
+                        disabled={!commentText.trim()}
+                    >
+                        <SendIcon size={20} color={commentText.trim() ? "#fff" : "#ccc"} />
+                    </TouchableOpacity>
+                </View>
             </View>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff' },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1240,8 +1268,6 @@ const styles = StyleSheet.create({
     statusIconCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
     statusButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 9999, justifyContent: 'space-between', width: 150 },
     statusButtonText: { color: 'white', fontFamily: 'Outfit_400Regular', fontSize: 16 },
-    textArea: { fontSize: 24, fontFamily: 'Outfit_400Regular', marginTop: 12 },
-    noteInput: { fontSize: 18, fontFamily: 'Outfit_400Regular', marginTop: 8 },
     idText: { color: '#6B7280', fontSize: 12, marginTop: 8, marginBottom: 10 },
     categoryButton: {
         marginTop: 10,
@@ -1301,14 +1327,23 @@ const styles = StyleSheet.create({
     micButton: { position: 'absolute', right: 0, top: 18, padding: 5, borderRadius: 999, backgroundColor: '#f3f4f6' },
     micButtonNote: { position: 'absolute', right: 0, top: 14, padding: 5, borderRadius: 999, backgroundColor: '#f3f4f6' },
     micButtonActive: { backgroundColor: '#2563eb' },
-    commentBarWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 },
-    commentBar: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    commentBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+        paddingHorizontal: 16,
+        paddingTop: 12,
+        elevation: 10, // for Android shadow
+        paddingBottom: 12,
+    },
     pinLocationSection: { marginTop: 16, marginBottom: 8 },
     pinLocationCard: { backgroundColor: '#f9fafb', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', padding: 16, gap: 12 },
     pinLocationHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     locationIconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
     pinLocationTitle: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#111' },
-    pinLocationCoords: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 2 },
     pinPreviewContainer: { borderRadius: 8, overflow: 'hidden' },
     placePinButton: { backgroundColor: '#eff6ff', borderRadius: 12, borderWidth: 1, borderColor: '#bfdbfe', padding: 16 },
     placePinContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },

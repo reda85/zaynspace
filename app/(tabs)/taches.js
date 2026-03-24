@@ -29,6 +29,8 @@ import StatusFilter from '../../components/FilterPanel/StatusFilter';
 import TaskListItem from '../../components/TaskListItem';
 import { supabase } from '../../lib/supabase';
 
+import AssignedToFilter from '../../components/FilterPanel/AssignedToFilter';
+import TagFilter from '../../components/FilterPanel/TagFilter';
 import { loggedInUserAtom, pinsAtom, selectedProjectAtom, statusesAtom } from '../../store/atoms';
 
 // --- CONFIGURATION DU TRI ---
@@ -144,6 +146,8 @@ const insets = useSafeAreaInsets();
     const [categoryTags, setCategoryTags] = useState([]);
     const [categoryActive, setCategoryActive] = useState(false);
     const [planActive, setPlanActive] = useState(false);
+    const [tagActive, setTagActive] = useState(false);
+const [selectedTagIds, setSelectedTagIds] = useState([]);
 const [selectedPlans, setSelectedPlans] = useState([]);
 
     const [sortField, setSortField] = useState(SORT_FIELDS[0].key);
@@ -153,6 +157,11 @@ const [selectedPlans, setSelectedPlans] = useState([]);
 
     const [loggedInUser] = useAtom(loggedInUserAtom);
     const [statuses] = useAtom(statusesAtom);
+
+    const [assignedToActive, setAssignedToActive] = useState(false);
+const [selectedAssignees, setSelectedAssignees] = useState([]);
+
+
 
     const handleCreateGeneralTask = useCallback(async () => {
         if (!newTaskName.trim() || isCreatingTask) return;
@@ -293,7 +302,7 @@ const [selectedPlans, setSelectedPlans] = useState([]);
         if (loggedInUser?.role == 'guest') {
             const { data, error } = await supabase
                 .from('pdf_pins')
-                .select('*, assigned_to(*), categories(*), Status(*), pins_photos(*)')
+                .select('*, assigned_to(*), categories(*), Status(*), pins_photos(*), pin_tags(tag_id, tags(*))')
                 .is('deleted_at', null)
                 .eq('project_id', projects?.id)
                 .eq('assigned_to', loggedInUser.id);
@@ -307,7 +316,7 @@ const [selectedPlans, setSelectedPlans] = useState([]);
         } else {
             const { data, error } = await supabase
                 .from('pdf_pins')
-                .select('*, assigned_to(*), categories(*), Status(*), pins_photos(*)')
+                .select('*, assigned_to(*), categories(*), Status(*), pins_photos(*), pin_tags(tag_id, tags(*))')
                 .is('deleted_at', null)
                 .eq('project_id', projects?.id);
             if (data) {
@@ -422,6 +431,10 @@ const [selectedPlans, setSelectedPlans] = useState([]);
         setCategoryTags([]);
         setPlanActive(false);
 setSelectedPlans([]);
+setAssignedToActive(false);
+setSelectedAssignees([]);
+setTagActive(false);
+setSelectedTagIds([]);
     }, []);
 
     const onClose = useCallback(() => setShowFilterPanel(false), []);
@@ -461,48 +474,88 @@ setSelectedPlans([]);
                     return dueDate < today;
                 });
             }
-            if (dateActive && dateTags.length > 0) {
-                result = result.filter((p) => {
-                    if (!p.created_at) return false;
-                    const created = new Date(p.created_at);
-                    const now = new Date();
-                    return dateTags.some((tag) => {
-                        if (tag === "Aujourd'hui") return created.toDateString() === now.toDateString();
-                        if (tag === "Cette semaine") {
-                            const weekStart = new Date(now);
-                            weekStart.setDate(now.getDate() - now.getDay());
-                            return created >= weekStart;
-                        }
-                        if (tag === "Ce mois-ci") {
-                            return created.getMonth() === now.getMonth() &&
-                                created.getFullYear() === now.getFullYear();
-                        }
-                        return false;
-                    });
-                });
-            }
-            if (categoryActive && categoryTags.length > 0) {
-                result = result.filter((p) => {
-                    if (!p.categories) return false;
-                    const categoriesArray = Array.isArray(p.categories) ? p.categories : [p.categories];
-                    const validCategories = categoriesArray.filter(cat => cat != null);
-                    if (validCategories.length === 0) return false;
-                    return categoryTags.some(tagName =>
-                        validCategories.some(cat =>
-                            cat && cat.name && cat.name.toLowerCase() === tagName.toLowerCase()
-                        )
-                    );
-                });
-            }
-            if (planActive && selectedPlans.length > 0) {
-    result = result.filter((p) => selectedPlans.includes(p.pdf_name));
+           if (dateActive) {
+    if (dateTags.length === 0) {
+        result = [];
+    } else {
+        result = result.filter((p) => {
+            if (!p.created_at) return false;
+            const created = new Date(p.created_at);
+            const now = new Date();
+            return dateTags.some((tag) => {
+                if (tag === "Aujourd'hui") return created.toDateString() === now.toDateString();
+                if (tag === 'Cette semaine') {
+                    const weekStart = new Date(now);
+                    weekStart.setDate(now.getDate() - now.getDay());
+                    return created >= weekStart;
+                }
+                if (tag === 'Ce mois-ci') {
+                    return created.getMonth() === now.getMonth() &&
+                        created.getFullYear() === now.getFullYear();
+                }
+                return false;
+            });
+        });
+    }
+}
+          if (categoryActive) {
+    if (categoryTags.length === 0) {
+        result = [];
+    } else {
+        result = result.filter((p) => {
+            if (!p.categories) return false;
+            const categoriesArray = Array.isArray(p.categories) ? p.categories : [p.categories];
+            const validCategories = categoriesArray.filter(cat => cat != null);
+            if (validCategories.length === 0) return false;
+            return categoryTags.some(tagName =>
+                validCategories.some(cat =>
+                    cat && cat.name && cat.name.toLowerCase() === tagName.toLowerCase()
+                )
+            );
+        });
+    }
+}
+          if (planActive) {
+    if (selectedPlans.length === 0) {
+        result = [];
+    } else {
+        result = result.filter((p) => {
+            if (selectedPlans.includes('__no_plan__') && !p.pdf_name) return true;
+            if (selectedPlans.includes(p.pdf_name)) return true;
+            return false;
+        });
+    }
+}
+
+if (tagActive) {
+    if (selectedTagIds.length === 0) {
+        result = [];
+    } else {
+        result = result.filter((p) => {
+            const pinTagIds = (p.pin_tags ?? []).map((pt) => pt.tags?.id ?? pt.tag_id);
+            return selectedTagIds.some((id) => pinTagIds.includes(id));
+        });
+    }
+}
+// AFTER
+if (assignedToActive) {
+    if (selectedAssignees.length === 0) {
+        result = [];
+    } else {
+        result = result.filter((p) => {
+            if (selectedAssignees.includes('__no_assignee__') && !p.assigned_to) return true;
+            if (selectedAssignees.includes(p.assigned_to?.id)) return true;
+            return false;
+        });
+    }
 }
             result = sortPins(result);
             setFilteredPins(result);
         };
     }, [
         pins, searchTerm, createdByMe, activeStatuses, overdue, dateActive, dateTags,
-        loggedInUser, categoryActive, planActive, selectedPlans, categoryTags, sortPins
+        loggedInUser, categoryActive, planActive, selectedPlans, categoryTags, assignedToActive, selectedAssignees,
+        tagActive, selectedTagIds, sortPins
     ]);
 
     useEffect(() => applyAllFilters(), [applyAllFilters]);
@@ -539,6 +592,18 @@ setSelectedPlans([]);
             photoUris: JSON.stringify([]),
         });
     }, [navigation]);
+    const hasActiveFilter = useMemo(() => {
+    return (
+        overdue ||
+        dateActive ||
+        categoryActive ||
+        activeStatuses.length > 0 ||
+        planActive ||
+        assignedToActive ||
+        tagActive ||
+        !!searchTerm
+    );
+}, [overdue, dateActive, categoryActive, activeStatuses, planActive, assignedToActive, tagActive, searchTerm]);
 
     const SortBottomSheet = () => {
         const handleSelectSort = (fieldKey, direction) => {
@@ -682,11 +747,23 @@ setSelectedPlans([]);
                         <DateFilter active={dateActive} onToggle={setDateActive} tags={dateTags} setTags={setDateTags} />
                         <CategoryFilter active={categoryActive} onToggle={setCategoryActive} tags={categoryTags} setTags={setCategoryTags} />
                         <StatusFilter activeStatuses={activeStatuses} setActiveStatuses={setActiveStatuses} selectedProject={projects} />
+                        <TagFilter
+    active={tagActive}
+    onToggle={setTagActive}
+    selectedTags={selectedTagIds}
+    setSelectedTags={setSelectedTagIds}
+/>
                         <PlanFilter
     active={planActive}
     onToggle={setPlanActive}
     selectedPlans={selectedPlans}
     setSelectedPlans={setSelectedPlans}
+/>
+<AssignedToFilter
+    active={assignedToActive}
+    onToggle={setAssignedToActive}
+    selectedMembers={selectedAssignees}
+    setSelectedMembers={setSelectedAssignees}
 />
                     </View>
                 </View>
@@ -793,12 +870,17 @@ setSelectedPlans([]);
                         )}
                     </TouchableOpacity>
                 )}
-                <TouchableOpacity
-                    style={styles.filterFloatingBtn}
-                    onPress={() => setShowFilterPanel(true)}
-                >
-                    <ListFilter size={18} color="white" />
-                </TouchableOpacity>
+               <TouchableOpacity
+    style={styles.filterFloatingBtn}
+    onPress={() => setShowFilterPanel(true)}
+>
+    <ListFilter size={18} color="white" />
+    {hasActiveFilter && (
+        <View style={styles.filterActiveBadge}>
+            <Text style={styles.filterActiveBadgeText}>{filteredPins.length}</Text>
+        </View>
+    )}
+</TouchableOpacity>
             </View>
         </View>
     );
@@ -949,4 +1031,21 @@ const styles = StyleSheet.create({
     createButton: { backgroundColor: '#6D28D9' },
     createButtonDisabled: { backgroundColor: '#D1D5DB' },
     createButtonText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#FFFFFF' },
+    filterActiveBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#10b981',
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+},
+filterActiveBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontFamily: 'Outfit_600SemiBold',
+},
 });

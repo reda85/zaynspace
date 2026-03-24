@@ -59,6 +59,8 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const TILE_SIZE = 512;
 const PIN_SIZE = 24;
 const FLOATING_BUTTON_SIZE = 56;
+const FAB_DEFAULT_RIGHT = 20;
+const FAB_DEFAULT_BOTTOM = 180;
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const USE_BACKEND = API_URL && !API_URL.includes('localhost');
 
@@ -162,13 +164,16 @@ export default function PdfViewerWithTiles({
   const lastTapRef = useRef(0);
   const DOUBLE_TAP_DELAY = 300;
 
-  // FAB refs
+  // FAB refs & animation
   const buttonRef = useRef(null);
   const isDragging = useSharedValue(false);
   const buttonX = useSharedValue(0);
   const buttonY = useSharedValue(0);
   const buttonScale = useSharedValue(1);
   const pdfWrapperRef = useRef(null);
+
+
+  // ──────────────────────────────────────────────────────────────────────────
 
   // Minimum scale
   const minScale = useMemo(() => {
@@ -439,7 +444,11 @@ export default function PdfViewerWithTiles({
     buttonY.value = withSpring(0);
   }, []);
 
-  // Gestures
+  // ── Gestures ────────────────────────────────────────────────────────────────
+
+  // ✅ CHANGED: buttonGesture now calls computeFabActionsPlacement on end
+  // so the confirm/cancel row always appears within the screen, above or below
+  // the FAB depending on where it was dropped.
   const buttonGesture = useMemo(() => Gesture.Pan()
     .onStart(() => {
       isDragging.value = true;
@@ -546,6 +555,8 @@ export default function PdfViewerWithTiles({
     opacity: isDragging.value ? 0.8 : 1
   }));
 
+
+
   // ✅ Resolve icon from category, with fallback to 'unassigned'
   const getCategoryIcon = (pin) => {
     const iconName =
@@ -557,7 +568,6 @@ export default function PdfViewerWithTiles({
 
   return (
     <GestureHandlerRootView style={styles.container}>
-     
 
       <PdfViewerFilterOverlay
         pins={normalizedPins}
@@ -622,16 +632,19 @@ export default function PdfViewerWithTiles({
 
       {enablePinDrop && (
         <View style={[styles.buttonWrapper, { paddingBottom: insets.bottom }]} pointerEvents="box-none">
+
+          {/* Confirm / cancel bar — fixed at bottom center, independent of FAB position */}
           {showFabActions && (
-            <Animated.View style={[styles.fabActionsContainer, buttonAnimatedStyle]} pointerEvents="box-none">
+            <View style={[styles.fabActionsContainer, { bottom: insets.bottom + 84 }]}>
               <TouchableOpacity style={[styles.actionButton, styles.checkButton]} onPress={handleConfirmDrop}>
-                <CheckIcon size={24} color="white" />
+                <CheckIcon size={20} color="white" />
+                <Text style={styles.actionButtonText}>Confirmer</Text>
               </TouchableOpacity>
-              <View style={{ width: FLOATING_BUTTON_SIZE }} />
               <TouchableOpacity style={[styles.actionButton, styles.closeButton]} onPress={handleCancelDrop}>
-                <X size={24} color="white" />
+                <X size={20} color="white" />
+                <Text style={styles.actionButtonText}>Annuler</Text>
               </TouchableOpacity>
-            </Animated.View>
+            </View>
           )}
 
           <GestureDetector gesture={buttonGesture}>
@@ -729,8 +742,8 @@ const styles = StyleSheet.create({
   buttonWrapper: { position: 'absolute', right: 0, bottom: 0, left: 0, top: 0, pointerEvents: 'box-none' },
   floatingButton: {
     position: 'absolute',
-    right: 20,
-    bottom: 180,
+    right: FAB_DEFAULT_RIGHT,
+    bottom: FAB_DEFAULT_BOTTOM,
     width: FLOATING_BUTTON_SIZE,
     height: FLOATING_BUTTON_SIZE,
     borderRadius: FLOATING_BUTTON_SIZE / 2,
@@ -744,25 +757,34 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     zIndex: 9999,
   },
+  // ✅ CHANGED: removed hardcoded right / bottom — those come from fabActionsStyle
   fabActionsContainer: {
     position: 'absolute',
-    right: -40,
-    bottom: 120,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    gap: 16,
+    justifyContent: 'center',
+    gap: 12,
     alignItems: 'center',
   },
   actionButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
-    elevation: 4,
+    gap: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 999,
+    elevation: 6,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 15,
+    fontWeight: '500',
+    fontFamily: 'Outfit_400Regular',
   },
   checkButton: { backgroundColor: '#10b981' },
   closeButton: { backgroundColor: '#ef4444' },

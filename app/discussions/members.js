@@ -4,23 +4,23 @@
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useAtom } from 'jotai';
-import { Crown, UserMinus, UserPlus } from 'lucide-react-native';
+import { UserMinus, UserPlus } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import {
-    addMember,
-    fetchMembers,
-    removeMember,
-    searchInvitableUsers,
+  addMember,
+  fetchMembers,
+  removeMember,
+  searchInvitableUsers,
 } from '../../services/discussionsService';
 import { loggedInUserAtom, selectedProjectAtom } from '../../store/atoms';
 
@@ -140,7 +140,11 @@ export default function MembersScreen() {
         <View style={styles.memberInfo}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={styles.memberName}>{profile.name ?? 'Inconnu'}</Text>
-            {item.role === 'admin' && <Crown size={13} color="#D97706" />}
+           {item.role === 'admin' && (
+  <View style={styles.adminBadge}>
+    <Text style={styles.adminBadgeText}>Admin</Text>
+  </View>
+)}
           </View>
           <Text style={styles.memberEmail}>{profile.email ?? ''}</Text>
         </View>
@@ -264,4 +268,17 @@ const styles = StyleSheet.create({
   addBtnText: { color: '#FFF', fontSize: 13, fontFamily: 'Outfit_600SemiBold' },
 
   sep: { height: 6 },
+  adminBadge: {
+  backgroundColor: '#EDE9FE',
+  borderRadius: 4,
+  paddingHorizontal: 6,
+  paddingVertical: 2,
+},
+adminBadgeText: {
+  fontSize: 10,
+  fontFamily: 'Outfit_600SemiBold',
+  color: '#6D28D9',
+  letterSpacing: 0.5,
+  textTransform: 'uppercase',
+},
 });

@@ -30,7 +30,7 @@ export default function SignIn() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       {/* Logo and Brand - Above Card */}
@@ -57,6 +57,7 @@ export default function SignIn() {
             placeholder="exemple@email.com"
             placeholderTextColor="#999"
             style={styles.input}
+            returnKeyType='next'
           />
         </View>
 

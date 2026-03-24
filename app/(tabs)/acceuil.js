@@ -166,13 +166,13 @@ export default function AcceuilScreen() {
 
         if (user.role === 'guest') {
           const { data: pinsData } = await supabase
-            .from('pdf_pins').select('*,Status(*),categories(*),projects(*)')
+            .from('pdf_pins').select('*,Status(*),categories(*),projects(*),pin_tags(tag_id, tags(*))')
             .is('deleted_at', null)
             .eq('project_id', selectedProject.id).eq('assigned_to', user.id);
           if (pinsData) setPins(pinsData);
         } else {
           const { data: pinsData } = await supabase
-            .from('pdf_pins').select('*,Status(*),categories(*),projects(*)')
+            .from('pdf_pins').select('*,Status(*),categories(*),projects(*),pin_tags(tag_id, tags(*))')
             .is('deleted_at', null)
             .eq('project_id', selectedProject.id);
           if (pinsData) setPins(pinsData);

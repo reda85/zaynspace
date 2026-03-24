@@ -55,13 +55,13 @@ import {
   Type,
   X
 } from "lucide-react-native";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Image,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   StyleSheet,
   Text,
@@ -122,6 +122,17 @@ export default function DrawingScreen() {
   const images = photos.map((uri) => useImage(uri));
   const background = images[currentIndex];
 
+  // ── Keyboard height tracking ──
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const show = Keyboard.addListener(showEvent, (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener(hideEvent, () => setKeyboardHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+
   // Drawing state
   const currentPath = useSharedValue(null);
   const startPoint = useSharedValue(null);
@@ -173,7 +184,7 @@ export default function DrawingScreen() {
   const currentFont = getCurrentFont(fontSize);
 
   const renderImageToSurface = useCallback((img, photoPaths, canvasWidth, canvasHeight, shouldCompress = true) => {
-    const MAX_DIMENSION = shouldCompress ? 1920 : 4096; // Full res when compression is off
+    const MAX_DIMENSION = shouldCompress ? 1920 : 4096;
 
     const imgWidth = img.width();
     const imgHeight = img.height();
@@ -264,7 +275,6 @@ export default function DrawingScreen() {
     });
 
     const snapshot = surface.makeImageSnapshot();
-    // Compress with JPEG 85% when enabled, otherwise lossless PNG
     const bytes = shouldCompress
       ? snapshot.encodeToBytes(ImageFormat.JPEG, 85)
       : snapshot.encodeToBytes(ImageFormat.PNG, 100);
@@ -532,6 +542,7 @@ export default function DrawingScreen() {
     }
     setTextInput("");
     setAddingText(false);
+    Keyboard.dismiss();
   };
 
   const onCanvasLayout = (event) => {
@@ -544,13 +555,11 @@ export default function DrawingScreen() {
       setIsSaving(true);
       setSavingProgress(0);
 
-      // Allow UI to update before heavy work
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // ── Read preferences ONCE before the upload loop ──
-      let shouldSaveToGallery = true; // default: on
-      let shouldCompress      = false; // default: off
-      let shouldOptimize      = true;  // default: on
+      let shouldSaveToGallery = true;
+      let shouldCompress      = false;
+      let shouldOptimize      = true;
       try {
         const [autoSaveEntry, compressEntry, optimizeEntry] = await AsyncStorage.multiGet([
           AUTO_SAVE_KEY,
@@ -564,7 +573,6 @@ export default function DrawingScreen() {
         console.warn("Could not read storage preferences:", e);
       }
 
-      // Request MediaLibrary permission only if we need it
       if (shouldSaveToGallery) {
         const { status } = await MediaLibrary.requestPermissionsAsync();
         if (status !== "granted") {
@@ -572,12 +580,10 @@ export default function DrawingScreen() {
             "Permission refusée",
             "L'accès à la galerie est nécessaire pour sauvegarder automatiquement les images. Vous pouvez désactiver cette option dans Stockage et données."
           );
-          // Continue saving to Supabase, but skip gallery
           shouldSaveToGallery = false;
         }
       }
 
-      // OPTIMIZATION 1: Wait for all images to load
       setSavingProgress(5);
       for (let i = 0; i < photos.length; i++) {
         let attempts = 0;
@@ -588,7 +594,6 @@ export default function DrawingScreen() {
         if (!images[i]) throw new Error(`Image ${i} failed to load`);
       }
 
-      // OPTIMIZATION 2: Render images in chunks with progress updates
       setSavingProgress(10);
       const processedImages = [];
 
@@ -615,7 +620,6 @@ export default function DrawingScreen() {
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      // OPTIMIZATION 3: Batched uploads
       const BATCH_SIZE = 3;
       let completedCount = 0;
 
@@ -630,7 +634,6 @@ export default function DrawingScreen() {
 
           await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: "base64" });
 
-          // ── Conditionally save to the device gallery ──
           if (shouldSaveToGallery) {
             await MediaLibrary.saveToLibraryAsync(fileUri);
           }
@@ -644,7 +647,6 @@ export default function DrawingScreen() {
 
           if (uploadError) throw uploadError;
 
-          // ── Conditionally delete the local temp file to save space ──
           if (shouldOptimize) {
             await FileSystem.deleteAsync(fileUri, { idempotent: true });
           }
@@ -667,8 +669,6 @@ export default function DrawingScreen() {
             .single();
 
           if (insertError) throw insertError;
-
-         
 
           completedCount++;
           const uploadProgress = 40 + (60 * completedCount / processedImages.length);
@@ -711,12 +711,17 @@ export default function DrawingScreen() {
     }
   };
 
+  // ── Layout constants (defined in dependency order) ──
   const thumbnailSectionHeight = 86 + insets.top + 10;
-  const descriptionHeight = 60 + insets.bottom;
-  const controlsHeight = 80 + insets.bottom;
+  const controlsHeight = 80;                               // height of controls pill
+  const controlsBottom = insets.bottom;                    // controls rests on safe area
+  const descriptionBarHeight = 44;                         // height of description input
+  const descriptionBottom = controlsBottom + controlsHeight + 8; // description sits above controls
+  const canvasBottom = descriptionBottom + descriptionBarHeight; // canvas stops at description top
 
   return (
     <View style={styles.container}>
+      {/* ── Thumbnails ── */}
       <View style={[styles.thumbnailSection, { top: 10 + insets.top }]}>
         <FlatList
           data={photos}
@@ -746,12 +751,13 @@ export default function DrawingScreen() {
         </View>
       </View>
 
+      {/* ── Canvas — bottom shrinks when keyboard opens ── */}
       <View
         style={[
           styles.canvasContainer,
           {
             top: thumbnailSectionHeight,
-            bottom: descriptionHeight,
+            bottom: canvasBottom + keyboardHeight,
           },
         ]}
         onLayout={onCanvasLayout}
@@ -832,6 +838,7 @@ export default function DrawingScreen() {
         </GestureDetector>
       </View>
 
+      {/* ── Tool panel ── */}
       <View style={[styles.toolPanel, { top: thumbnailSectionHeight + 20 }]}>
         {!toolPanelOpen && (
           <TouchableOpacity
@@ -931,20 +938,29 @@ export default function DrawingScreen() {
         )}
       </View>
 
+      {/* ── Text drag hint — rises with keyboard ── */}
       {selectedTextIndexState !== null && (
-        <View style={[styles.textHint, { bottom: controlsHeight + 80 }]}>
+        <View style={[
+          styles.textHint,
+          { bottom: descriptionBottom + descriptionBarHeight + 8 + keyboardHeight },
+        ]}>
           <Text style={styles.textHintText}>📍 Drag to move • 🤏 Pinch to scale</Text>
         </View>
       )}
 
-      <View style={[styles.controls, { bottom: controlsHeight }]}>
+      {/* ── Controls pill — rises with keyboard ── */}
+      <View style={[styles.controls, { bottom: controlsBottom + keyboardHeight }]}>
         <TouchableOpacity onPress={handleUndo}><RotateCcw color="white" size={28} /></TouchableOpacity>
         <TouchableOpacity onPress={handleClear}><Trash2 color="white" size={28} /></TouchableOpacity>
         <TouchableOpacity onPress={handleSave}><Save color="white" size={28} /></TouchableOpacity>
       </View>
 
+      {/* ── Canvas text input overlay — rises with keyboard ── */}
       {addingText && (
-        <View style={[styles.textInputOverlay, { bottom: controlsHeight + 60 }]}>
+        <View style={[
+          styles.textInputOverlay,
+          { bottom: descriptionBottom + descriptionBarHeight + 8 + keyboardHeight },
+        ]}>
           <TextInput
             style={styles.textInput}
             placeholder="Enter text"
@@ -952,34 +968,39 @@ export default function DrawingScreen() {
             value={textInput}
             onChangeText={setTextInput}
             onSubmitEditing={handleConfirmText}
+            returnKeyType="done"
             autoFocus
           />
-          <TouchableOpacity onPress={handleConfirmText}><Save color="white" size={28} /></TouchableOpacity>
+          <TouchableOpacity onPress={handleConfirmText}>
+            <Save color="white" size={28} />
+          </TouchableOpacity>
         </View>
       )}
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.descriptionWrapper}
-      >
-        <View style={[styles.descriptionContainer, { paddingBottom: 8 + insets.bottom }]}>
-          <TextInput
-            style={styles.descriptionInput}
-            placeholder="Add a description..."
-            placeholderTextColor="#ccc"
-            onChangeText={(txt) =>
-              setDescriptions((prev) => {
-                const copy = [...prev];
-                copy[currentIndex] = txt;
-                return copy;
-              })
-            }
-            value={descriptions[currentIndex]}
-            multiline
-          />
-        </View>
-      </KeyboardAvoidingView>
+      {/* ── Description bar — sits above controls pill, rises with keyboard ── */}
+      <View style={[
+        styles.descriptionWrapper,
+        { bottom: descriptionBottom + keyboardHeight },
+      ]}>
+        <TextInput
+          style={styles.descriptionInput}
+          placeholder="Add a description..."
+          placeholderTextColor="#ccc"
+          onChangeText={(txt) =>
+            setDescriptions((prev) => {
+              const copy = [...prev];
+              copy[currentIndex] = txt;
+              return copy;
+            })
+          }
+          value={descriptions[currentIndex]}
+          multiline
+          returnKeyType="done"
+          blurOnSubmit
+        />
+      </View>
 
+      {/* ── Saving overlay ── */}
       {isSaving && (
         <View style={styles.overlay}>
           <View style={styles.loaderBox}>
@@ -1176,6 +1197,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.05 }],
   },
 
+  // Controls pill
   controls: {
     flexDirection: "row",
     position: "absolute",
@@ -1194,6 +1216,7 @@ const styles = StyleSheet.create({
     zIndex: 15,
   },
 
+  // Canvas text input overlay
   textInputOverlay: {
     position: "absolute",
     left: 20,
@@ -1221,22 +1244,23 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 
-  descriptionWrapper: { position: "absolute", bottom: 0, width: "100%", zIndex: 10 },
-  descriptionContainer: {
-    flexDirection: "row",
-    alignItems: "center",
+  // Description bar — floats above controls pill, never overlaps it
+  descriptionWrapper: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    zIndex: 10,
     backgroundColor: "rgba(0,0,0,0.85)",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.1)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
   descriptionInput: {
-    flex: 1,
     color: "white",
     fontSize: 15,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    minHeight: 44,
   },
 
   overlay: {

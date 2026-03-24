@@ -154,6 +154,7 @@ export default function ProjectPlans() {
       .select('*')
       .eq('project_id', selectedProject.id)
       .is('deleted_at', null)
+      .eq('status', 'ready')
       .order('name', { ascending: true });
     if (data) setPlans(data);
   };

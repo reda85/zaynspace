@@ -1,4 +1,5 @@
 import { router, useNavigation } from 'expo-router';
+import { useAtom } from 'jotai';
 import {
   Camera,
   Mail,
@@ -7,25 +8,29 @@ import {
   User,
   X,
 } from 'lucide-react-native';
-import { useLayoutEffect, useState } from 'react';
+import { useLayoutEffect } from 'react';
 import {
   Alert,
   Image,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { loggedInUserAtom } from '../store/atoms';
 
 export default function AccountScreen() {
   const navigation = useNavigation();
+  const [user] = useAtom(loggedInUserAtom);
 
-  // 🔁 Replace with real user data
-  const [name, setName] = useState('Marouane Reda');
-  const email = 'marouane@email.com';
-  const memberStatus = 'Membre actif';
+  console.log('🔍 User data in AccountScreen:', user);
+
+  
+ // const [name, setName] = useState(user?.name);
+  const name = user?.name;
+  const email = user?.email;
+  const memberStatus = user?.role === 'admin' ? 'Administrateur' : ('guest' ? 'Invité' : 'Membre');
 
   /* ---------- HEADER (same as Settings) ---------- */
   useLayoutEffect(() => {
@@ -105,23 +110,20 @@ export default function AccountScreen() {
           </View>
         </TouchableOpacity>
 
-        <View style={styles.field}>
-          <View style={styles.fieldLabel}>
+        <View style={styles.infoRow}>
+          
             <User size={16} color="#6B7280" />
-            <Text style={styles.label}>Nom</Text>
+            <View style={styles.infoText}>
+            <Text style={styles.infoLabel}>Nom</Text>
+            <Text style={styles.infoValue}>{name}</Text>
           </View>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            style={styles.input}
-            placeholder="Votre nom"
-            placeholderTextColor="#9CA3AF"
-          />
+         
         </View>
       </View>
 
       {/* INFO CARD */}
       <View style={styles.card}>
+        
         <View style={styles.infoRow}>
           <Mail size={18} color="#6B7280" />
           <View style={styles.infoText}>
