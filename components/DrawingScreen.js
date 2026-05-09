@@ -18,6 +18,8 @@
 // 6. ✅ Conditional Gallery Save - Respects the "Sauvegarde automatique des données"
 //    preference stored in AsyncStorage (@settings/autoSaveImages)
 //
+// 🌍 7. ✅ Geolocation Support - Photos now include latitude/longitude metadata
+//
 // EXPECTED PERFORMANCE GAINS:
 // - UI responds immediately (< 100ms to show dialog)
 // - 70-90% faster rendering due to smaller output size
@@ -44,9 +46,14 @@ import { Buffer } from "buffer";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 import { useAtom } from "jotai";
 import {
   ArrowRight,
+  Mic as MicIcon,
   Pen,
   RotateCcw,
   Save,
@@ -119,7 +126,9 @@ export default function DrawingScreen() {
   const canvasRef = useCanvasRef();
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const images = photos.map((uri) => useImage(uri));
+  // 🌍 Extract URIs from photo objects (handle both old string format and new object format)
+  const photoUris = photos.map(photo => typeof photo === 'string' ? photo : photo.uri);
+  const images = photoUris.map((uri) => useImage(uri));
   const background = images[currentIndex];
 
   // ── Keyboard height tracking ──
@@ -159,6 +168,10 @@ export default function DrawingScreen() {
   const [selectedTextIndexState, setSelectedTextIndexState] = useState(null);
   const [isEditingText, setIsEditingText] = useState(false);
 
+  // ── Description dictation state ───────────────────────────────────────────
+  const [isListening, setIsListening] = useState(false);
+  const [partialResult, setPartialResult] = useState('');
+
   // Pinch gesture state for text transformation
   const initialScale = useSharedValue(1);
   const isPinching = useSharedValue(false);
@@ -182,6 +195,54 @@ export default function DrawingScreen() {
   };
 
   const currentFont = getCurrentFont(fontSize);
+
+  // ── Speech recognition for description ───────────────────────────────────
+  useSpeechRecognitionEvent("start", () => setIsListening(true));
+  useSpeechRecognitionEvent("end", () => {
+    setIsListening(false);
+    setPartialResult('');
+  });
+  useSpeechRecognitionEvent("result", (event) => {
+    const transcript = event.results[0]?.transcript || '';
+    if (!transcript) return;
+    if (event.isFinal) {
+      setDescriptions(prev => {
+        const copy = [...prev];
+        copy[currentIndex] = (copy[currentIndex] ? copy[currentIndex] + ' ' : '') + transcript;
+        return copy;
+      });
+      setPartialResult('');
+    } else {
+      setPartialResult(transcript);
+    }
+  });
+  useSpeechRecognitionEvent("error", (event) => {
+    Alert.alert('Dictée', `Erreur: ${event.message}`);
+    setIsListening(false);
+    setPartialResult('');
+  });
+
+  const handleDictateDescription = async () => {
+    if (isListening) {
+      await ExpoSpeechRecognitionModule.stop().catch(() => {});
+      return;
+    }
+    let granted = false;
+    try {
+      const perm = await ExpoSpeechRecognitionModule.getPermissionsAsync();
+      granted = perm?.granted;
+      if (!granted) {
+        const req = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        granted = req?.granted;
+      }
+    } catch (e) {
+      if (Platform.OS === 'android') granted = true;
+    }
+    if (!granted) { Alert.alert('Permission refusée', 'Activez le microphone dans les réglages'); return; }
+    try {
+      await ExpoSpeechRecognitionModule.start({ lang: 'fr-FR', continuous: false, interimResults: true });
+    } catch (e) {}
+  };
 
   const renderImageToSurface = useCallback((img, photoPaths, canvasWidth, canvasHeight, shouldCompress = true) => {
     const MAX_DIMENSION = shouldCompress ? 1920 : 4096;
@@ -585,7 +646,7 @@ export default function DrawingScreen() {
       }
 
       setSavingProgress(5);
-      for (let i = 0; i < photos.length; i++) {
+      for (let i = 0; i < photoUris.length; i++) {
         let attempts = 0;
         while (!images[i] && attempts < 100) {
           await new Promise((r) => setTimeout(r, 50));
@@ -598,10 +659,10 @@ export default function DrawingScreen() {
       const processedImages = [];
 
       const RENDER_CHUNK_SIZE = 2;
-      for (let i = 0; i < photos.length; i += RENDER_CHUNK_SIZE) {
+      for (let i = 0; i < photoUris.length; i += RENDER_CHUNK_SIZE) {
         const chunkPromises = [];
 
-        for (let j = i; j < Math.min(i + RENDER_CHUNK_SIZE, photos.length); j++) {
+        for (let j = i; j < Math.min(i + RENDER_CHUNK_SIZE, photoUris.length); j++) {
           chunkPromises.push((async () => {
             const img = images[j];
             const photoPaths = paths[j] || [];
@@ -614,7 +675,7 @@ export default function DrawingScreen() {
         const chunkResults = await Promise.all(chunkPromises);
         processedImages.push(...chunkResults);
 
-        const renderProgress = 10 + (30 * processedImages.length / photos.length);
+        const renderProgress = 10 + (30 * processedImages.length / photoUris.length);
         setSavingProgress(renderProgress);
 
         await new Promise(resolve => setTimeout(resolve, 50));
@@ -655,6 +716,11 @@ export default function DrawingScreen() {
             .from("pinphotos")
             .getPublicUrl(uploadPath);
 
+          // 🌍 Extract geolocation from photo object (if available)
+          const currentPhoto = photos[index];
+          const latitude = typeof currentPhoto === 'object' ? currentPhoto.latitude : null;
+          const longitude = typeof currentPhoto === 'object' ? currentPhoto.longitude : null;
+
           const { data: photoInsert, error: insertError } = await supabase
             .from("pins_photos")
             .insert([{
@@ -664,6 +730,9 @@ export default function DrawingScreen() {
               description: descriptions[index],
               date: new Date().toISOString(),
               sender_id: loggedInUser?.id,
+              // 🌍 Include geolocation if available
+              latitude,
+              longitude,
             }])
             .select()
             .single();
@@ -713,18 +782,18 @@ export default function DrawingScreen() {
 
   // ── Layout constants (defined in dependency order) ──
   const thumbnailSectionHeight = 86 + insets.top + 10;
-  const controlsHeight = 80;                               // height of controls pill
-  const controlsBottom = insets.bottom;                    // controls rests on safe area
-  const descriptionBarHeight = 44;                         // height of description input
-  const descriptionBottom = controlsBottom + controlsHeight + 8; // description sits above controls
-  const canvasBottom = descriptionBottom + descriptionBarHeight; // canvas stops at description top
+  const controlsHeight = 80;
+  const controlsBottom = insets.bottom;
+  const descriptionBarHeight = 44;
+  const descriptionBottom = controlsBottom + controlsHeight + 8;
+  const canvasBottom = descriptionBottom + descriptionBarHeight;
 
   return (
     <View style={styles.container}>
       {/* ── Thumbnails ── */}
       <View style={[styles.thumbnailSection, { top: 10 + insets.top }]}>
         <FlatList
-          data={photos}
+          data={photoUris}
           horizontal
           keyExtractor={(_, i) => i.toString()}
           contentContainerStyle={styles.thumbnailContent}
@@ -747,7 +816,7 @@ export default function DrawingScreen() {
           )}
         />
         <View style={styles.photoCounter}>
-          <Text style={styles.photoCounterText}>{currentIndex + 1}/{photos.length}</Text>
+          <Text style={styles.photoCounterText}>{currentIndex + 1}/{photoUris.length}</Text>
         </View>
       </View>
 
@@ -977,27 +1046,39 @@ export default function DrawingScreen() {
         </View>
       )}
 
-      {/* ── Description bar — sits above controls pill, rises with keyboard ── */}
+      {/* ── Description bar with mic — sits above controls pill, rises with keyboard ── */}
       <View style={[
         styles.descriptionWrapper,
         { bottom: descriptionBottom + keyboardHeight },
       ]}>
-        <TextInput
-          style={styles.descriptionInput}
-          placeholder="Add a description..."
-          placeholderTextColor="#ccc"
-          onChangeText={(txt) =>
-            setDescriptions((prev) => {
-              const copy = [...prev];
-              copy[currentIndex] = txt;
-              return copy;
-            })
-          }
-          value={descriptions[currentIndex]}
-          multiline
-          returnKeyType="done"
-          blurOnSubmit
-        />
+        <View style={styles.descriptionRow}>
+          <TextInput
+            style={styles.descriptionInput}
+            placeholder="Add a description..."
+            placeholderTextColor="#ccc"
+            onChangeText={(txt) =>
+              setDescriptions((prev) => {
+                const copy = [...prev];
+                copy[currentIndex] = txt;
+                return copy;
+              })
+            }
+            value={
+              isListening && partialResult
+                ? (descriptions[currentIndex] ? `${descriptions[currentIndex]} ${partialResult}` : partialResult)
+                : descriptions[currentIndex]
+            }
+            multiline
+            returnKeyType="done"
+            blurOnSubmit
+          />
+          <TouchableOpacity
+            onPress={handleDictateDescription}
+            style={[styles.descriptionMic, isListening && styles.descriptionMicActive]}
+          >
+            <MicIcon size={18} color={isListening ? '#fff' : '#aaa'} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* ── Saving overlay ── */}
@@ -1197,7 +1278,6 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.05 }],
   },
 
-  // Controls pill
   controls: {
     flexDirection: "row",
     position: "absolute",
@@ -1216,7 +1296,6 @@ const styles = StyleSheet.create({
     zIndex: 15,
   },
 
-  // Canvas text input overlay
   textInputOverlay: {
     position: "absolute",
     left: 20,
@@ -1244,7 +1323,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
 
-  // Description bar — floats above controls pill, never overlaps it
+  // ── Description bar ───────────────────────────────────────────────────────
   descriptionWrapper: {
     position: "absolute",
     left: 20,
@@ -1255,12 +1334,30 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.1)",
   },
+  descriptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 8,
+  },
   descriptionInput: {
+    flex: 1,
     color: "white",
     fontSize: 15,
     paddingVertical: 10,
     paddingHorizontal: 16,
     minHeight: 44,
+  },
+  descriptionMic: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+  descriptionMicActive: {
+    backgroundColor: '#6D28D9',
   },
 
   overlay: {

@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import { useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { supabase } from '../lib/supabase';
 import ImageViewerModal from './ImageViewerModal';
 
 const FIELD_LABELS = {
@@ -93,11 +94,16 @@ export default function Timeline({ events = [], comments = [], showAllEvents = f
     : allItems.filter((item) => !(item.type === 'event' && item.category === 'modification'));
 
   const handleImagePress = (photo, userName) =>
-    setSelectedImage({ imageUrl: photo.public_url, userName, description: photo.description || '' });
+    setSelectedImage({
+        id: photo.id,           // ← add this
+        imageUrl: photo.public_url,
+        userName,
+        description: photo.description || '',
+    });
 
   const renderItem = (item) => {
     const timestamp = dayjs(item.created_at).format('MMM D, YYYY h:mm A');
-    const userName = item?.members?.name || 'Utilisateur inconnu';
+    const userName = item?.members?.name || item?.username || 'Utilisateur inconnu';
     const isComment = item.type === 'comment';
     const isModification = item.category === 'modification';
 
@@ -167,6 +173,16 @@ export default function Timeline({ events = [], comments = [], showAllEvents = f
           imageUrl={selectedImage.imageUrl}
           userName={selectedImage.userName}
           description={selectedImage.description}
+          onSaveDescription={async (newDesc) => {
+    const { error } = await supabase
+        .from('pins_photos')
+        .update({ description: newDesc })
+        .eq('id', selectedImage.id);
+    if (!error) {
+        // Update local state so the modal and overlay reflect the new description immediately
+        setSelectedImage(prev => ({ ...prev, description: newDesc }));
+    }
+}}
         />
       )}
     </View>

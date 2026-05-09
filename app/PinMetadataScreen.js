@@ -8,12 +8,22 @@ import {
 import { useAtom } from 'jotai';
 import debounce from 'lodash/debounce';
 import {
+    AccessibilityIcon,
     AirVentIcon,
     AlarmSmokeIcon,
+    AsteriskIcon,
+    BadgeIcon,
+    BanIcon,
+    BlocksIcon,
+    BoltIcon,
+    BoxesIcon,
+    BoxIcon,
     BrickWallIcon,
     BrushIcon,
     Calendar,
     Camera,
+    CarIcon,
+    CctvIcon,
     CheckCircle,
     CheckIcon,
     ChevronDown,
@@ -109,6 +119,16 @@ const getCategoryIconComponent = (iconName, color = 'white', size = 20) => {
         case 'flame':             return <FlameIcon color={color} size={size} />;
         case 'trending-down':     return <TrendingDownIcon color={color} size={size} />;
         case 'wifi':              return <WifiIcon color={color} size={size} />;
+        case 'accessibility':     return <AccessibilityIcon color={color} size={size} />;
+        case 'asterisk':          return <AsteriskIcon color={color} size={size} />;
+        case 'badge':             return <BadgeIcon color={color} size={size} />;
+        case 'ban':               return <BanIcon color={color} size={size} />;
+        case 'blocks':           return <BlocksIcon color={color} size={size} />;
+        case 'bolt':              return <BoltIcon color={color} size={size} />;
+        case 'box':               return <BoxIcon color={color} size={size} />;
+        case 'boxes':            return <BoxesIcon color={color} size={size} />;
+        case 'car':               return <CarIcon color={color} size={size} />;
+        case 'cctv':              return <CctvIcon color={color} size={size} />;
         default:                  return <CheckIcon color={color} size={size} />;
     }
 };
@@ -133,8 +153,8 @@ export default function PinMetadataScreen() {
 
     const [currentPinId, setCurrentPinId] = useState(pinId);
     const [currentRole, setCurrentRole] = useState(null);
+    const currentMemberRef = useRef(null);
     const pin = pins?.find((p) => p.id === currentPinId) ?? {};
-    console.log('🧩 pin derived from atom, pin.pin_tags:', JSON.stringify(pin?.pin_tags));
 
     const currentPinIndex = pins?.findIndex((p) => p.id === currentPinId) ?? -1;
     const hasPrevious = currentPinIndex > 0;
@@ -196,9 +216,20 @@ export default function PinMetadataScreen() {
 
     const recognizedTextRef = useRef('');
 
+    // ─── Refs to track latest name/note values for beforeRemove flush ─────────
+    const nameRef = useRef(name);
+    const noteRef = useRef(note);
+
     const SWIPE_VELOCITY_THRESHOLD = 500;
     const SWIPE_DISTANCE_THRESHOLD = 50;
     const skipNextReloadRef = useRef(false);
+
+    // ─── Centralized patch enrichment ────────────────────────────────────────
+    const buildPatch = (patch) => ({
+        ...patch,
+        updated_at: new Date().toISOString(),
+        updated_by: currentMemberRef.current?.id,
+    });
 
     useEffect(() => {
         const show = Keyboard.addListener('keyboardDidShow', (e) => {
@@ -212,10 +243,15 @@ export default function PinMetadataScreen() {
 
     useEffect(() => {
         const loadRole = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            const member = selectedMembers?.find(m => m.auth_id === user?.id);
-            setCurrentRole(member?.role);
-        };
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('👤 user.id:', user?.id);
+    console.log('👥 selectedMembers:', JSON.stringify(selectedMembers?.map(m => ({ id: m.id, auth_id: m.auth_id, name: m.name }))));
+    const member = selectedMembers?.find(m => m.auth_id === user?.id);
+    console.log('🎯 member found:', JSON.stringify(member));
+    setCurrentRole(member?.role);
+    currentMemberRef.current = member;
+    console.log('✅ currentMemberRef.current set to:', currentMemberRef.current?.id);
+};
         loadRole();
     }, [selectedMembers]);
 
@@ -254,26 +290,21 @@ export default function PinMetadataScreen() {
     };
 
     async function getPinFromId(id) {
-        console.log('🔍 getPinFromId called, id:', id, 'skipFlag:', skipNextReloadRef.current);
         if (!id) return;
         const { data, error } = await supabase
             .from('pdf_pins')
             .select('*,projects(*),events(*,pins_photos(*),members(*)),assigned_to(*),categories(*),Status(*),plans(*),pin_tags(tag_id, tags(*))')
             .eq('id', id)
             .single();
-            console.log('📦 DB returned pin_tags:', JSON.stringify(data?.pin_tags));
         if (data) {
             if (skipNextReloadRef.current) {
                 skipNextReloadRef.current = false;
                 return;
-            } 
-            // WITH — only protect name/note, always update everything else:
-if (!skipNextReloadRef.current) {
-    setName(data.name);
-    setNote(data.note);
-}
-              
-            
+            }
+            setName(data.name);
+            nameRef.current = data.name;
+            setNote(data.note);
+            noteRef.current = data.note;
             setProjectNumber(data.projects?.project_number || '');
             setPinNumber(data.pin_number || '');
             setSelectedPin(data);
@@ -290,15 +321,12 @@ if (!skipNextReloadRef.current) {
             setXcoordinate(data.x || null);
             setYcoordinate(data.y || null);
             const flatTags = (data.pin_tags ?? []).map((pt) => pt.tags).filter(Boolean);
-            console.log('🏷️ flatTags after mapping:', JSON.stringify(flatTags));
             const pinWithTags = { ...data, tags: flatTags };
-setSelectedPin(pinWithTags);
- setPins((prev) => {
-            const updated = prev.map((p) => p.id === data.id ? pinWithTags : p);
-            const found = updated.find(p => p.id === data.id);
-            console.log('📌 pins atom updated, pin_tags in atom:', JSON.stringify(found?.pin_tags));
-            return updated;
-        });
+            setSelectedPin(pinWithTags);
+            setPins((prev) => {
+                const updated = prev.map((p) => p.id === data.id ? pinWithTags : p);
+                return updated;
+            });
 
             if (data.plans?.png_url) {
                 const { data: urlData } = supabase
@@ -322,7 +350,9 @@ setSelectedPin(pinWithTags);
             getPinFromId(currentPinId);
         } else {
             setName('');
+            nameRef.current = '';
             setNote('');
+            noteRef.current = '';
             setCategory(categories[0]);
             setStatus(statuses[0]);
             setXcoordinate(null);
@@ -331,21 +361,29 @@ setSelectedPin(pinWithTags);
     }, [currentPinId]);
 
     const debouncedSaveRef = useRef(
-        debounce(async (pdfName, fieldPatch) => {
-            if (!isAllowedPatch(fieldPatch)) return;
-            setPins((prevPins) => {
-                const latestPin = prevPins.find(p => p.id === pin.id);
-                if (!latestPin) return prevPins;
-                const updatedPin = { ...latestPin, ...fieldPatch };
-                delete updatedPin.assigned_to;
-                updatePinInSupabase(pdfName, updatedPin);
-                return prevPins.map(p => p.id === pin.id ? updatedPin : p);
-            });
-        }, 600)
-    ).current;
+    debounce(async (pdfName, fieldPatch) => {
+        const enrichedPatch = {
+            ...fieldPatch,
+            updated_at: new Date().toISOString(),
+            updated_by: currentMemberRef.current?.id,
+        };
+        if (!isAllowedPatch(enrichedPatch)) return;
+        console.log('Debounced save called with patch:', enrichedPatch);
+        setPins((prevPins) => {
+            const latestPin = prevPins.find(p => p.id === pin.id);
+            if (!latestPin) return prevPins;
+            const updatedPin = { ...latestPin, ...enrichedPatch };
+            delete updatedPin.assigned_to;
+            updatePinInSupabase(pdfName, updatedPin);
+            return prevPins.map(p => p.id === pin.id ? updatedPin : p);
+        });
+    }, 600)
+).current;
 
     const immediateSave = async (fieldPatch) => {
-        if (!isAllowedPatch(fieldPatch)) {
+        const enrichedPatch = buildPatch(fieldPatch);
+        console.log('Immediate save called with patch:', enrichedPatch);
+        if (!isAllowedPatch(enrichedPatch)) {
             Alert.alert('Accès limité', 'Vous ne pouvez pas modifier ce champ.');
             return;
         }
@@ -361,7 +399,7 @@ setSelectedPin(pinWithTags);
                     assigned_to_id: assignee?.id,
                     x: null,
                     y: null,
-                    ...fieldPatch
+                    ...enrichedPatch,
                 };
                 const { data, error } = await supabase
                     .from('pdf_pins')
@@ -379,7 +417,7 @@ setSelectedPin(pinWithTags);
             setPins((prevPins) => {
                 const latestPin = prevPins.find(p => p.id === pin.id);
                 if (!latestPin) return prevPins;
-                const updatedPin = { ...latestPin, ...fieldPatch };
+                const updatedPin = { ...latestPin, ...enrichedPatch };
                 const pinToSave = { ...updatedPin };
                 delete pinToSave.assigned_to;
                 delete pinToSave.projects;
@@ -393,6 +431,17 @@ setSelectedPin(pinWithTags);
             Alert.alert('Erreur', 'Échec de mise à jour du pin');
         }
     };
+
+    // ─── Flush name+note on screen close (beforeRemove) ──────────────────────
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', () => {
+            debouncedSaveRef.cancel();
+            const pdfName = pin?.pdf_name;
+            if (!pdfName || !pin?.id) return;
+            immediateSave({ name: nameRef.current, note: noteRef.current });
+        });
+        return unsubscribe;
+    }, [pin?.pdf_name, pin?.id]);
 
     const assignPin = async ({ pinId, assignedByName, assigneeId, assignedUserEmail, assignedUserName }) => {
         const response = await fetch('https://zaynspace.com/api/send-task-notification', {
@@ -470,6 +519,17 @@ setSelectedPin(pinWithTags);
         });
     };
 
+    // ─── Name / Note handlers — keep refs in sync ─────────────────────────────
+    const handleNameChange = (text) => {
+        setName(text);
+        nameRef.current = text;
+    };
+
+    const handleNoteChange = (text) => {
+        setNote(text);
+        noteRef.current = text;
+    };
+
     const handleNameBlur = () => { debouncedSaveRef(pin?.pdf_name, { name }); };
     const handleNoteBlur = () => { debouncedSaveRef(pin?.pdf_name, { note }); };
     const handleOpenStatusSheet = () => { setShowStatusSheet(true); };
@@ -494,6 +554,7 @@ setSelectedPin(pinWithTags);
             const newComment = {
                 pin_id: pin.id,
                 sender_id: currentMember.id,
+                username: currentMember.name,
                 comment: commentText.trim(),
                 created_at: new Date().toISOString(),
             };
@@ -520,14 +581,14 @@ setSelectedPin(pinWithTags);
     };
 
     const handleSelectAssignee = async (member) => {
-        const { data: { user } } = await supabase.auth.getUser();
         setAssignee(member);
         setShowAssigneeSheet(false);
         immediateSave({ assigned_to_id: member?.id ?? null });
         try {
+            const { data: { user } } = await supabase.auth.getUser();
             await assignPin({
                 pinId: pin.id,
-                assignedByName: user?.name,
+                assignedByName: currentMemberRef.current?.name,
                 assigneeId: member?.id,
                 assignedUserEmail: member?.email,
                 assignedUserName: member?.name,
@@ -597,6 +658,8 @@ setSelectedPin(pinWithTags);
                 pin_number: pin.pin_number,
                 created_by: pin.created_by,
                 created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                updated_by: currentMemberRef.current?.id,
                 deleted_at: null,
             };
             const { data, error } = await supabase
@@ -628,7 +691,11 @@ setSelectedPin(pinWithTags);
                         try {
                             const { error } = await supabase
                                 .from('pdf_pins')
-                                .update({ deleted_at: new Date().toISOString() })
+                                .update({
+                                    deleted_at: new Date().toISOString(),
+                                    updated_at: new Date().toISOString(),
+                                    updated_by: currentMemberRef.current?.id,
+                                })
                                 .eq('id', pin.id);
                             if (error) throw error;
                             setPins((prev) => prev?.filter((p) => p.id !== pin.id) || []);
@@ -723,12 +790,23 @@ setSelectedPin(pinWithTags);
     const assigneeTextStyles = [styles.actionButtonText, assignee && styles.dateSelectedText];
     const assigneeName = assignee?.name || 'Ajouter intervenant';
 
+    // ─── Speech recognition — shared for name, note, comment ─────────────────
     const applyFinalText = useCallback(() => {
         if (!dictationTarget || !recognizedTextRef.current.trim()) return;
         skipNextReloadRef.current = true;
         const text = recognizedTextRef.current.trim();
-        if (dictationTarget === 'name') { setName(text); immediateSave({ name: text }); }
-        else if (dictationTarget === 'note') { setNote(text); immediateSave({ note: text }); }
+        if (dictationTarget === 'name') {
+            setName(text);
+            nameRef.current = text;
+            immediateSave({ name: text });
+        } else if (dictationTarget === 'note') {
+            setNote(text);
+            noteRef.current = text;
+            immediateSave({ note: text });
+        } else if (dictationTarget === 'comment') {
+            // Append to existing comment text so multiple takes accumulate
+            setCommentText(prev => prev ? `${prev} ${text}` : text);
+        }
         recognizedTextRef.current = '';
         setPartialResult('');
         setDictationTarget(null);
@@ -789,6 +867,7 @@ setSelectedPin(pinWithTags);
 
     const handleDictateName = () => startListening('name');
     const handleDictateNote = () => startListening('note');
+    const handleDictateComment = () => startListening('comment');
 
     const AssigneeSheet = () => (
         <Modal animationType="slide" transparent visible={showAssigneeSheet} onRequestClose={() => setShowAssigneeSheet(false)}>
@@ -957,7 +1036,6 @@ setSelectedPin(pinWithTags);
         </Modal>
     );
 
-    // Comment bar height estimate for scroll padding
     const COMMENT_BAR_HEIGHT = 64;
 
     return (
@@ -1012,7 +1090,7 @@ setSelectedPin(pinWithTags);
                                 pointerEvents={canEditEverythingElse ? 'auto' : 'none'}
                                 style={[styles.textAreaDictation, !canEditEverythingElse && styles.readOnlyInput]}
                                 value={isListening && dictationTarget === 'name' ? (partialResult || name) : name}
-                                onChangeText={setName}
+                                onChangeText={handleNameChange}
                                 onBlur={handleNameBlur}
                                 placeholder="Ajouter un nom ici..."
                                 placeholderTextColor="#999"
@@ -1036,7 +1114,7 @@ setSelectedPin(pinWithTags);
                                 pointerEvents={canEditEverythingElse ? 'auto' : 'none'}
                                 style={styles.noteInputDictation}
                                 value={isListening && dictationTarget === 'note' ? (partialResult || note) : note}
-                                onChangeText={setNote}
+                                onChangeText={handleNoteChange}
                                 onBlur={handleNoteBlur}
                                 placeholder="Ajouter une description ici..."
                                 placeholderTextColor="#999"
@@ -1069,8 +1147,6 @@ setSelectedPin(pinWithTags);
                             pinId={pin.id}
                             initialTags={(pin.pin_tags ?? []).map((pt) => pt.tags).filter(Boolean)}
                             onChange={(tags) => {
-                                console.log('🔁 onChange called with tags:', JSON.stringify(tags));
-    console.log('🚩 setting skipNextReloadRef = true');
                                 skipNextReloadRef.current = true;
                                 setPins((prev) => prev.map((p) => p.id === pin.id ? { ...p, pin_tags: tags.map(t => ({ tags: t })) } : p));
                             }}
@@ -1211,19 +1287,29 @@ setSelectedPin(pinWithTags);
                 <ActionsSheet />
                 <PlanSelectorSheet />
 
-                {/* Absolutely positioned comment bar — sits above keyboard on Android */}
+                {/* ── Comment bar with mic button ── */}
                 <View style={[
                     styles.commentBar,
                     {
                         position: 'absolute',
                         left: 0,
                         right: 0,
-                       bottom: keyboardHeight > 0 ? keyboardHeight + insets.bottom : insets.bottom,
+                        bottom: keyboardHeight > 0 ? keyboardHeight + insets.bottom : insets.bottom,
                     }
                 ]}>
+                    <TouchableOpacity
+                        style={[styles.commentMicButton, isListening && dictationTarget === 'comment' && styles.commentMicButtonActive]}
+                        onPress={handleDictateComment}
+                        disabled={isListening && dictationTarget !== 'comment'}
+                    >
+                        <MicIcon size={20} color={isListening && dictationTarget === 'comment' ? "#fff" : "#6B7280"} />
+                    </TouchableOpacity>
                     <TextInput
                         style={styles.commentInput}
-                        value={commentText}
+                        value={isListening && dictationTarget === 'comment'
+                            ? (commentText ? `${commentText} ${partialResult}` : partialResult) || commentText
+                            : commentText
+                        }
                         onChangeText={setCommentText}
                         placeholder="Ajouter un commentaire..."
                         placeholderTextColor="#999"
@@ -1319,14 +1405,6 @@ const styles = StyleSheet.create({
     activeTab: { backgroundColor: '#2563eb' },
     tabText: { color: '#374151', fontSize: 14, fontFamily: 'Outfit_400Regular' },
     activeTabText: { color: '#fff', fontWeight: '600' },
-    commentInput: { flex: 1, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, fontFamily: 'Outfit_400Regular' },
-    sendButton: { backgroundColor: '#2563eb', padding: 10, borderRadius: 9999, justifyContent: 'center', alignItems: 'center' },
-    inputContainerDictation: { flexDirection: 'row', alignItems: 'flex-start', position: 'relative', marginBottom: 10 },
-    textAreaDictation: { flex: 1, fontSize: 24, fontFamily: 'Outfit_400Regular', marginTop: 12, marginRight: 40 },
-    noteInputDictation: { flex: 1, fontSize: 18, fontFamily: 'Outfit_400Regular', marginTop: 8, marginRight: 40 },
-    micButton: { position: 'absolute', right: 0, top: 18, padding: 5, borderRadius: 999, backgroundColor: '#f3f4f6' },
-    micButtonNote: { position: 'absolute', right: 0, top: 14, padding: 5, borderRadius: 999, backgroundColor: '#f3f4f6' },
-    micButtonActive: { backgroundColor: '#2563eb' },
     commentBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1336,9 +1414,29 @@ const styles = StyleSheet.create({
         borderTopColor: '#e5e7eb',
         paddingHorizontal: 16,
         paddingTop: 12,
-        elevation: 10, // for Android shadow
+        elevation: 10,
         paddingBottom: 12,
     },
+    commentInput: { flex: 1, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, fontFamily: 'Outfit_400Regular' },
+    sendButton: { backgroundColor: '#2563eb', padding: 10, borderRadius: 9999, justifyContent: 'center', alignItems: 'center' },
+    // ── Comment mic ───────────────────────────────────────────────────────────
+    commentMicButton: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: '#f3f4f6',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    commentMicButtonActive: {
+        backgroundColor: '#2563eb',
+    },
+    inputContainerDictation: { flexDirection: 'row', alignItems: 'flex-start', position: 'relative', marginBottom: 10 },
+    textAreaDictation: { flex: 1, fontSize: 24, fontFamily: 'Outfit_400Regular', marginTop: 12, marginRight: 40 },
+    noteInputDictation: { flex: 1, fontSize: 18, fontFamily: 'Outfit_400Regular', marginTop: 8, marginRight: 40 },
+    micButton: { position: 'absolute', right: 0, top: 18, padding: 5, borderRadius: 999, backgroundColor: '#f3f4f6' },
+    micButtonNote: { position: 'absolute', right: 0, top: 14, padding: 5, borderRadius: 999, backgroundColor: '#f3f4f6' },
+    micButtonActive: { backgroundColor: '#2563eb' },
     pinLocationSection: { marginTop: 16, marginBottom: 8 },
     pinLocationCard: { backgroundColor: '#f9fafb', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', padding: 16, gap: 12 },
     pinLocationHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },

@@ -178,6 +178,8 @@ export default function MainScreen() {
                 status_id: null,
                 created_at: new Date().toISOString(),
                 created_by: loggedInUser.id,
+                updated_at: new Date().toISOString(),
+                updated_by: loggedInUser.id,
                 pdf_name: imageName,
                 plan_id: planId,
                 project_id: selectedProject?.id,

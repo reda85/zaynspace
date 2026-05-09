@@ -10,6 +10,7 @@ import OverdueFilter from '../components/FilterPanel/OverdueFilter';
 import StatusFilter from '../components/FilterPanel/StatusFilter';
 import { usePinFilters } from '../hooks/usePinFilters';
 import { selectedProjectAtom } from '../store/atoms';
+import ArchivedFilter from './FilterPanel/ArchivedFilter';
 import CategoryFilter from './FilterPanel/CategoryFilter';
 import TagFilter from './FilterPanel/TagFilter';
 
@@ -40,6 +41,8 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0
     setSelectedAssignees,
     hasActiveFilter,
     clearFilters,
+    showArchived,
+    setShowArchived,
   } = usePinFilters(pins);
 
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -129,6 +132,7 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0
                 setActiveStatuses={setActiveStatuses}
                 selectedProject={selectedProject}
               />
+              <ArchivedFilter active={showArchived} onToggle={setShowArchived} />
             </ScrollView>
           </View>
         </View>

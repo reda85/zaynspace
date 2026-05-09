@@ -117,12 +117,16 @@ export default function AcceuilScreen() {
     if (!user?.id || !user?.organization_id) return;
 
     const fetchProjectsAndInit = async () => {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('organization_id', user.organization_id)
-        .order('created_at', { ascending: false });
+      // AFTER
+const { data: memberProjects, error } = await supabase
+  .from('members_projects')
+  .select('projects(*)')
+  .eq('member_id', user.id);
 
+const data = memberProjects
+  ?.map(mp => mp.projects)
+  .filter(Boolean)
+  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       if (error || !data || data.length === 0) return;
 
       try {
@@ -161,7 +165,8 @@ export default function AcceuilScreen() {
     const fetchAllData = async () => {
       try {
         const { data: plansData } = await supabase
-          .from('plans').select('*').is('deleted_at', null).eq('project_id', selectedProject.id);
+          .from('plans').select('*').is('deleted_at', null).eq('status', 'ready')
+          .eq('project_id', selectedProject.id);
         if (plansData) setPlans(plansData);
 
         if (user.role === 'guest') {
@@ -355,7 +360,7 @@ export default function AcceuilScreen() {
                   <View style={styles.eventAvatarWrapper}>
                     <View style={styles.eventAvatar}>
                       <Text style={styles.eventAvatarText}>
-                        {getUserInitials(item.members?.name)}
+                        {getUserInitials(item.members?.name ? item.members?.name : item.username)}
                       </Text>
                     </View>
                     <View style={[styles.eventBadge, { backgroundColor: bgColor }]}>

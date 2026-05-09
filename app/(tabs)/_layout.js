@@ -41,7 +41,7 @@ export default function Layout() {
   shadowColor: 'transparent',
   backgroundColor: '#F5F7FA',
   paddingBottom: insets.bottom || 8,
-  height: 60 + (insets.bottom || 8),
+  minHeight: 60 + (insets.bottom || 8),
 },
         tabBarLabelStyle: {
           fontFamily: 'Outfit_500Medium',

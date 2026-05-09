@@ -46,6 +46,12 @@
           }
         }
       ],
+      [
+           "expo-location",
+           {
+             "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to geotag photos."
+           }
+         ],
       "@react-native-community/datetimepicker",
       "expo-font",
       "expo-web-browser",

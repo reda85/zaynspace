@@ -2,10 +2,11 @@ import Slider from "@react-native-community/slider";
 import { useRoute } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import { useNavigation } from "expo-router";
 import { useAtom } from "jotai";
 import { ArrowRight, Image as ImageIcon, X } from "lucide-react-native";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Image,
   Pressable,
@@ -44,9 +45,50 @@ export default function CameraModal() {
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [maxZoom, setMaxZoom] = useState(1);
 
+  // 🌍 GEOLOCATION STATE
+  const [currentLocation, setCurrentLocation] = useState(null);
+  const [locationPermission, setLocationPermission] = useState(null);
+  const locationSubscription = useRef(null);
+
   /* 🔹 ZOOM STATE (0 → maxZoom) */
   const zoom = useSharedValue(0);
   const savedZoom = useSharedValue(0);
+
+  /* 🌍 START LOCATION TRACKING */
+  useEffect(() => {
+    const startLocationTracking = async () => {
+      // Request permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      setLocationPermission(status === 'granted');
+
+      if (status !== 'granted') {
+        console.warn('Location permission denied');
+        return;
+      }
+
+      // Start watching position
+      locationSubscription.current = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          distanceInterval: 5,  // update every 5m
+          timeInterval: 3000,   // or every 3s
+        },
+        (location) => {
+          setCurrentLocation({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+          });
+        }
+      );
+    };
+
+    startLocationTracking();
+
+    // Cleanup on unmount
+    return () => {
+      locationSubscription.current?.remove();
+    };
+  }, []);
 
   /* 🔹 Read device max zoom once camera is ready */
   const onCameraReady = async () => {
@@ -120,20 +162,37 @@ export default function CameraModal() {
     if (!result.canceled && result.assets.length > 0) {
       setSelectedPhotos((prev) => [
         ...prev,
-        ...result.assets.map((a) => a.uri),
+        ...result.assets.map((a) => ({
+          uri: a.uri,
+          // Gallery photos won't have location from camera, use current location
+          latitude: currentLocation?.latitude,
+          longitude: currentLocation?.longitude,
+        })),
       ]);
     }
   };
 
   const takePicture = async () => {
     const photo = await cameraRef.current?.takePictureAsync();
-    if (photo?.uri) setSelectedPhotos((prev) => [...prev, photo.uri]);
+    if (photo?.uri) {
+      setSelectedPhotos((prev) => [
+        ...prev,
+        {
+          uri: photo.uri,
+          latitude: currentLocation?.latitude,
+          longitude: currentLocation?.longitude,
+        },
+      ]);
+    }
   };
 
   const goToDrawings = () => {
     if (!selectedPhotos.length) return;
+    
+    console.log('🚀 Navigating to DrawingScreen with photos:', selectedPhotos);
+    
     navigation.navigate("DrawingScreen", {
-      photos: selectedPhotos,
+      photos: JSON.stringify(selectedPhotos), // ✅ Serialize photo objects
       myuri,
       myname,
       myplanid,
@@ -161,12 +220,23 @@ export default function CameraModal() {
               </Pressable>
             </View>
 
+            {/* 🌍 LOCATION INDICATOR */}
+            {locationPermission && (
+              <View style={[styles.locationBadge, { top: 40 + insets.top, right: 20 }]}>
+                <Text style={styles.locationText}>
+                  {currentLocation
+                    ? `📍 ${currentLocation.latitude.toFixed(5)}, ${currentLocation.longitude.toFixed(5)}`
+                    : '📍 Locating...'}
+                </Text>
+              </View>
+            )}
+
             {/* Thumbnails */}
             {selectedPhotos.length > 0 && (
               <View style={[styles.thumbnailContainer, { top: 100 + insets.top }]}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {selectedPhotos.map((uri, i) => (
-                    <Image key={i} source={{ uri }} style={styles.thumbnail} />
+                  {selectedPhotos.map((photo, i) => (
+                    <Image key={i} source={{ uri: photo.uri }} style={styles.thumbnail} />
                   ))}
                 </ScrollView>
               </View>
@@ -217,6 +287,19 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
     borderRadius: 20,
     padding: 5,
+  },
+  // 🌍 NEW: Location badge
+  locationBadge: {
+    position: "absolute",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  locationText: {
+    color: "white",
+    fontSize: 11,
+    fontWeight: "600",
   },
   thumbnailContainer: {
     position: "absolute",

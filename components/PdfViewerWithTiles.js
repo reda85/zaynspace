@@ -9,10 +9,20 @@ import { Image } from 'expo-image';
 import { router } from "expo-router";
 import { useAtom } from "jotai";
 import {
+  AccessibilityIcon,
   AirVentIcon,
   AlarmSmokeIcon,
+  AsteriskIcon,
+  BadgeIcon,
+  BanIcon,
+  BlocksIcon,
+  BoltIcon,
+  BoxesIcon,
+  BoxIcon,
   BrickWallIcon,
   BrushIcon,
+  CarIcon,
+  CctvIcon,
   CheckCircle,
   CheckIcon,
   ConstructionIcon,
@@ -88,6 +98,16 @@ const categoriesIcons = {
   'flame':             <FlameIcon color="white" size={24} />,
   'trending-down':     <TrendingDownIcon color="white" size={24} />,
   'wifi':              <WifiIcon color="white" size={24} />,
+  'accessibility':     <AccessibilityIcon color="white" size={24} />,
+  'asterisk':          <AsteriskIcon color="white" size={24} />,
+  'badge':             <BadgeIcon color="white" size={24} />,
+  'ban':               <BanIcon color="white" size={24} />,
+  'blocks':           <BlocksIcon color="white" size={24} />,
+  'bolt':              <BoltIcon color="white" size={24} />,
+  'box':               <BoxIcon color="white" size={24} />,
+  'boxes':            <BoxesIcon color="white" size={24} />,
+  'car':               <CarIcon color="white" size={24} />,
+  'cctv':              <CctvIcon color="white" size={24} />,
 };
 
 // ─── Single animated pin ─────────────────────────────────────────────────────

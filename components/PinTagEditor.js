@@ -3,7 +3,9 @@ import { useAtom } from 'jotai';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Keyboard,
     Modal,
+    Platform,
     ScrollView,
     StyleSheet,
     Text,
@@ -34,6 +36,30 @@ export default function PinTagEditor({ pinId, initialTags = [], onChange }) {
     const [search, setSearch] = useState('');
     const [saving, setSaving] = useState(false);
     const [creatingTag, setCreatingTag] = useState(false);
+    const [keyboardOffset, setKeyboardOffset] = useState(0);
+
+    // ── Keyboard listeners — push sheet up on Android without KAV ───────────
+    useEffect(() => {
+        if (!showSheet) return;
+
+        const show = Keyboard.addListener(
+            Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+            (e) => setKeyboardOffset(e.endCoordinates.height)
+        );
+        const hide = Keyboard.addListener(
+            Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+            () => setKeyboardOffset(0)
+        );
+
+        return () => {
+            show.remove();
+            hide.remove();
+        };
+    }, [showSheet]);
+
+    useEffect(() => {
+        if (!showSheet) setKeyboardOffset(0);
+    }, [showSheet]);
 
     // Fetch project tags when sheet opens
     useEffect(() => {
@@ -127,11 +153,11 @@ useEffect(() => {
                     project_id: selectedProject.id,
                     name: search.trim(),
                     order: allTags.length,
+                    organization_id: selectedProject.organization_id,
                 })
                 .select()
                 .single();
             if (error) throw error;
-            // Add to project list + immediately assign to pin
             setAllTags((prev) => [...prev, data]);
             await supabase.from('pin_tags').insert({ pin_id: pinId, tag_id: data.id });
             const updated = [...pinTags, data];
@@ -147,7 +173,7 @@ useEffect(() => {
 
     return (
         <View style={styles.wrapper}>
-            {/* ── Add tag button — rounded pill, tag icon, matches screen style ── */}
+            {/* ── Add tag button ── */}
             <TouchableOpacity
                 style={styles.addTagButton}
                 onPress={() => setShowSheet(true)}
@@ -163,7 +189,7 @@ useEffect(() => {
                 )}
             </TouchableOpacity>
 
-            {/* ── Chips row — shown when tags exist ── */}
+            {/* ── Chips row ── */}
             {pinTags.length > 0 && (
                 <View style={styles.chipsRow}>
                     {pinTags.map((tag) => (
@@ -190,7 +216,18 @@ useEffect(() => {
                 onRequestClose={() => setShowSheet(false)}
             >
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
+                    {/*
+                     * marginBottom = keyboard height shifts the sheet up on Android.
+                     * Fully self-contained — no KAV, no manifest change, no
+                     * interference with the parent screen's keyboard handling.
+                     */}
+                    <View style={[
+                        styles.bottomSheet,
+                        {
+                            paddingBottom: insets.bottom + 20,
+                            marginBottom: keyboardOffset,
+                        }
+                    ]}>
                         {/* Header */}
                         <View style={styles.sheetHeader}>
                             <Text style={styles.sheetTitle}>Tags</Text>
@@ -249,8 +286,9 @@ useEffect(() => {
                             <ScrollView
                                 contentContainerStyle={{ paddingBottom: 16 }}
                                 showsVerticalScrollIndicator={false}
+                                keyboardShouldPersistTaps="handled"
                             >
-                                {/* Create button shown at top when search has no exact match */}
+                                {/* Create button at top when no exact match */}
                                 {search.trim().length > 0 &&
                                     !allTags.some((t) => t.name.toLowerCase() === search.trim().toLowerCase()) && (
                                     <TouchableOpacity
@@ -458,7 +496,7 @@ const styles = StyleSheet.create({
         color: '#6D28D9',
     },
 
-    // ── Create tag — inline (when results exist but no exact match) ──────────
+    // ── Create tag — inline ──────────────────────────────────────────────────
     createTagInlineButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -475,7 +513,7 @@ const styles = StyleSheet.create({
         color: '#6D28D9',
     },
 
-    // ── Create tag — centered (when no results at all) ───────────────────────
+    // ── Create tag — centered (no results) ───────────────────────────────────
     emptyBox: {
         paddingVertical: 32,
         alignItems: 'center',

@@ -6,6 +6,7 @@ export function usePinFilters(pins) {
   const [searchTerm, setSearchTerm] = useState('');
   const [createdByMe, setCreatedByMe] = useState(false);
   const [overdue, setOverdue] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [dateActive, setDateActive] = useState(false);
   const [dateTags, setDateTags] = useState([]);
   const [activeStatuses, setActiveStatuses] = useState([]);
@@ -21,6 +22,9 @@ export function usePinFilters(pins) {
 
   useEffect(() => {
     let result = [...pins];
+    if (!showArchived) {
+      result = result.filter((p) => !p.isArchived);
+    }
 
     if (searchTerm) {
       const lower = searchTerm.toLowerCase();
@@ -125,6 +129,8 @@ export function usePinFilters(pins) {
     tagIds,
     assignedToActive,
     selectedAssignees,
+    showArchived,
+    setShowArchived,
   ]);
 
   const clearFilters = () => {
@@ -139,12 +145,14 @@ export function usePinFilters(pins) {
     setTagActive(false);
     setTagIds([]);
     setAssignedToActive(false);
+    setShowArchived(false);
     setSelectedAssignees([]);
   };
 
   const hasActiveFilter = useMemo(() => {
     return (
       !!searchTerm ||
+      showArchived ||
       createdByMe ||
       overdue ||
       dateActive ||
@@ -153,7 +161,7 @@ export function usePinFilters(pins) {
       tagActive ||
       assignedToActive
     );
-  }, [searchTerm, createdByMe, overdue, dateActive, activeStatuses, categoryActive, tagActive, assignedToActive]);
+  }, [searchTerm, createdByMe, overdue, dateActive, activeStatuses, categoryActive, tagActive, assignedToActive, showArchived]);
 
   return {
     filteredPins,
@@ -183,5 +191,7 @@ export function usePinFilters(pins) {
     setSelectedAssignees,
     hasActiveFilter,
     clearFilters,
+    showArchived,
+    setShowArchived,
   };
 }

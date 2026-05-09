@@ -105,6 +105,7 @@ export default function ProjectPlans() {
         .from('plans')
         .select('*')
         .is('deleted_at', null)
+        .eq('status', 'ready')
         .eq('project_id', selectedProject.id);
 
       if (cancelled || error || !plansData) return;

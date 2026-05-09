@@ -10,26 +10,28 @@ import { useAtom } from 'jotai';
 import { Link, Image as LucideImage, Paperclip, Send, Trash2, X } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LinkedPinItem from '../../components/discussions/LinkedPinItem';
+import LinkedPlanItem from '../../components/discussions/LinkedPlanItem';
 import LinkItemModal from '../../components/discussions/LinkItemModal';
 import {
-    deleteMessage,
-    fetchMessages,
-    markGroupRead,
-    sendMessage,
-    subscribeToMessages,
-    unsubscribeFromMessages,
+  deleteMessage,
+  fetchMessages,
+  markGroupRead,
+  sendMessage,
+  subscribeToMessages,
+  unsubscribeFromMessages,
 } from '../../services/discussionsService';
 import { loggedInUserAtom } from '../../store/atoms';
 import { discussionUnreadAtom } from '../../store/discussionsAtoms';
@@ -244,25 +246,46 @@ export default function ChatScreen() {
             ))}
 
             {/* Linked items */}
-            {linked.map((l, idx) => (
-              <TouchableOpacity 
-                key={l.id || `${l.item_type}-${l.item_id}-${idx}`} 
-                style={[styles.linkedRow, isOwn && styles.linkedRowOwn]}
-                onPress={() => {
-                  if (l.item_type === 'pin') {
-                    navigation.navigate('PinMetadataScreen', { pinId: l.item_id });
-                  } else if (l.item_type === 'plan') {
-                    navigation.navigate('plans/index', { planId: l.item_id });
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <Link size={13} color={isOwn ? '#DDD6FE' : '#6D28D9'} />
-                <Text style={[styles.linkedText, isOwn && { color: '#EDE9FE' }]} numberOfLines={1}>
-                  {l.item_type === 'pin' ? '📌 ' : l.item_type === 'plan' ? '🗺 ' : '📷 '}{l.label ?? l.item_id}
-                </Text>
-              </TouchableOpacity>
-            ))}
+{linked.map((l, idx) => {
+  const key = l.id || `${l.item_type}-${l.item_id}-${idx}`;
+  
+  if (l.item_type === 'pin') {
+    return (
+      <LinkedPinItem
+        key={key}
+        itemId={l.item_id}
+        isOwn={isOwn}
+        onPress={() => navigation.navigate('PinMetadataScreen', { pinId: l.item_id })}
+      />
+    );
+  }
+  
+  if (l.item_type === 'plan') {
+    return (
+      <LinkedPlanItem
+        key={key}
+        itemId={l.item_id}
+        isOwn={isOwn}
+        onPress={() => navigation.navigate('plans/index', { planId: l.item_id })}
+      />
+    );
+  }
+  
+  // Fallback for other types
+  return (
+    <TouchableOpacity 
+      key={key}
+      style={[styles.linkedRow, isOwn && styles.linkedRowOwn]}
+      activeOpacity={0.7}
+    >
+      <Link size={13} color={isOwn ? '#DDD6FE' : '#6D28D9'} />
+      <Text style={[styles.linkedText, isOwn && { color: '#EDE9FE' }]} numberOfLines={1}>
+        {l.label ?? l.item_id}
+      </Text>
+    </TouchableOpacity>
+  );
+})}
+ 
 
             <Text style={[styles.time, isOwn && styles.timeOwn]}>
               {new Date(item.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}

@@ -5,7 +5,7 @@ export const addPinToSupabase = async (pdfName, pin, userid) => {
   console.log("Add pin to supabase:", pin);
   const {data, error } = await supabase
     .from('pdf_pins')
-    .upsert([{ pdf_name: pdfName, ...pin, created_by : userid  }], { onConflict: ['id'] })
+    .upsert([{ pdf_name: pdfName, ...pin, created_by : userid, updated_at: new Date().toISOString() , updated_by : userid }], { onConflict: ['id'] })
     .select('*,projects(*)');
     console.log("Add pin response:", data, error);
 
@@ -29,7 +29,7 @@ export const loadPinsFromSupabase = async (planId,user) => {
   if(user.role == 'guest'){
     const { data, error } = await supabase
       .from('pdf_pins')
-      .select('*,projects(*),categories(*),Status(*),pins_photos(*),events(*, pins_photos(*), members(*))')
+      .select('*,projects(*),categories(*),Status(*),pins_photos(*),  pin_tags(tag_id, tags(*)), events(*, pins_photos(*), members(*))')
       .eq('plan_id', planId)
       .is('deleted_at', null)
       .eq('assigned_to', user.id)
@@ -46,7 +46,7 @@ export const loadPinsFromSupabase = async (planId,user) => {
   } else {
     const { data, error } = await supabase
       .from('pdf_pins')
-      .select('*,projects(*),categories(*),Status(*),pins_photos(*),events(*, pins_photos(*), members(*))')
+      .select('*,projects(*),categories(*),Status(*),pins_photos(*), pin_tags(tag_id, tags(*)),events(*, pins_photos(*), members(*))')
       .is('deleted_at', null)
       .eq('plan_id', planId)
 
@@ -67,7 +67,7 @@ export const updatePinInSupabase = async (pdfName, pin) => {
   console.log("Update pin in supabase:",pin);
   const { error } = await supabase
     .from('pdf_pins')
-    .update({due_date: pin.due_date, note: pin.note, name: pin.name, status_id: pin.status_id, category_id: pin.category_id, assigned_to: pin.assigned_to_id,project_id: pin.project_id})
+    .update({due_date: pin.due_date, note: pin.note, name: pin.name, status_id: pin.status_id, category_id: pin.category_id, assigned_to: pin.assigned_to_id,project_id: pin.project_id, updated_at: new Date().toISOString(), updated_by: pin.updated_by })
     .eq('id', pin.id)
     .eq('pdf_name', pdfName);
 

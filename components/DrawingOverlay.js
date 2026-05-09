@@ -531,7 +531,7 @@ export default function DrawingScreen() {
       )}
 
       {/* Description avec safe area bottom */}
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.descriptionWrapper}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.descriptionWrapper}>
         <View style={[styles.descriptionContainer, { paddingBottom: 8 + insets.bottom }]}>
           <TextInput style={styles.descriptionInput} placeholder="Add a description..." placeholderTextColor="#ccc" value={description} onChangeText={setDescription} multiline />
         </View>
