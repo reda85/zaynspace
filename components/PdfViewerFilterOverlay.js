@@ -60,7 +60,7 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0
         onPress={() => setShowFilterPanel(true)}
         style={[styles.fab, { bottom: 40 + insets.bottom + fabOffset }]}
       >
-        <ListFilter size={20} color="white" />
+        <ListFilter size={20} color="black" />
         {hasActiveFilter && (
           <View style={styles.filterBadge}>
             <Text style={styles.filterBadgeText}>{filteredPins.length}</Text>
@@ -145,13 +145,14 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 20,
-    backgroundColor: 'darkmagenta',
+    backgroundColor: 'lightgrey',
     padding: 16,
     borderRadius: 28,
     elevation: 5,
     flexDirection: 'row',
     alignItems: 'center',
     zIndex: 1000,
+    
   },
   filterBadge: {
     position: 'absolute',

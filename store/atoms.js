@@ -11,6 +11,7 @@ export const loggedInUserAtom = atom(null);
 export const categoriesAtom = atom([]);
 export const statusesAtom = atom([]);
 export const membersAtom = atom([]);
+export const isOnlineAtom = atom(true);
 export const selectedOrganizationAtom = atom(null);
 export const MetaPinAtom = atom({
   id: null,

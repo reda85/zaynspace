@@ -10,12 +10,12 @@ import { useAtom } from 'jotai';
 import { ArrowDownNarrowWideIcon, FileText, FolderOpen, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-    ActivityIndicator, Modal,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text, TextInput, TouchableOpacity,
-    View
+  ActivityIndicator, Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text, TextInput, TouchableOpacity,
+  View
 } from 'react-native';
 import { DocumentCard, FolderCard } from '../../components/documents/DocumentCard';
 import { DocumentViewer } from '../../components/documents/DocumentViewer';
@@ -88,7 +88,7 @@ export default function DocumentManager() {
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { setUploadMode('new'); setShowUpload(true); }}>
             <View style={{
-              backgroundColor: '#6D28D9', width: 36, height: 36, borderRadius: 18,
+              backgroundColor: 'black', width: 36, height: 36, borderRadius: 18,
               alignItems: 'center', justifyContent: 'center',
               shadowColor: '#000', shadowOpacity: 0.1,
               shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between',
   },
-  newFolderLink: { color: Colors.primary, fontSize: 13, fontFamily: 'Outfit_600SemiBold', paddingVertical: 16 },
+  newFolderLink: { color: 'black', fontSize: 13, fontFamily: 'Outfit_600SemiBold', paddingVertical: 16 },
   // Empty states — identiques à DiscussionsScreen
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, marginTop: 40 },
   emptyTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#111827', marginTop: 16 },

@@ -1,9 +1,10 @@
 // components/TaskListItem.js
 
 import { Feather } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { MapPinned, MapPinOff } from 'lucide-react-native';
 import { memo, useCallback } from 'react';
-import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Checkbox } from 'react-native-paper';
 
 // ─── Custom Checkbox (iOS only) ───────────────────────────────────────────────
@@ -70,7 +71,7 @@ const TaskListItem = memo(({
             ]}
         >
             <View style={styles.itemRow}>
-                <View style={{ alignSelf: 'center' }}>
+                <View style={styles.checkboxWrapper}>
                     <AppCheckbox checked={isSelected} onPress={handleToggleSelect} />
                 </View>
 
@@ -80,7 +81,7 @@ const TaskListItem = memo(({
                         {pin.pdf_name ? (
                             <View style={styles.pdfNamePill}>
                                 <MapPinned size={14} color="#6B7280" />
-                                <Text style={styles.pdfNameText}>{pdfName}</Text>
+                                <Text style={styles.pdfNameText} numberOfLines={1} ellipsizeMode="tail">{pdfName}</Text>
                             </View>
                         ) : (
                             <View style={styles.pdfNamePill}>
@@ -112,11 +113,14 @@ const TaskListItem = memo(({
                     </View>
                 </View>
 
-                {pin.pins_photos?.length > 0 && pin.pins_photos[0].public_url ? (
+                {pin.pins_photos?.length > 0 && (pin.pins_photos[0].thumb_url || pin.pins_photos[0].public_url) ? (
                     <Image
-                        source={{ uri: String(pin.pins_photos[0].public_url) }}
+                        source={{ uri: String(pin.pins_photos[0].thumb_url || pin.pins_photos[0].public_url) }}
                         style={styles.thumbnail}
-                        resizeMode="cover"
+                        contentFit="cover"
+                        cachePolicy="memory-disk"
+                        recyclingKey={String(pin.id)}
+                        transition={0}
                     />
                 ) : (
                     <View style={styles.thumbnailPlaceholder}>
@@ -146,11 +150,16 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
     },
     itemRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, flex: 1 },
+    // Checkbox sits on the top row, aligned with the #id + plan-name pill
+    checkboxWrapper: {
+        alignSelf: 'flex-start',
+        marginTop: Platform.OS === 'android' ? -6 : 1,
+    },
     textColumn: { flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 6 },
     idPlanRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
     pinIdText: { fontSize: 12, color: '#6B7280', fontFamily: 'Outfit_400Regular' },
-    pdfNamePill: { backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 4 },
-    pdfNameText: { fontSize: 12, color: '#6B7280', fontFamily: 'Outfit_400Regular' },
+    pdfNamePill: { backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+    pdfNameText: { fontSize: 12, color: '#6B7280', fontFamily: 'Outfit_400Regular', flexShrink: 1 },
     pinName: { fontSize: 15, color: '#111827', fontFamily: 'Outfit_600SemiBold' },
     metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
     assigneePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, gap: 4 },

@@ -244,8 +244,8 @@ export default function DrawingScreen() {
     } catch (e) {}
   };
 
-  const renderImageToSurface = useCallback((img, photoPaths, canvasWidth, canvasHeight, shouldCompress = true) => {
-    const MAX_DIMENSION = shouldCompress ? 1920 : 4096;
+  const renderImageToSurface = useCallback((img, photoPaths, canvasWidth, canvasHeight, shouldCompress = true, options = {}) => {
+    const MAX_DIMENSION = options.maxDimension ?? (shouldCompress ? 1920 : 2560);
 
     const imgWidth = img.width();
     const imgHeight = img.height();
@@ -336,9 +336,10 @@ export default function DrawingScreen() {
     });
 
     const snapshot = surface.makeImageSnapshot();
-    const bytes = shouldCompress
-      ? snapshot.encodeToBytes(ImageFormat.JPEG, 85)
-      : snapshot.encodeToBytes(ImageFormat.PNG, 100);
+   const bytes = snapshot.encodeToBytes(
+  ImageFormat.JPEG,
+  options.quality ?? (shouldCompress ? 85 : 92)         // toujours JPEG, jamais PNG
+);
 
     return bytes;
   }, [getCurrentFont]);
@@ -619,7 +620,7 @@ export default function DrawingScreen() {
       await new Promise(resolve => setTimeout(resolve, 100));
 
       let shouldSaveToGallery = true;
-      let shouldCompress      = false;
+      let shouldCompress      = true;
       let shouldOptimize      = true;
       try {
         const [autoSaveEntry, compressEntry, optimizeEntry] = await AsyncStorage.multiGet([
@@ -663,12 +664,15 @@ export default function DrawingScreen() {
         const chunkPromises = [];
 
         for (let j = i; j < Math.min(i + RENDER_CHUNK_SIZE, photoUris.length); j++) {
-          chunkPromises.push((async () => {
+       chunkPromises.push((async () => {
             const img = images[j];
             const photoPaths = paths[j] || [];
             const bytes = renderImageToSurface(img, photoPaths, canvasSize.width, canvasSize.height, shouldCompress);
             const base64 = encode(bytes);
-            return { base64, index: j };
+            // 160px thumbnail — même pipeline Skia, petit + basse qualité
+            const thumbBytes = renderImageToSurface(img, photoPaths, canvasSize.width, canvasSize.height, shouldCompress, { maxDimension: 160, quality: 60 });
+            const thumbBase64 = encode(thumbBytes);
+            return { base64, thumbBase64, index: j };
           })());
         }
 
@@ -687,9 +691,9 @@ export default function DrawingScreen() {
       for (let batchStart = 0; batchStart < processedImages.length; batchStart += BATCH_SIZE) {
         const batch = processedImages.slice(batchStart, batchStart + BATCH_SIZE);
 
-        await Promise.all(batch.map(async ({ base64, index }) => {
-          const ext      = shouldCompress ? "jpg" : "png";
-          const mime     = shouldCompress ? "image/jpeg" : "image/png";
+        await Promise.all(batch.map(async ({ base64, thumbBase64, index }) => {
+          const ext = "jpg";
+          const mime = "image/jpeg";
           const filename = `drawing_${Date.now()}_${index}.${ext}`;
           const fileUri  = `${FileSystem.documentDirectory}${filename}`;
 
@@ -707,6 +711,35 @@ export default function DrawingScreen() {
             .upload(uploadPath, fileBuffer, { contentType: mime });
 
           if (uploadError) throw uploadError;
+
+
+
+          // ── Miniature (non bloquant : repli sur public_url si échec) ──
+         // ── Miniature (version debug) ──
+          let thumbUrl = null;
+          try {
+            if (!thumbBase64) {
+              console.warn(`[thumb] pas de thumbBase64 pour index ${index} — l'édition #2 (le rendu) n'est probablement pas appliquée`);
+            } else {
+              const thumbPath = `${pin?.project_id}/thumb_${filename}`;
+              const thumbBuffer = Buffer.from(thumbBase64, "base64");
+              console.log(`[thumb] upload ${thumbPath} (${thumbBuffer.length} octets)`);
+              const { error: thumbError } = await supabase.storage
+                .from("pinphotos")
+                .upload(thumbPath, thumbBuffer, { contentType: mime });
+              if (thumbError) {
+                console.warn(`[thumb] erreur upload:`, thumbError.message);
+              } else {
+                thumbUrl = supabase.storage.from("pinphotos").getPublicUrl(thumbPath).data.publicUrl;
+                console.log(`[thumb] ok -> ${thumbUrl}`);
+              }
+            }
+          } catch (e) {
+            console.warn(`[thumb] exception:`, e?.message);
+          }
+          console.log(`[thumb] thumbUrl final pour ${index}:`, thumbUrl);
+
+
 
           if (shouldOptimize) {
             await FileSystem.deleteAsync(fileUri, { idempotent: true });
@@ -727,10 +760,10 @@ export default function DrawingScreen() {
               pin_id: pin?.id,
               project_id: pin?.project_id,
               public_url: publicUrl,
+              thumb_url: thumbUrl,
               description: descriptions[index],
               date: new Date().toISOString(),
               sender_id: loggedInUser?.id,
-              // 🌍 Include geolocation if available
               latitude,
               longitude,
             }])

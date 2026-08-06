@@ -99,6 +99,7 @@ export default function Timeline({ events = [], comments = [], showAllEvents = f
         imageUrl: photo.public_url,
         userName,
         description: photo.description || '',
+        created_at: photo.created_at,
     });
 
   const renderItem = (item) => {
@@ -172,6 +173,7 @@ export default function Timeline({ events = [], comments = [], showAllEvents = f
           onClose={() => setSelectedImage(null)}
           imageUrl={selectedImage.imageUrl}
           userName={selectedImage.userName}
+          date={selectedImage.created_at}
           description={selectedImage.description}
           onSaveDescription={async (newDesc) => {
     const { error } = await supabase

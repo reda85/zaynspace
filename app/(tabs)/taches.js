@@ -1312,7 +1312,7 @@ export default function TasksScreen() {
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => setShowCreateTaskModal(true)}>
                         <View style={{
-                            backgroundColor: '#6D28D9', width: 36, height: 36, borderRadius: 18,
+                            backgroundColor: 'black', width: 36, height: 36, borderRadius: 18,
                             alignItems: 'center', justifyContent: 'center',
                             shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
                         }}>
@@ -1707,7 +1707,7 @@ export default function TasksScreen() {
                     </TouchableOpacity>
                 )}
                 <TouchableOpacity style={styles.filterFloatingBtn} onPress={() => setShowFilterPanel(true)}>
-                    <ListFilter size={18} color="white" />
+                    <ListFilter size={18} color="black" />
                     {hasActiveFilter && (
                         <View style={styles.filterActiveBadge}>
                             <Text style={styles.filterActiveBadgeText}>{filteredPins.length}</Text>
@@ -1743,7 +1743,7 @@ const styles = StyleSheet.create({
     sortItemActive: { backgroundColor: '#ede9fe', borderWidth: 1, borderColor: '#c4b5fd' },
     sortText: { fontSize: 15, color: '#333', fontFamily: 'Outfit_400Regular', marginLeft: 5 },
     floatingBar: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row', alignItems: 'center', gap: 12 },
-    filterFloatingBtn: { backgroundColor: '#6D28D9', width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 4 },
+    filterFloatingBtn: { backgroundColor: 'lightgrey', width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 4 },
     downloadFloatingBtn: { backgroundColor: '#111827', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, height: 48, borderRadius: 24, gap: 6, elevation: 4 },
     downloadText: { color: 'white', fontFamily: 'Outfit_600SemiBold', fontSize: 13 },
     createTaskContainer: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20, maxHeight: '80%', width: '100%' },

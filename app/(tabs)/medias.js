@@ -164,6 +164,7 @@ export default function MediaGalleryScreen() {
         imageUrl: item.public_url,
         userName: item?.members?.name || 'Utilisateur inconnu',
         description: item.note || '',
+        created_at: item.created_at,
       });
     }
   };
@@ -329,7 +330,7 @@ export default function MediaGalleryScreen() {
           onPress={handleFilter}
           activeOpacity={0.8}
         >
-          <ListFilter size={18} color="white" />
+          <ListFilter size={18} color="black" />
           {hasActiveFilters && <View style={styles.filterDot} />}
         </TouchableOpacity>
       </View>
@@ -569,7 +570,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   filterFloatingBtn: {
-    backgroundColor: '#6D28D9',
+    backgroundColor: 'lightgrey',
     width: 48,
     height: 48,
     borderRadius: 24,

@@ -4,13 +4,17 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { AuthGate } from '../components/AuthGate'
 import { DeepLinkHandler } from '../components/DeepLinkHandler'
+import { NetworkListener } from '../components/NetworkListener'
+import { OfflineScreen } from '../components/OfflineScreen'
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
+        <NetworkListener />
         <AuthGate>
           <DeepLinkHandler />
+          
 
           <Stack>
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
@@ -27,6 +31,7 @@ export default function RootLayout() {
             <Stack.Screen name="discussions/chat" options={{ headerShown: true, headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 } }} />
           </Stack>
         </AuthGate>
+        <OfflineScreen />
       </GestureHandlerRootView>
     </SafeAreaProvider>
   )

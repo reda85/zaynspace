@@ -9,10 +9,10 @@ export const Colors = {
   surface: '#FFFFFF',
   surfaceInput: '#F9FAFB',
   border: '#E5E7EB',
-  primary: '#6D28D9',
-  primaryLight: '#F3E8FF',
-  primaryMid: '#EDE9FE',
-  primaryBorder: '#C4B5FD',
+  primary: '#111827',          // était #6D28D9 (violet) → noir
+  primaryLight: '#F3F4F6',     // était #F3E8FF (violet clair) → gris clair
+  primaryMid: '#F3F4F6',       // était #EDE9FE → gris clair
+  primaryBorder: '#D1D5DB',    // était #C4B5FD → gris
   success: '#10B981',
   successLight: '#D1FAE5',
   error: '#EF4444',
@@ -26,7 +26,6 @@ export const Colors = {
   office: '#3B82F6',
   unknown: '#6B7280',
 };
-
 // ── Helpers ───────────────────────────────────────────────────
 export function fileTypeFromMime(mime) {
   if (mime === 'application/pdf') return 'pdf';
@@ -144,6 +143,6 @@ const styles = StyleSheet.create({
     paddingBottom: 6, paddingTop: 16, backgroundColor: Colors.bg,
   },
   sectionTitle: { fontSize: 13, color: Colors.textMuted, fontFamily: 'Outfit_600SemiBold', textTransform: 'uppercase' },
-  countBadge: { backgroundColor: Colors.primaryMid, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
-  countBadgeText: { color: Colors.primary, fontSize: 11, fontFamily: 'Outfit_600SemiBold' },
+  countBadge: { backgroundColor: 'black', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  countBadgeText: { color: 'white', fontSize: 11, fontFamily: 'Outfit_600SemiBold' },
 });

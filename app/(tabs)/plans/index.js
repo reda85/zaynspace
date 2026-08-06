@@ -380,7 +380,9 @@ export default function ProjectPlans() {
           >
             <View style={styles.cardHeader}>
               <View style={styles.planNameContainer}>
-                <MapPinned size={20} color="#6D28D9" />
+                <View style={styles.pinIconCircle}>
+                  <MapPinned size={20} color="#374151" />
+                </View>
                 <Text style={styles.planName} numberOfLines={2} ellipsizeMode="tail">{item.name}</Text>
               </View>
               <View style={styles.pinCountContainer}>
@@ -392,11 +394,11 @@ export default function ProjectPlans() {
             {editMode && (
               <View style={styles.actions}>
                 <TouchableOpacity style={styles.actionBtnRename} onPress={() => openRenameModal(item)}>
-                  <Feather name="edit-2" size={15} color="#6D28D9" />
+                  <Feather name="edit-2" size={15} color="#111827" />
                   <Text style={styles.actionTextRename}>Renommer</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.actionBtnDelete} onPress={() => deletePlan(item)}>
-                  <Feather name="trash" size={15} color="#6D28D9" />
+                  <Feather name="trash" size={15} color="#DC2626" />
                   <Text style={styles.actionTextDelete}>Supprimer</Text>
                 </TouchableOpacity>
               </View>
@@ -591,16 +593,27 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#FFFFFF', borderRadius: 10, padding: 16, marginVertical: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 8, elevation: 5, marginHorizontal: 8 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   planNameContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 },
+
+  // MapPin icon inside a light grey circle
+  pinIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+
   planName: { fontSize: 15, color: '#111827', fontFamily: 'Outfit_500Medium', flex: 1 },
   pinCountContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pinCountText: { fontFamily: 'Outfit_400Regular', color: '#4B5563', fontSize: 14 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  actionBtnRename: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#EDE9FE' },
-  actionTextRename: { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#6D28D9' },
-  actionBtnDelete: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#EDE9FE' },
-  actionTextDelete: { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#6D28D9' },
+
+  // Renommer — grey border / white background / black text
+  actionBtnRename: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB' },
+  actionTextRename: { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#111827' },
+
+  // Supprimer — red text on light red/pink background with matching border
+  actionBtnDelete: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' },
+  actionTextDelete: { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#DC2626' },
+
   headerBtn: { color: '#000000', fontFamily: 'Outfit_700Bold', fontSize: 16, marginRight: 16 },
-  fab: { position: 'absolute', bottom: 24, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', backgroundColor: '#6D28D9', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 30, elevation: 7, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
+
+  // Ajouter un plan — black background
+  fab: { position: 'absolute', bottom: 24, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', backgroundColor: '#000000', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 30, elevation: 7, shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 6 },
   fabText: { color: 'white', fontFamily: 'Outfit_400Regular', fontSize: 15, marginLeft: 8 },
 
   // Upload modal

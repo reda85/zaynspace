@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
 
   headerBtn: {
-    backgroundColor: '#6D28D9',
+    backgroundColor: 'black',
     width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.1,
