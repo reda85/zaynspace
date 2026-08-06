@@ -35,14 +35,7 @@ export default function Layout() {
         headerShadowVisible: false,
         tabBarActiveTintColor: 'black',
         tabBarInactiveTintColor: 'gray',
-        tabBarStyle: {
-  borderTopWidth: 0,
-  elevation: 0,
-  shadowColor: 'transparent',
-  backgroundColor: '#F5F7FA',
-  paddingBottom: insets.bottom || 8,
-  height: 60 + (insets.bottom || 8),
-},
+        
         tabBarLabelStyle: {
           fontFamily: 'Outfit_500Medium',
         },
