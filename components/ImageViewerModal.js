@@ -1,6 +1,7 @@
-import { Calendar, Check, Maximize2, Pencil, X } from 'lucide-react-native';
+import { Calendar, Check, MapPin, Maximize2, Pencil, X } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Keyboard,
@@ -21,6 +22,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { supabase } from '../lib/supabase';
 
 const { width, height } = Dimensions.get('window');
 const MAX_SCALE = 4;
@@ -73,8 +75,31 @@ const formatDate = (value) => {
  *   date              — string | Date (ISO). Optional; hidden if absent.
  *   onSaveDescription — (newDescription: string) => Promise<void> | void
  *                       If omitted, edit button is hidden.
+ *
+ *   planId            — string | null. Plan sur lequel cette photo est
+ *                        actuellement placée (colonne pins_photos.plan_id).
+ *   planX, planY      — number | null. Position normalisée (0-1) sur ce plan
+ *                        (pins_photos.plan_x / plan_y).
+ *   onPlaceOnPlan     — () => void. Appelé quand l'utilisateur veut placer ou
+ *                        modifier la position. Le PARENT gère la navigation
+ *                        (fermer ce modal, ouvrir le sélecteur de plan, pousser
+ *                        ImagePinPlacementScreen en mode "photo", puis relire
+ *                        PhotoPlanPositionAtom au retour — même flux que dans
+ *                        DrawingScreen). Si omis, la section n'apparaît pas.
  */
-export default function ImageViewerModal({ visible, onClose, imageUrl, userName, description, date, onSaveDescription }) {
+export default function ImageViewerModal({
+  visible,
+  onClose,
+  imageUrl,
+  userName,
+  description,
+  date,
+  onSaveDescription,
+  planId = null,
+  planX = null,
+  planY = null,
+  onPlaceOnPlan,
+}) {
   const insets = useSafeAreaInsets();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -82,6 +107,42 @@ export default function ImageViewerModal({ visible, onClose, imageUrl, userName,
   const [isSaving, setIsSaving] = useState(false);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
+
+  // ── Position sur le plan ───────────────────────────────────────────────────
+  const [planInfo, setPlanInfo] = useState(null); // { name, pngUrl } | null
+  const [loadingPlanInfo, setLoadingPlanInfo] = useState(false);
+  const hasPlanPosition = planId != null && planX != null && planY != null;
+
+  useEffect(() => {
+    if (!visible || !planId) {
+      setPlanInfo(null);
+      return;
+    }
+    let cancelled = false;
+    setLoadingPlanInfo(true);
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('plans')
+          .select('name, png_url')
+          .eq('id', planId)
+          .single();
+        if (error) throw error;
+        let pngPublicUrl = null;
+        if (data?.png_url) {
+          const { data: urlData } = supabase.storage.from('project-plans').getPublicUrl(data.png_url);
+          pngPublicUrl = urlData.publicUrl;
+        }
+        if (!cancelled) setPlanInfo({ name: data?.name || null, pngUrl: pngPublicUrl });
+      } catch (e) {
+        console.error('Failed to load plan info for photo:', e);
+        if (!cancelled) setPlanInfo(null);
+      } finally {
+        if (!cancelled) setLoadingPlanInfo(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [visible, planId]);
 
   // ── Zoom / pan shared values ─────────────────────────────────────────────
   const scale = useSharedValue(1);
@@ -361,6 +422,54 @@ export default function ImageViewerModal({ visible, onClose, imageUrl, userName,
             </TouchableOpacity>
           ) : null}
 
+          {/* Position sur le plan — voir / modifier / placer */}
+          {onPlaceOnPlan && (
+            <View style={styles.planSection}>
+              {hasPlanPosition ? (
+                <TouchableOpacity style={styles.planCard} onPress={onPlaceOnPlan}>
+                  <View style={styles.planThumbWrapper}>
+                    {loadingPlanInfo ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : planInfo?.pngUrl ? (
+                      <>
+                        {/* Aperçu approximatif : resizeMode="cover" peut recadrer un
+                            plan non carré, donc le point n'est qu'indicatif ici —
+                            la position précise se règle dans l'écran de placement. */}
+                        <Image
+                          source={{ uri: planInfo.pngUrl }}
+                          style={StyleSheet.absoluteFill}
+                          resizeMode="cover"
+                        />
+                        <View
+                          style={[
+                            styles.planDot,
+                            { left: `${planX * 100}%`, top: `${planY * 100}%` },
+                          ]}
+                        />
+                      </>
+                    ) : (
+                      <MapPin size={20} color="rgba(255,255,255,0.5)" />
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.planCardTitle}>Position sur le plan</Text>
+                    {planInfo?.name ? (
+                      <Text style={styles.planCardSubtitle} numberOfLines={1}>{planInfo.name}</Text>
+                    ) : (
+                      <Text style={styles.planCardSubtitle}>Toucher pour modifier</Text>
+                    )}
+                  </View>
+                  <Pencil size={16} color="rgba(255,255,255,0.5)" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.placeOnPlanButton} onPress={onPlaceOnPlan}>
+                  <MapPin size={16} color="rgba(255,255,255,0.7)" />
+                  <Text style={styles.placeOnPlanText}>Placer sur le plan</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
         </View>
       </GestureHandlerRootView>
     </Modal>
@@ -549,5 +658,66 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Outfit_400Regular',
     color: 'rgba(255,255,255,0.4)',
+  },
+
+  // ── Position sur le plan ───────────────────────────────────────────────────
+  planSection: {
+    marginTop: 14,
+  },
+  planCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 14,
+    padding: 12,
+  },
+  planThumbWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planDot: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    marginLeft: -5,
+    marginTop: -5,
+    borderRadius: 5,
+    backgroundColor: '#2563eb',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  planCardTitle: {
+    fontSize: 14,
+    fontFamily: 'Outfit_500Medium',
+    color: '#fff',
+  },
+  planCardSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Outfit_400Regular',
+    color: 'rgba(255,255,255,0.5)',
+    marginTop: 2,
+  },
+  placeOnPlanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderStyle: 'dashed',
+  },
+  placeOnPlanText: {
+    fontSize: 14,
+    fontFamily: 'Outfit_500Medium',
+    color: 'rgba(255,255,255,0.7)',
   },
 });

@@ -82,7 +82,7 @@ import PlanMiniSnapshot from '../components/PlanMiniSnapshot';
 import Timeline from '../components/TimeLine';
 import { supabase } from '../lib/supabase';
 import { updatePinInSupabase } from '../services/supabaseService';
-import { categoriesAtom, membersAtom, MetaPinAtom, pinsAtom, selectedPinAtom, selectedProjectAtom, statusesAtom } from '../store/atoms';
+import { categoriesAtom, membersAtom, MetaPinAtom, PhotoPlanPositionAtom, pinsAtom, selectedPinAtom, selectedProjectAtom, statusesAtom } from '../store/atoms';
 
 const formatDate = (dateString) => {
     if (!dateString) return null;
@@ -150,6 +150,9 @@ export default function PinMetadataScreen() {
     const [showPlanSelector, setShowPlanSelector] = useState(false);
     const [availablePlans, setAvailablePlans] = useState([]);
     const [loadingPlans, setLoadingPlans] = useState(false);
+    // ── Cible du sélecteur de plan : 'pin' (comportement historique) ou l'objet
+    // photo en cours de placement (voir handleOpenPlanSelectorForPhoto). ──
+    const [planSelectorTarget, setPlanSelectorTarget] = useState('pin');
 
     const [currentPinId, setCurrentPinId] = useState(pinId);
     const [currentRole, setCurrentRole] = useState(null);
@@ -212,6 +215,7 @@ export default function PinMetadataScreen() {
     const [dictationTarget, setDictationTarget] = useState(null);
     const [partialResult, setPartialResult] = useState('');
     const [metapin, setMetapin] = useAtom(MetaPinAtom);
+    const [photoPlanUpdate, setPhotoPlanUpdate] = useAtom(PhotoPlanPositionAtom);
     const [isSpeaking, setIsSpeaking] = useState(false);
 
     const recognizedTextRef = useRef('');
@@ -499,6 +503,10 @@ export default function PinMetadataScreen() {
         }
     };
 
+    // ─── Sélection d'un plan dans la sheet — branche selon la cible ──────────
+    // 'pin' (comportement historique, écran /PinPlacementScreen) ou une PHOTO
+    // individuelle (mode 'photo' de /ImagePinPlacementScreen, voir
+    // handleOpenPlanSelectorForPhoto ci-dessous).
     const handlePlanSelected = (selectedPlan) => {
         setShowPlanSelector(false);
         const pdfInfo = {
@@ -506,6 +514,27 @@ export default function PinMetadataScreen() {
             height: selectedPlan.height,
             tilesPath: selectedPlan.tiles_path,
         };
+
+        if (planSelectorTarget && planSelectorTarget !== 'pin') {
+            const photo = planSelectorTarget;
+            const existingOnThisPlan = photo.plan_id === selectedPlan.id;
+            router.push({
+                pathname: '/ImagePinPlacementScreen',
+                params: {
+                    myname: selectedPlan.name,
+                    myplanid: selectedPlan.id,
+                    mode: 'photo',
+                    photoKey: String(photo.id),
+                    pinIdToPlace: pin.id,
+                    x: existingOnThisPlan ? photo.plan_x : undefined,
+                    y: existingOnThisPlan ? photo.plan_y : undefined,
+                    pdfInfo: JSON.stringify(pdfInfo),
+                },
+            });
+            setPlanSelectorTarget('pin');
+            return;
+        }
+
         router.push({
             pathname: '/PinPlacementScreen',
             params: {
@@ -518,6 +547,53 @@ export default function PinMetadataScreen() {
             }
         });
     };
+
+    // ─── Ouvre le sélecteur de plan pour placer/déplacer UNE PHOTO ───────────
+    // À passer à <Timeline onPlaceOnPlan={handleOpenPlanSelectorForPhoto} />.
+    // Timeline doit appeler onPlaceOnPlan(photo) où photo est l'objet
+    // pins_photos complet (au minimum : id, plan_id, plan_x, plan_y).
+    const handleOpenPlanSelectorForPhoto = useCallback((photo) => {
+        if (!canEditEverythingElse) return;
+        if (!photo?.id) {
+            Alert.alert('Erreur', 'Photo introuvable');
+            return;
+        }
+        setPlanSelectorTarget(photo);
+        fetchProjectPlans();
+        setShowPlanSelector(true);
+    }, [canEditEverythingElse, selectedProject?.id, pin?.project_id]);
+
+    // ─── Récupère la position choisie dans ImagePinPlacementScreen (mode
+    // 'photo') et la persiste sur pins_photos, puis rafraîchit le pin ──────────
+    useEffect(() => {
+        if (!photoPlanUpdate || photoPlanUpdate.photoKey == null) return;
+        const photoId = photoPlanUpdate.photoKey;
+
+        (async () => {
+            try {
+                const updateData = (photoPlanUpdate.x != null && photoPlanUpdate.y != null)
+                    ? { plan_id: photoPlanUpdate.planId, plan_x: photoPlanUpdate.x, plan_y: photoPlanUpdate.y }
+                    : { plan_id: null, plan_x: null, plan_y: null };
+
+                const { error } = await supabase
+                    .from('pins_photos')
+                    .update(updateData)
+                    .eq('id', photoId);
+
+                if (error) throw error;
+
+                // Les photos sont imbriquées sous events(*,pins_photos(*)) — on
+                // recharge simplement le pin pour récupérer un état cohérent
+                // plutôt que de tenter une mise à jour manuelle imbriquée.
+                if (currentPinId) getPinFromId(currentPinId);
+            } catch (err) {
+                console.error('Erreur sauvegarde position photo sur le plan:', err);
+                Alert.alert('Erreur', "Impossible d'enregistrer la position de la photo sur le plan");
+            } finally {
+                setPhotoPlanUpdate(null);
+            }
+        })();
+    }, [photoPlanUpdate]);
 
     // ─── Name / Note handlers — keep refs in sync ─────────────────────────────
     const handleNameChange = (text) => {
@@ -1038,6 +1114,9 @@ export default function PinMetadataScreen() {
 
     const COMMENT_BAR_HEIGHT = 64;
 
+    // ── Hauteur d'espace réservée sous la barre de commentaire (safe area ou clavier) ──
+    const commentBarBottomInset = keyboardHeight > 0 ? keyboardHeight : insets.bottom;
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'left', 'right']}>
             <View style={{ flex: 1 }}>
@@ -1206,6 +1285,7 @@ export default function PinMetadataScreen() {
                                 <TouchableOpacity
                                     style={styles.pinLocationCard}
                                     onPress={() => {
+                                        setPlanSelectorTarget('pin');
                                         const pdfInfo = { width: plan.width, height: plan.height, tilesPath: plan.tiles_path };
                                         router.push({
                                             pathname: '/PinPlacementScreen',
@@ -1238,6 +1318,7 @@ export default function PinMetadataScreen() {
                                     style={[styles.placePinButton, !canEditEverythingElse && styles.disabledButton]}
                                     onPress={() => {
                                         if (!canEditEverythingElse) return;
+                                        setPlanSelectorTarget('pin');
                                         fetchProjectPlans();
                                         setShowPlanSelector(true);
                                     }}
@@ -1265,7 +1346,12 @@ export default function PinMetadataScreen() {
                         </View>
 
                         {(events || comments) && (
-                            <Timeline events={events} comments={comments} showAllEvents={showAllEvents} />
+                            <Timeline
+                                events={events}
+                                comments={comments}
+                                showAllEvents={showAllEvents}
+                                onPlaceOnPlan={handleOpenPlanSelectorForPhoto}
+                            />
                         )}
                     </ScrollView>
                 </GestureDetector>
@@ -1287,40 +1373,54 @@ export default function PinMetadataScreen() {
                 <ActionsSheet />
                 <PlanSelectorSheet />
 
-                {/* ── Comment bar with mic button ── */}
-                <View style={[
-                    styles.commentBar,
-                    {
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        bottom: keyboardHeight > 0 ? keyboardHeight + insets.bottom : insets.bottom,
-                    }
-                ]}>
-                    <TouchableOpacity
-                        style={[styles.commentMicButton, isListening && dictationTarget === 'comment' && styles.commentMicButtonActive]}
-                        onPress={handleDictateComment}
-                        disabled={isListening && dictationTarget !== 'comment'}
+                {/* ── Badge "En écoute" — visible tant que la dictée (nom, note ou commentaire) est active ── */}
+                {isListening && (
+                    <View
+                        pointerEvents="none"
+                        style={[
+                            styles.listeningBadgeWrapper,
+                            { bottom: commentBarBottomInset + COMMENT_BAR_HEIGHT + 14 },
+                        ]}
                     >
-                        <MicIcon size={20} color={isListening && dictationTarget === 'comment' ? "#fff" : "#6B7280"} />
-                    </TouchableOpacity>
-                    <TextInput
-                        style={styles.commentInput}
-                        value={isListening && dictationTarget === 'comment'
-                            ? (commentText ? `${commentText} ${partialResult}` : partialResult) || commentText
-                            : commentText
-                        }
-                        onChangeText={setCommentText}
-                        placeholder="Ajouter un commentaire..."
-                        placeholderTextColor="#999"
-                    />
-                    <TouchableOpacity
-                        style={[styles.sendButton, !commentText.trim() && styles.disabledButton]}
-                        onPress={handleSendComment}
-                        disabled={!commentText.trim()}
-                    >
-                        <SendIcon size={20} color={commentText.trim() ? "#fff" : "#ccc"} />
-                    </TouchableOpacity>
+                        <View style={styles.listeningBadge}>
+                            <Text style={styles.listeningBadgeText}>En écoute</Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* ── Comment bar with mic button — fond opaque jusqu'au bas de l'écran ── */}
+                <View
+                    style={[
+                        styles.commentBarWrapper,
+                        { paddingBottom: commentBarBottomInset },
+                    ]}
+                >
+                    <View style={styles.commentBar}>
+                        <TouchableOpacity
+                            style={[styles.commentMicButton, isListening && dictationTarget === 'comment' && styles.commentMicButtonActive]}
+                            onPress={handleDictateComment}
+                            disabled={isListening && dictationTarget !== 'comment'}
+                        >
+                            <MicIcon size={20} color={isListening && dictationTarget === 'comment' ? "#fff" : "#6B7280"} />
+                        </TouchableOpacity>
+                        <TextInput
+                            style={styles.commentInput}
+                            value={isListening && dictationTarget === 'comment'
+                                ? (commentText ? `${commentText} ${partialResult}` : partialResult) || commentText
+                                : commentText
+                            }
+                            onChangeText={setCommentText}
+                            placeholder="Ajouter un commentaire..."
+                            placeholderTextColor="#999"
+                        />
+                        <TouchableOpacity
+                            style={[styles.sendButton, !commentText.trim() && styles.disabledButton]}
+                            onPress={handleSendComment}
+                            disabled={!commentText.trim()}
+                        >
+                            <SendIcon size={20} color={commentText.trim() ? "#fff" : "#ccc"} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
         </SafeAreaView>
@@ -1405,16 +1505,29 @@ const styles = StyleSheet.create({
     activeTab: { backgroundColor: '#2563eb' },
     tabText: { color: '#374151', fontSize: 14, fontFamily: 'Outfit_400Regular' },
     activeTabText: { color: '#fff', fontWeight: '600' },
+    // ── Comment bar wrapper : couvre TOUT l'espace jusqu'au bas de l'écran, fond opaque ──
+    commentBarWrapper: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        zIndex: 10,
+    },
     commentBar: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         backgroundColor: '#fff',
-        borderTopWidth: 1,
-        borderTopColor: '#e5e7eb',
         paddingHorizontal: 16,
         paddingTop: 12,
-        elevation: 10,
         paddingBottom: 12,
     },
     commentInput: { flex: 1, backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, fontFamily: 'Outfit_400Regular' },
@@ -1430,6 +1543,27 @@ const styles = StyleSheet.create({
     },
     commentMicButtonActive: {
         backgroundColor: '#2563eb',
+    },
+    // ── Badge "En écoute" ────────────────────────────────────────────────────
+    listeningBadgeWrapper: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        zIndex: 20,
+    },
+    listeningBadge: {
+        backgroundColor: '#000',
+        paddingHorizontal: 22,
+        paddingVertical: 12,
+        borderRadius: 999,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    listeningBadgeText: {
+        color: '#fff',
+        fontSize: 16,
+        fontFamily: 'Outfit_600SemiBold',
     },
     inputContainerDictation: { flexDirection: 'row', alignItems: 'flex-start', position: 'relative', marginBottom: 10 },
     textAreaDictation: { flex: 1, fontSize: 24, fontFamily: 'Outfit_400Regular', marginTop: 12, marginRight: 40 },

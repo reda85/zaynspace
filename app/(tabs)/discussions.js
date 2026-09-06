@@ -9,12 +9,12 @@ import { useAtom } from 'jotai';
 import { MessageSquare, MessageSquarePlus, Users } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
+  Animated,
   FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import CreateGroupModal from '../../components/discussions/CreateGroupModal';
 import { supabase } from '../../lib/supabase';
@@ -22,6 +22,49 @@ import { fetchGroups, getUnreadCount } from '../../services/discussionsService';
 import { loggedInUserAtom, selectedProjectAtom } from '../../store/atoms';
 import { discussionGroupsAtom, discussionLastMsgAtom, discussionUnreadAtom } from '../../store/discussionsAtoms';
 
+
+function SkeletonBox({ width, height, borderRadius = 8, style }) {
+  const anim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        { width, height, borderRadius, backgroundColor: '#E5E7EB', opacity: anim },
+        style,
+      ]}
+    />
+  );
+}
+
+function GroupCardSkeleton() {
+  return (
+    <View style={styles.card}>
+      <SkeletonBox width={46} height={46} borderRadius={23} style={{ marginRight: 12 }} />
+      <View style={{ flex: 1, gap: 6 }}>
+        <SkeletonBox width="50%" height={15} borderRadius={4} />
+        <SkeletonBox width="70%" height={12} borderRadius={4} />
+        <SkeletonBox width="35%" height={11} borderRadius={4} />
+      </View>
+    </View>
+  );
+}
+
+function DiscussionsSkeleton() {
+  return (
+    <View style={{ paddingVertical: 12, paddingHorizontal: 16, gap: 8 }}>
+      {[0, 1, 2, 3, 4].map(i => <GroupCardSkeleton key={i} />)}
+    </View>
+  );
+}
 export default function DiscussionsScreen() {
   const navigation   = useNavigation();
   const isFocused    = useIsFocused();
@@ -191,7 +234,7 @@ export default function DiscussionsScreen() {
   return (
     <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator size="large" color="#6D28D9" style={{ marginTop: 40 }} />
+        <DiscussionsSkeleton />
       ) : groups.length === 0 ? (
         <View style={styles.empty}>
           <MessageSquare size={64} color="#D1D5DB" />
@@ -276,6 +319,6 @@ const styles = StyleSheet.create({
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#111827', marginTop: 16 },
   emptySub:   { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 6, textAlign: 'center' },
-  emptyBtn:   { marginTop: 24, backgroundColor: '#6D28D9', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
+  emptyBtn:   { marginTop: 24, backgroundColor: 'black', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   emptyBtnText:{ color: '#FFF', fontFamily: 'Outfit_600SemiBold', fontSize: 15 },
 });

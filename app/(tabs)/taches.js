@@ -6,11 +6,11 @@ import * as Sharing from 'expo-sharing';
 import { useAtom } from 'jotai';
 import { groupBy } from 'lodash';
 import { ArrowDownNarrowWideIcon, ListFilter, Plus } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     ActivityIndicator, Alert,
+    Animated,
     Keyboard,
-    KeyboardAvoidingView,
     Modal,
     Platform,
     ScrollView,
@@ -117,14 +117,82 @@ const getSortedPins = (pinsToSort, field, direction) => {
     return sortedResult;
 };
 
+// ── Shimmer skeleton (même pattern que AcceuilScreen) ────────────────────────
+function SkeletonBox({ width, height, borderRadius = 8, style }) {
+    const anim = useRef(new Animated.Value(0.4)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
+                Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+            ])
+        ).start();
+    }, []);
+
+    return (
+        <Animated.View
+            style={[
+                { width, height, borderRadius, backgroundColor: '#E5E7EB', opacity: anim },
+                style,
+            ]}
+        />
+    );
+}
+
+function TaskRowSkeleton() {
+    return (
+        <View style={styles.skeletonCard}>
+            <SkeletonBox width={22} height={22} borderRadius={6} />
+            <View style={{ flex: 1, gap: 6, marginLeft: 12 }}>
+                <SkeletonBox width="70%" height={14} borderRadius={4} />
+                <SkeletonBox width="40%" height={11} borderRadius={4} />
+            </View>
+            <SkeletonBox width={24} height={24} borderRadius={12} />
+        </View>
+    );
+}
+
+function TasksSkeleton() {
+    return (
+        <View>
+            <SkeletonBox width={90} height={11} borderRadius={4} style={{ marginBottom: 10, marginLeft: 4 }} />
+            <View style={styles.skeletonGroup}>
+                {[0, 1, 2].map(i => (
+                    <View key={i} style={[
+                        i === 0 && styles.sectionTopRadius,
+                        i === 2 && styles.sectionBottomRadius,
+                        i !== 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#F3F4F6' },
+                    ]}>
+                        <TaskRowSkeleton />
+                    </View>
+                ))}
+            </View>
+
+            <SkeletonBox width={110} height={11} borderRadius={4} style={{ marginTop: 24, marginBottom: 10, marginLeft: 4 }} />
+            <View style={styles.skeletonGroup}>
+                {[0, 1].map(i => (
+                    <View key={i} style={[
+                        i === 0 && styles.sectionTopRadius,
+                        i === 1 && styles.sectionBottomRadius,
+                        i !== 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#F3F4F6' },
+                    ]}>
+                        <TaskRowSkeleton />
+                    </View>
+                ))}
+            </View>
+        </View>
+    );
+}
+
 const CustomCheckbox = ({ checked, onPress }) => (
     <TouchableOpacity
         onPress={onPress}
         activeOpacity={0.7}
         style={{
             width: 22, height: 22, borderRadius: 6, borderWidth: 2,
-            borderColor: checked ? 'darkmagenta' : '#D1D5DB',
-            backgroundColor: checked ? 'darkmagenta' : 'white',
+            borderColor: checked ? 'black' : '#D1D5DB',
+            backgroundColor: checked ? 'black' : 'white',
             alignItems: 'center', justifyContent: 'center',
         }}
     >
@@ -134,7 +202,7 @@ const CustomCheckbox = ({ checked, onPress }) => (
 
 const AppCheckbox = ({ checked, onPress }) => {
     if (Platform.OS === 'android') {
-        return <Checkbox status={checked ? 'checked' : 'unchecked'} color="darkmagenta" onPress={onPress} />;
+        return <Checkbox status={checked ? 'checked' : 'unchecked'} color="black" onPress={onPress} />;
     }
     return <CustomCheckbox checked={checked} onPress={onPress} />;
 };
@@ -254,6 +322,7 @@ function ReportOptionsModal({
     const [isSubmitting, setIsSubmitting] = useState(false);                     // ── NEW
     const [keyboardOffset, setKeyboardOffset] = useState(0);
 
+   
     // ── Keyboard listeners (unchanged) ───────────────────────────────────────
     useEffect(() => {
         if (!visible) return;
@@ -1066,6 +1135,27 @@ export default function TasksScreen() {
     const [assignedToActive, setAssignedToActive] = useState(false);
     const [selectedAssignees, setSelectedAssignees] = useState([]);
 
+     const [createTaskKeyboardOffset, setCreateTaskKeyboardOffset] = useState(0); // ── NEW
+
+// ── Keyboard listeners pour le modal "Nouvelle tâche" ──
+useEffect(() => {
+    if (!showCreateTaskModal) return;
+    const show = Keyboard.addListener(
+        Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+        (e) => setCreateTaskKeyboardOffset(e.endCoordinates.height)
+    );
+    const hide = Keyboard.addListener(
+        Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+        () => setCreateTaskKeyboardOffset(0)
+    );
+    return () => { show.remove(); hide.remove(); };
+}, [showCreateTaskModal]);
+
+useEffect(() => {
+    if (!showCreateTaskModal) setCreateTaskKeyboardOffset(0);
+}, [showCreateTaskModal]);
+
+
     // ── Fetch templates ──
     useEffect(() => {
         if (!projects?.organization_id) return;
@@ -1478,9 +1568,9 @@ export default function TasksScreen() {
             setShowSortSheet(false);
         };
         return (
-            <Modal animationType="slide" transparent visible={showSortSheet} onRequestClose={() => setShowSortSheet(false)}>
+            <Modal animationType="slide" transparent  visible={showSortSheet} onRequestClose={() => setShowSortSheet(false)}>
                 <View style={styles.modalOverlay}>
-                    <View style={styles.bottomSheet}>
+                    <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                         <View style={styles.sheetHeader}>
                             <Text style={styles.sheetTitle}>Trier les tâches par...</Text>
                             <TouchableOpacity onPress={() => setShowSortSheet(false)}>
@@ -1548,7 +1638,7 @@ export default function TasksScreen() {
             </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color="#6D28D9" style={{ marginTop: 20 }} />
+                <TasksSkeleton />
             ) : (
                 <SectionList
                     sections={sections}
@@ -1632,9 +1722,9 @@ export default function TasksScreen() {
 
             {/* Create task modal */}
             <Modal animationType="slide" transparent visible={showCreateTaskModal} onRequestClose={() => setShowCreateTaskModal(false)}>
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                
                     <View style={styles.modalOverlay}>
-                        <View style={styles.createTaskContainer}>
+                        <View style={[styles.createTaskContainer, { paddingBottom: Math.max(insets.bottom, 20), marginBottom: createTaskKeyboardOffset, }]}>
                             <View style={styles.sheetHeader}>
                                 <Text style={styles.sheetTitle}>Nouvelle tâche générale</Text>
                                 <TouchableOpacity onPress={() => setShowCreateTaskModal(false)}>
@@ -1682,7 +1772,7 @@ export default function TasksScreen() {
                             </View>
                         </View>
                     </View>
-                </KeyboardAvoidingView>
+                
             </Modal>
 
             {/* Floating buttons */}
@@ -1762,4 +1852,18 @@ const styles = StyleSheet.create({
     createButtonText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#FFFFFF' },
     filterActiveBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: '#10b981', borderRadius: 10, minWidth: 18, height: 18, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
     filterActiveBadgeText: { color: 'white', fontSize: 10, fontFamily: 'Outfit_600SemiBold' },
+    skeletonGroup: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 2, height: 2 },
+    shadowRadius: 6,
+},
+skeletonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+},
 });

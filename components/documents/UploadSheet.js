@@ -4,16 +4,17 @@
 import { Feather } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Modal,
-    Platform, ScrollView,
-    StyleSheet,
-    Text, TextInput, TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Keyboard,
+  Modal,
+  Platform, ScrollView,
+  StyleSheet,
+  Text, TextInput, TouchableOpacity,
+  View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from './UIComponents';
 
 const ACCEPTED_TYPES = [
@@ -33,6 +34,26 @@ export function UploadSheet({ visible, mode, documentName, onClose, onSubmit }) 
   const [changeNotes, setChangeNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [keyboardOffset, setKeyboardOffset] = useState(0); // ── NEW
+  const insets = useSafeAreaInsets();
+
+  // ── Keyboard listeners ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!visible) return;
+    const show = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidShow' : 'keyboardWillShow',
+      (e) => setKeyboardOffset(e.endCoordinates.height)
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'android' ? 'keyboardDidHide' : 'keyboardWillHide',
+      () => setKeyboardOffset(0)
+    );
+    return () => { show.remove(); hide.remove(); };
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) setKeyboardOffset(0);
+  }, [visible]);
 
   const reset = () => {
     setSelectedFile(null);
@@ -101,150 +122,144 @@ export function UploadSheet({ visible, mode, documentName, onClose, onSubmit }) 
       visible={visible}
       animationType="slide"
       transparent
+      statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={handleClose}
     >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        {/* Same overlay as your TasksScreen modals */}
-        <View style={styles.overlay}>
-          {/* Same container as createTaskContainer */}
-          <View style={styles.sheet}>
-            {/* Sheet header — identical to sheetHeader in your TasksScreen */}
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>
-                {mode === 'new' ? 'Ajouter un document' : 'Nouvelle version'}
-              </Text>
-              <TouchableOpacity onPress={handleClose}>
-                <Feather name="x" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
+      <View style={styles.overlay}>
+        <View style={[
+          styles.sheet,
+          {
+            paddingBottom: Math.max(insets.bottom, 20),
+            marginBottom: keyboardOffset,
+          }
+        ]}>
+          <View style={styles.sheetHeader}>
+            <Text style={styles.sheetTitle}>
+              {mode === 'new' ? 'Ajouter un document' : 'Nouvelle version'}
+            </Text>
+            <TouchableOpacity onPress={handleClose}>
+              <Feather name="x" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
 
-            {mode === 'version' && documentName && (
-              <Text style={styles.docNameSub} numberOfLines={1}>{documentName}</Text>
+          {mode === 'version' && documentName && (
+            <Text style={styles.docNameSub} numberOfLines={1}>{documentName}</Text>
+          )}
+
+          <ScrollView
+            style={styles.form}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.inputLabel}>Fichier *</Text>
+            {selectedFile ? (
+              <View style={styles.selectedFile}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.selectedFileName} numberOfLines={1}>{selectedFile.name}</Text>
+                  <Text style={styles.selectedFileMime}>{selectedFile.mimeType}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedFile(null)} style={styles.clearFileBtn}>
+                  <Feather name="x" size={14} color={Colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.pickRow}>
+                <TouchableOpacity style={styles.pickBtn} onPress={pickDocument}>
+                  <Feather name="file-text" size={22} color={Colors.primary} />
+                  <Text style={styles.pickBtnLabel}>Fichier</Text>
+                  <Text style={styles.pickBtnSub}>PDF, Word, Excel…</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.pickBtn} onPress={pickImage}>
+                  <Feather name="image" size={22} color={Colors.primary} />
+                  <Text style={styles.pickBtnLabel}>Photo</Text>
+                  <Text style={styles.pickBtnSub}>JPG, PNG…</Text>
+                </TouchableOpacity>
+              </View>
             )}
 
-            <ScrollView
-              style={styles.form}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {/* File picker */}
-              <Text style={styles.inputLabel}>Fichier *</Text>
-              {selectedFile ? (
-                <View style={styles.selectedFile}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.selectedFileName} numberOfLines={1}>{selectedFile.name}</Text>
-                    <Text style={styles.selectedFileMime}>{selectedFile.mimeType}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => setSelectedFile(null)} style={styles.clearFileBtn}>
-                    <Feather name="x" size={14} color={Colors.textMuted} />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View style={styles.pickRow}>
-                  <TouchableOpacity style={styles.pickBtn} onPress={pickDocument}>
-                    <Feather name="file-text" size={22} color={Colors.primary} />
-                    <Text style={styles.pickBtnLabel}>Fichier</Text>
-                    <Text style={styles.pickBtnSub}>PDF, Word, Excel…</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.pickBtn} onPress={pickImage}>
-                    <Feather name="image" size={22} color={Colors.primary} />
-                    <Text style={styles.pickBtnLabel}>Photo</Text>
-                    <Text style={styles.pickBtnSub}>JPG, PNG…</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+            {mode === 'new' && (
+              <>
+                <Text style={styles.inputLabel}>Description (optionnel)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Décrivez brièvement ce document…"
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholderTextColor="#999"
+                  multiline
+                  numberOfLines={2}
+                  textAlignVertical="top"
+                />
+              </>
+            )}
 
-              {/* Description — new doc only */}
-              {mode === 'new' && (
-                <>
-                  <Text style={styles.inputLabel}>Description (optionnel)</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    placeholder="Décrivez brièvement ce document…"
-                    value={description}
-                    onChangeText={setDescription}
-                    placeholderTextColor="#999"
-                    multiline
-                    numberOfLines={2}
-                    textAlignVertical="top"
-                  />
-                </>
-              )}
+            <Text style={styles.inputLabel}>
+              {mode === 'new' ? 'Notes (optionnel)' : 'Modifications apportées'}
+            </Text>
+            <TextInput
+              style={[styles.textInput, styles.textArea]}
+              placeholder={mode === 'new' ? 'ex. Première version' : 'ex. Mise à jour section 3…'}
+              value={changeNotes}
+              onChangeText={setChangeNotes}
+              placeholderTextColor="#999"
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
 
-              {/* Change notes */}
-              <Text style={styles.inputLabel}>
-                {mode === 'new' ? 'Notes (optionnel)' : 'Modifications apportées'}
+            <View style={styles.infoBox}>
+              <Feather name="info" size={16} color={Colors.primary} />
+              <Text style={styles.infoText}>
+                {mode === 'new'
+                  ? 'Vous pourrez ajouter de nouvelles versions à tout moment depuis la liste.'
+                  : "L'historique complet des versions reste accessible dans l'aperçu du document."}
               </Text>
-              <TextInput
-                style={[styles.textInput, styles.textArea]}
-                placeholder={mode === 'new' ? 'ex. Première version' : 'ex. Mise à jour section 3…'}
-                value={changeNotes}
-                onChangeText={setChangeNotes}
-                placeholderTextColor="#999"
-                multiline
-                numberOfLines={3}
-                textAlignVertical="top"
-              />
-
-              {/* Info box — same as infoBox in your TasksScreen */}
-              <View style={styles.infoBox}>
-                <Feather name="info" size={16} color={Colors.primary} />
-                <Text style={styles.infoText}>
-                  {mode === 'new'
-                    ? 'Vous pourrez ajouter de nouvelles versions à tout moment depuis la liste.'
-                    : "L'historique complet des versions reste accessible dans l'aperçu du document."}
-                </Text>
-              </View>
-
-              {error && (
-                <View style={styles.errorBox}>
-                  <Feather name="alert-circle" size={14} color={Colors.error} />
-                  <Text style={styles.errorText}>{error}</Text>
-                  <TouchableOpacity onPress={() => setError(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Feather name="x" size={16} color={Colors.error} />
-                  </TouchableOpacity>
-                </View>
-              )}
-            </ScrollView>
-
-            {/* Buttons — same as modalButtons in your TasksScreen */}
-            <View style={styles.buttons}>
-              <TouchableOpacity
-                style={[styles.btn, styles.cancelBtn]}
-                onPress={handleClose}
-              >
-                <Text style={styles.cancelBtnText}>Annuler</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.btn, styles.submitBtn, (!selectedFile || loading) && styles.submitBtnDisabled]}
-                onPress={handleSubmit}
-                disabled={!selectedFile || loading}
-              >
-                {loading
-                  ? <ActivityIndicator size="small" color="#fff" />
-                  : <Text style={styles.submitBtnText}>
-                      {mode === 'new' ? 'Uploader' : 'Enregistrer'}
-                    </Text>
-                }
-              </TouchableOpacity>
             </View>
+
+            {error && (
+              <View style={styles.errorBox}>
+                <Feather name="alert-circle" size={14} color={Colors.error} />
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity onPress={() => setError(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Feather name="x" size={16} color={Colors.error} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+
+          <View style={styles.buttons}>
+            <TouchableOpacity
+              style={[styles.btn, styles.cancelBtn]}
+              onPress={handleClose}
+            >
+              <Text style={styles.cancelBtnText}>Annuler</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.btn, styles.submitBtn, (!selectedFile || loading) && styles.submitBtnDisabled]}
+              onPress={handleSubmit}
+              disabled={!selectedFile || loading}
+            >
+              {loading
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={styles.submitBtnText}>
+                    {mode === 'new' ? 'Uploader' : 'Enregistrer'}
+                  </Text>
+              }
+            </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  // Identique à modalOverlay + createTaskContainer de TasksScreen
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: Colors.surface,
     borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20,
+    paddingHorizontal: 20, paddingTop: 20,
     maxHeight: '85%',
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
@@ -253,7 +268,6 @@ const styles = StyleSheet.create({
 
   form: { marginTop: 16, marginBottom: 8 },
 
-  // Identique à inputLabel + textInput de TasksScreen
   inputLabel: { fontSize: 14, fontFamily: 'Outfit_600SemiBold', color: Colors.textSub, marginBottom: 8, marginTop: 16 },
   textInput: {
     backgroundColor: Colors.surfaceInput,
@@ -263,7 +277,6 @@ const styles = StyleSheet.create({
   },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
 
-  // File picker
   pickRow: { flexDirection: 'row', gap: 12 },
   pickBtn: {
     flex: 1, backgroundColor: Colors.surfaceInput,
@@ -287,14 +300,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center',
   },
 
-  // Identique à infoBox de TasksScreen
   infoBox: { flexDirection: 'row', backgroundColor: Colors.primaryLight, padding: 12, borderRadius: 8, marginTop: 16, gap: 8 },
   infoText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: Colors.primary, lineHeight: 18 },
 
   errorBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.errorLight, padding: 12, borderRadius: 8, marginTop: 12, gap: 8 },
   errorText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: Colors.error },
 
-  // Identique à modalButtons de TasksScreen
   buttons: { flexDirection: 'row', gap: 12, marginTop: 16 },
   btn: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   cancelBtn: { backgroundColor: '#F3F4F6' },

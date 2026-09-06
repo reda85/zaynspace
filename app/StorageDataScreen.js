@@ -78,7 +78,7 @@ export default function StorageDataScreen() {
         backgroundColor: '#F5F7FA',
       },
       headerLeft: () => (
-        <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 10 }}>
+        <TouchableOpacity onPress={() => router.back()} >
           <View style={styles.closeButton}>
             <X size={24} color="#000" />
           </View>

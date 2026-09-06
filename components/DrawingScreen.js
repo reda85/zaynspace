@@ -20,6 +20,10 @@
 //
 // 🌍 7. ✅ Geolocation Support - Photos now include latitude/longitude metadata
 //
+// 📍 8. ✅ Photo-on-plan placement - Each photo can be pinned individually on the
+//    project plan (pins_photos.plan_x / plan_y / plan_id), via ImagePinPlacementScreen
+//    in "photo" mode.
+//
 // EXPECTED PERFORMANCE GAINS:
 // - UI responds immediately (< 100ms to show dialog)
 // - 70-90% faster rendering due to smaller output size
@@ -53,6 +57,8 @@ import {
 import { useAtom } from "jotai";
 import {
   ArrowRight,
+  ChevronRight,
+  MapPin,
   Mic as MicIcon,
   Pen,
   RotateCcw,
@@ -69,6 +75,7 @@ import {
   FlatList,
   Image,
   Keyboard,
+  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -80,7 +87,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../lib/supabase";
-import { loggedInUserAtom, selectedPinAtom } from "../store/atoms";
+import { loggedInUserAtom, PhotoPlanPositionAtom, selectedPinAtom } from "../store/atoms";
 
 global.Buffer = global.Buffer || Buffer;
 
@@ -172,6 +179,14 @@ export default function DrawingScreen() {
   const [isListening, setIsListening] = useState(false);
   const [partialResult, setPartialResult] = useState('');
 
+  // ── Photo-on-plan placement state ─────────────────────────────────────────
+  // photoPlanPositions[i] = { planId, x, y } (x/y normalisées 0-1 sur le plan) ou null
+  const [photoPlanPositions, setPhotoPlanPositions] = useState(photos.map(() => null));
+  const [photoPlanUpdate, setPhotoPlanUpdate] = useAtom(PhotoPlanPositionAtom);
+  const [showPlanSelector, setShowPlanSelector] = useState(false);
+  const [availablePlans, setAvailablePlans] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+
   // Pinch gesture state for text transformation
   const initialScale = useSharedValue(1);
   const isPinching = useSharedValue(false);
@@ -243,6 +258,81 @@ export default function DrawingScreen() {
       await ExpoSpeechRecognitionModule.start({ lang: 'fr-FR', continuous: false, interimResults: true });
     } catch (e) {}
   };
+
+  // ── Placer / déplacer la photo actuellement affichée sur le plan ──────────
+  // 1) L'utilisateur choisit un plan parmi ceux du projet (même logique que
+  //    "Localiser sur le plan" dans PinMetadataScreen).
+  // 2) On pousse ImagePinPlacementScreen (mode "photo") avec ce plan.
+  // 3) Le résultat revient via PhotoPlanPositionAtom (voir useEffect plus bas).
+  const fetchProjectPlans = useCallback(async () => {
+    setLoadingPlans(true);
+    try {
+      const { data, error } = await supabase
+        .from('plans')
+        .select('*')
+        .eq('project_id', pin?.project_id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setAvailablePlans(data || []);
+    } catch (err) {
+      console.error('Error fetching plans:', err);
+      Alert.alert('Erreur', 'Impossible de charger les plans');
+    } finally {
+      setLoadingPlans(false);
+    }
+  }, [pin?.project_id]);
+
+  const handleOpenPlanSelector = useCallback(() => {
+    if (!pin?.project_id) {
+      Alert.alert('Erreur', 'Projet introuvable pour cette tâche');
+      return;
+    }
+    fetchProjectPlans();
+    setShowPlanSelector(true);
+  }, [pin?.project_id, fetchProjectPlans]);
+
+  const handlePlanSelected = useCallback((selectedPlan) => {
+    setShowPlanSelector(false);
+    if (!selectedPlan?.width || !selectedPlan?.height || !selectedPlan?.tiles_path) {
+      Alert.alert('Erreur', 'Informations du plan incomplètes');
+      return;
+    }
+    const pdfInfo = { width: selectedPlan.width, height: selectedPlan.height, tilesPath: selectedPlan.tiles_path };
+    const existing = photoPlanPositions[currentIndex];
+    // Si la photo était déjà placée mais sur un AUTRE plan, on repart de zéro
+    // sur ce nouveau plan plutôt que de réutiliser des coordonnées incohérentes.
+    const existingForThisPlan = existing?.planId === selectedPlan.id ? existing : null;
+    router.push({
+      pathname: '/ImagePinPlacementScreen',
+      params: {
+        myuri,
+        myname,
+        myplanid: selectedPlan.id,
+        mode: 'photo',
+        photoKey: String(currentIndex),
+        pinIdToPlace: pin?.id,
+        x: existingForThisPlan?.x,
+        y: existingForThisPlan?.y,
+        pdfInfo: JSON.stringify(pdfInfo),
+      },
+    });
+  }, [photoPlanPositions, currentIndex, myuri, myname, pin?.id, router]);
+
+  // ── Récupère la position (+ le plan choisi) renvoyée par ImagePinPlacementScreen ──
+  useEffect(() => {
+    if (!photoPlanUpdate || photoPlanUpdate.photoKey == null) return;
+    const idx = Number(photoPlanUpdate.photoKey);
+    if (!Number.isNaN(idx)) {
+      setPhotoPlanPositions(prev => {
+        const copy = [...prev];
+        copy[idx] = (photoPlanUpdate.x != null && photoPlanUpdate.y != null)
+          ? { planId: photoPlanUpdate.planId, x: photoPlanUpdate.x, y: photoPlanUpdate.y }
+          : null;
+        return copy;
+      });
+    }
+    setPhotoPlanUpdate(null);
+  }, [photoPlanUpdate]);
 
   const renderImageToSurface = useCallback((img, photoPaths, canvasWidth, canvasHeight, shouldCompress = true, options = {}) => {
     const MAX_DIMENSION = options.maxDimension ?? (shouldCompress ? 1920 : 2560);
@@ -754,6 +844,9 @@ export default function DrawingScreen() {
           const latitude = typeof currentPhoto === 'object' ? currentPhoto.latitude : null;
           const longitude = typeof currentPhoto === 'object' ? currentPhoto.longitude : null;
 
+          // 📍 Position sur le plan (si l'utilisateur a placé cette photo)
+          const planPos = photoPlanPositions[index];
+
           const { data: photoInsert, error: insertError } = await supabase
             .from("pins_photos")
             .insert([{
@@ -766,6 +859,9 @@ export default function DrawingScreen() {
               sender_id: loggedInUser?.id,
               latitude,
               longitude,
+              plan_id: planPos?.planId ?? null,
+              plan_x: planPos?.x ?? null,
+              plan_y: planPos?.y ?? null,
             }])
             .select()
             .single();
@@ -821,6 +917,8 @@ export default function DrawingScreen() {
   const descriptionBottom = controlsBottom + controlsHeight + 8;
   const canvasBottom = descriptionBottom + descriptionBarHeight;
 
+  const currentPhotoPlaced = !!photoPlanPositions[currentIndex];
+
   return (
     <View style={styles.container}>
       {/* ── Thumbnails ── */}
@@ -843,6 +941,11 @@ export default function DrawingScreen() {
               {index === currentIndex && (
                 <View style={styles.thumbnailBadge}>
                   <Text style={styles.thumbnailBadgeText}>{index + 1}</Text>
+                </View>
+              )}
+              {photoPlanPositions[index] && (
+                <View style={styles.thumbnailPlanBadge}>
+                  <MapPin size={12} color="#fff" />
                 </View>
               )}
             </TouchableOpacity>
@@ -1079,7 +1182,7 @@ export default function DrawingScreen() {
         </View>
       )}
 
-      {/* ── Description bar with mic — sits above controls pill, rises with keyboard ── */}
+      {/* ── Description bar with mic + "placer sur le plan" — sits above controls pill, rises with keyboard ── */}
       <View style={[
         styles.descriptionWrapper,
         { bottom: descriptionBottom + keyboardHeight },
@@ -1111,8 +1214,58 @@ export default function DrawingScreen() {
           >
             <MicIcon size={18} color={isListening ? '#fff' : '#aaa'} />
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleOpenPlanSelector}
+            style={[styles.descriptionMic, currentPhotoPlaced && styles.descriptionMicActive]}
+          >
+            <MapPin size={18} color={currentPhotoPlaced ? '#fff' : '#aaa'} />
+          </TouchableOpacity>
         </View>
       </View>
+
+      {/* ── Sélecteur de plan pour placer la photo actuelle ── */}
+      <Modal animationType="slide" transparent visible={showPlanSelector} onRequestClose={() => setShowPlanSelector(false)}>
+        <View style={styles.planModalOverlay}>
+          <View style={[styles.planBottomSheet, { paddingBottom: insets.bottom + 20 }]}>
+            <View style={styles.planSheetHeader}>
+              <Text style={styles.planSheetTitle}>Choisir un plan</Text>
+              <TouchableOpacity onPress={() => setShowPlanSelector(false)}>
+                <X size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            {loadingPlans ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#6D28D9" />
+                <Text style={{ marginTop: 12, color: '#6B7280' }}>Chargement des plans...</Text>
+              </View>
+            ) : availablePlans.length === 0 ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ color: '#6B7280', textAlign: 'center' }}>Aucun plan disponible pour ce projet</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={availablePlans}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => (
+                  <TouchableOpacity style={styles.planItem} onPress={() => handlePlanSelected(item)}>
+                    <View style={styles.planIconCircle}>
+                      <MapPin size={20} color="#6D28D9" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.planItemTitle}>{item.name}</Text>
+                      {item.description && (
+                        <Text style={styles.planItemSubtitle} numberOfLines={1}>{item.description}</Text>
+                      )}
+                    </View>
+                    <ChevronRight size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                )}
+                ItemSeparatorComponent={() => <View style={styles.planSeparator} />}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Saving overlay ── */}
       {isSaving && (
@@ -1188,6 +1341,17 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 12,
     fontWeight: "bold",
+  },
+  thumbnailPlanBadge: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    backgroundColor: "rgba(0,0,0,0.75)",
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: "center",
+    alignItems: "center",
   },
   photoCounter: {
     backgroundColor: "rgba(0,0,0,0.7)",
@@ -1461,4 +1625,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+
+  // ── Plan selector sheet ────────────────────────────────────────────────────
+  planModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  planBottomSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    maxHeight: '70%',
+  },
+  planSheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 15,
+  },
+  planSheetTitle: { fontSize: 18, fontWeight: '600', color: '#111' },
+  planItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  planIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ede9fe',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  planItemTitle: { fontSize: 16, fontWeight: '600', color: '#111' },
+  planItemSubtitle: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  planSeparator: { height: 1, backgroundColor: '#f0f0f0', marginHorizontal: 20 },
 });

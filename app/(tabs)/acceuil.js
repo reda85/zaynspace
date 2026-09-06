@@ -289,26 +289,34 @@ const data = memberProjects
         </View>
       </View>
 
-      {/* Cards */}
-      {loadingData ? <CardsSkeleton /> : (
-        <View style={styles.cardsRow}>
-          <View style={[styles.statsCard, styles.cardLeft]}>
-            <View style={styles.statsIcon}>
-              <MapPinnedIcon size={22} color="#111827" />
-            </View>
-            <Text style={styles.statsValue}>{plans?.length || 0}</Text>
-            <Text style={styles.statsLabel}>PLANS</Text>
-          </View>
+{/* Cards */}
+{loadingData ? <CardsSkeleton /> : (
+  <View style={styles.cardsRow}>
+    <TouchableOpacity
+      style={[styles.statsCard, styles.cardLeft]}
+      onPress={() => router.push('/plans')}
+      activeOpacity={0.7}
+    >
+      <View style={styles.statsIcon}>
+        <MapPinnedIcon size={22} color="#111827" />
+      </View>
+      <Text style={styles.statsValue}>{plans?.length || 0}</Text>
+      <Text style={styles.statsLabel}>PLANS</Text>
+    </TouchableOpacity>
 
-          <View style={[styles.statsCard, styles.cardRight]}>
-            <View style={styles.statsIcon}>
-              <MapPin size={22} color="#111827" />
-            </View>
-            <Text style={styles.statsValue}>{pins?.length || 0}</Text>
-            <Text style={styles.statsLabel}>PINS</Text>
-          </View>
-        </View>
-      )}
+    <TouchableOpacity
+      style={[styles.statsCard, styles.cardRight]}
+      onPress={() => router.push('/taches')}
+      activeOpacity={0.7}
+    >
+      <View style={styles.statsIcon}>
+        <MapPin size={22} color="#111827" />
+      </View>
+      <Text style={styles.statsValue}>{pins?.length || 0}</Text>
+      <Text style={styles.statsLabel}>PINS</Text>
+    </TouchableOpacity>
+  </View>
+)}
 
       {/* Events Header */}
       <View style={styles.eventsHeader}>

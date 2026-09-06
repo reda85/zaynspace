@@ -6,14 +6,61 @@ import { useNavigation } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useAtom } from 'jotai';
 import { Eye, ListFilter, MousePointer, X } from 'lucide-react-native';
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Dimensions, Modal, ScrollView, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Dimensions, Modal, ScrollView, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ImageViewerModal from '../../components/ImageViewerModal';
 import { supabase } from '../../lib/supabase';
 import { selectedProjectAtom } from '../../store/atoms';
 
 const IMAGE_SIZE = Dimensions.get('window').width / 3 - 16;
 
+function SkeletonBox({ width, height, borderRadius = 8, style }) {
+    const anim = useRef(new Animated.Value(0.4)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
+                Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+            ])
+        ).start();
+    }, []);
+
+    return (
+        <Animated.View
+            style={[
+                { width, height, borderRadius, backgroundColor: '#E5E7EB', opacity: anim },
+                style,
+            ]}
+        />
+    );
+}
+
+
+
+
+function MediaGridSkeleton() {
+    const rows = [0, 1, 2, 3]; // 4 lignes de 3 miniatures
+    return (
+        <View>
+            <SkeletonBox width={130} height={13} borderRadius={4} style={{ marginBottom: 10, marginLeft: 4, marginTop: 12 }} />
+            {rows.map((row) => (
+                <View key={row} style={{ flexDirection: 'row' }}>
+                    {[0, 1, 2].map((col) => (
+                        <SkeletonBox
+                            key={col}
+                            width={IMAGE_SIZE}
+                            height={IMAGE_SIZE}
+                            borderRadius={12}
+                            style={{ margin: 4 }}
+                        />
+                    ))}
+                </View>
+            ))}
+        </View>
+    );
+}
 export default function MediaGalleryScreen() {
   const [project] = useAtom(selectedProjectAtom);
   const [media, setMedia] = useState([]);
@@ -22,6 +69,7 @@ export default function MediaGalleryScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [loading, setLoading] = useState(false);
   
   // Filter states
   const [filterModalVisible, setFilterModalVisible] = useState(false);
@@ -34,6 +82,10 @@ export default function MediaGalleryScreen() {
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
 
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+
+
+  // ── Shimmer skeleton (même pattern que AcceuilScreen/TasksScreen) ────────────
 
   const toggleMode = useCallback(() => {
     setSelectionMode(prev => !prev);
@@ -53,7 +105,7 @@ export default function MediaGalleryScreen() {
       headerRight: () => (
         <TouchableOpacity onPress={toggleMode} style={{ marginRight: 16 }}>
           <View style={styles.headerButton}>
-            {selectionMode ? <MousePointer size={20} color="darkmagenta" /> : <Eye size={20} color="black" />}
+            {selectionMode ? <MousePointer size={20} color="black" /> : <Eye size={20} color="black" />}
           </View>
         </TouchableOpacity>
       ),
@@ -87,36 +139,34 @@ export default function MediaGalleryScreen() {
     if (!project?.id) return;
 
    const fetchMedia = async () => {
-  let query = supabase
-    .from('pins_photos')
-    .select('*, pdf_pins!inner(*), members(*)')
-    .eq('project_id', project.id)
-    .is('pdf_pins.deleted_at', null);
-      // Apply plan filter
-      if (selectedPlan) {
+    setLoading(true); // ── NEW
+    let query = supabase
+        .from('pins_photos')
+        .select('*, pdf_pins!inner(*), members(*)')
+        .eq('project_id', project.id)
+        .is('pdf_pins.deleted_at', null);
+    if (selectedPlan) {
         query = query.eq('pin_id', selectedPlan);
-      }
-
-      // Apply date range filter
-      if (startDate) {
+    }
+    if (startDate) {
         query = query.gte('created_at', startDate.toISOString());
-      }
-      if (endDate) {
+    }
+    if (endDate) {
         const endOfDay = new Date(endDate);
         endOfDay.setHours(23, 59, 59, 999);
         query = query.lte('created_at', endOfDay.toISOString());
-      }
+    }
 
-      const { data, error } = await query;
-      console.log("medias", data);
+    const { data, error } = await query;
 
-      if (error) {
+    if (error) {
         console.error('Failed to fetch media:', error);
-      } else {
+    } else {
         setMedia(data);
         setGroupedMedia(groupMediaByDate(data));
-      }
-    };
+    }
+    setLoading(false); // ── NEW
+};
 
     fetchMedia();
   }, [project?.id, selectedPlan, startDate, endDate]);
@@ -284,6 +334,9 @@ export default function MediaGalleryScreen() {
           </TouchableOpacity>
         </View>
       )}
+      {loading ? (
+    <MediaGridSkeleton />
+) : (
 
       <SectionList
         sections={groupedMedia}
@@ -301,7 +354,7 @@ export default function MediaGalleryScreen() {
           </View>
         }
       />
-
+      )}
       {/* Floating Action Buttons */}
       <View style={styles.floatingBar}>
         {selectionMode && selectedIds.size > 0 && (
@@ -339,10 +392,12 @@ export default function MediaGalleryScreen() {
       <Modal
         visible={filterModalVisible}
         transparent
+        statusBarTranslucent
+  navigationBarTranslucent
         animationType="slide"
         onRequestClose={() => setFilterModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { paddingBottom: Math.max(insets.bottom, 20) }]}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Filtres</Text>
@@ -506,27 +561,28 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginLeft: 4
   },
-  thumbnailWrapper: {
+ thumbnailWrapper: {
     width: IMAGE_SIZE,
     height: IMAGE_SIZE,
     margin: 4,
     borderRadius: 12,
     backgroundColor: '#fff',
+    borderWidth: 3,              // ── toujours présent, plus conditionnel
+    borderColor: 'transparent',  // ── NEW: transparent par défaut
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 3,
     elevation: 2,
     overflow: 'hidden'
-  },
-  thumbnail: {
+},
+thumbnail: {
     width: '100%',
     height: '100%'
-  },
-  selected: {
-    borderWidth: 3,
-    borderColor: 'darkmagenta'
-  },
+},
+selected: {
+    borderColor: 'black',  // ── ne change plus que la couleur, pas borderWidth
+},
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
@@ -592,7 +648,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FCD34D',
   },
   downloadFloatingBtn: {
-    backgroundColor: '#6D28D9',
+    backgroundColor: 'black',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
@@ -655,7 +711,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   planChipActive: {
-    backgroundColor: '#6D28D9',
+    backgroundColor: 'black',
   },
   planChipText: {
     fontFamily: 'Outfit_500Medium',
@@ -721,7 +777,7 @@ const styles = StyleSheet.create({
   },
   applyBtn: {
     flex: 1,
-    backgroundColor: '#6D28D9',
+    backgroundColor: 'black',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',

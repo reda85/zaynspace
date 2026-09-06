@@ -8,15 +8,17 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import { useAtom } from 'jotai';
 import { ArrowDownNarrowWideIcon, FileText, FolderOpen, Plus } from 'lucide-react-native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Modal,
+  Animated,
+  Modal,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text, TextInput, TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DocumentCard, FolderCard } from '../../components/documents/DocumentCard';
 import { DocumentViewer } from '../../components/documents/DocumentViewer';
 import { Colors, SectionHeader, UploadProgressBar } from '../../components/documents/UIComponents';
@@ -51,19 +53,150 @@ function getSorted(docs, field, dir) {
   });
 }
 
+// ── Shimmer skeleton (même pattern que AcceuilScreen/TasksScreen/MediaGallery) ──
+function SkeletonBox({ width, height, borderRadius = 8, style }) {
+  const anim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        { width, height, borderRadius, backgroundColor: '#E5E7EB', opacity: anim },
+        style,
+      ]}
+    />
+  );
+}
+
+function FolderRowSkeleton() {
+  return (
+    <View style={docSkeletonStyles.row}>
+      <SkeletonBox width={40} height={40} borderRadius={10} />
+      <SkeletonBox width="55%" height={14} borderRadius={4} style={{ marginLeft: 12 }} />
+    </View>
+  );
+}
+
+function DocRowSkeleton() {
+  return (
+    <View style={docSkeletonStyles.row}>
+      <SkeletonBox width={40} height={40} borderRadius={10} />
+      <View style={{ flex: 1, gap: 6, marginLeft: 12 }}>
+        <SkeletonBox width="65%" height={14} borderRadius={4} />
+        <SkeletonBox width="35%" height={11} borderRadius={4} />
+      </View>
+    </View>
+  );
+}
+
+function DocumentsSkeleton() {
+  return (
+    <View>
+      <SkeletonBox width={70} height={11} borderRadius={4} style={{ marginBottom: 10 }} />
+      <View style={docSkeletonStyles.group}>
+        {[0, 1].map(i => (
+          <View key={i} style={i !== 0 && docSkeletonStyles.divider}>
+            <FolderRowSkeleton />
+          </View>
+        ))}
+      </View>
+
+      <SkeletonBox width={90} height={11} borderRadius={4} style={{ marginTop: 20, marginBottom: 10 }} />
+      <View style={docSkeletonStyles.group}>
+        {[0, 1, 2, 3].map(i => (
+          <View key={i} style={i !== 0 && docSkeletonStyles.divider}>
+            <DocRowSkeleton />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const docSkeletonStyles = StyleSheet.create({
+  group: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  divider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#F3F4F6',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+  },
+});
+
 export default function DocumentManager() {
   const [project] = useAtom(selectedProjectAtom);
   const projectId = project?.id;
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
+
+  // ── States déclarés en haut pour être disponibles dans le useEffect de navigation.setOptions ──
+  const [currentFolderId, setCurrentFolderId]     = useState(null);
+  const [breadcrumbs, setBreadcrumbs]             = useState([]);
+  const [search, setSearch]                       = useState('');
+
+  const [viewerDoc, setViewerDoc]                 = useState(null);
+  const [versionTarget, setVersionTarget]         = useState(null);
+  const [uploadMode, setUploadMode]               = useState('new');
+  const [showUpload, setShowUpload]               = useState(false);
+
+  const [sortField, setSortField]                 = useState('name');
+  const [sortDir, setSortDir]                     = useState('asc');
+  const [showSortSheet, setShowSortSheet]         = useState(false);
+
+  const [showNewFolder, setShowNewFolder]         = useState(false);
+  const [newFolderName, setNewFolderName]         = useState('');
 
   const handleOpenSortSheet = useCallback(() => setShowSortSheet(true), []);
 
+  const goToBreadcrumb = useCallback((id) => {
+    if (id === null) {
+      setBreadcrumbs([]);
+      setCurrentFolderId(null);
+    } else {
+      setBreadcrumbs(prev => {
+        const idx = prev.findIndex(b => b.id === id);
+        return prev.slice(0, idx + 1);
+      });
+      setCurrentFolderId(id);
+    }
+  }, []);
+
+  // ── Titre du header = nom du dossier courant, ou "Documents" à la racine ──
+  const headerTitle = breadcrumbs.length > 0
+    ? breadcrumbs[breadcrumbs.length - 1].name
+    : 'Documents';
+
+  // ── Back button : remonte au dossier parent, ou quitte l'écran si on est à la racine ──
+  const handleBackPress = useCallback(() => {
+    if (breadcrumbs.length > 0) {
+      const parent = breadcrumbs.length > 1 ? breadcrumbs[breadcrumbs.length - 2].id : null;
+      goToBreadcrumb(parent);
+    } else {
+      navigation.goBack();
+    }
+  }, [breadcrumbs, goToBreadcrumb, navigation]);
+
   useEffect(() => {
     navigation.setOptions({
-      title: 'Documents',
+      title: headerTitle,
       headerTitleAlign: 'center',
       headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 10 }}>
+        <TouchableOpacity onPress={handleBackPress} style={{ marginLeft: 10 }}>
           <View style={{
             backgroundColor: 'white', width: 36, height: 36, borderRadius: 18,
             alignItems: 'center', justifyContent: 'center',
@@ -104,22 +237,7 @@ export default function DocumentManager() {
         color: 'black',
       },
     });
-  }, [navigation, handleOpenSortSheet]);
-  const [currentFolderId, setCurrentFolderId]     = useState(null);
-  const [breadcrumbs, setBreadcrumbs]             = useState([]);
-  const [search, setSearch]                       = useState('');
-
-  const [viewerDoc, setViewerDoc]                 = useState(null);
-  const [versionTarget, setVersionTarget]         = useState(null);
-  const [uploadMode, setUploadMode]               = useState('new');
-  const [showUpload, setShowUpload]               = useState(false);
-
-  const [sortField, setSortField]                 = useState('name');
-  const [sortDir, setSortDir]                     = useState('asc');
-  const [showSortSheet, setShowSortSheet]         = useState(false);
-
-  const [showNewFolder, setShowNewFolder]         = useState(false);
-  const [newFolderName, setNewFolderName]         = useState('');
+  }, [navigation, handleOpenSortSheet, handleBackPress, headerTitle]);
 
   const { folders, createFolder, renameFolder, deleteFolder } = useFolders(projectId);
   // Current folder documents
@@ -149,19 +267,6 @@ export default function DocumentManager() {
     setBreadcrumbs(prev => [...prev, { id: folder.id, name: folder.name }]);
   }, []);
 
-  const goToBreadcrumb = useCallback((id) => {
-    if (id === null) {
-      setBreadcrumbs([]);
-      setCurrentFolderId(null);
-    } else {
-      setBreadcrumbs(prev => {
-        const idx = prev.findIndex(b => b.id === id);
-        return prev.slice(0, idx + 1);
-      });
-      setCurrentFolderId(id);
-    }
-  }, []);
-
   const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return;
     await createFolder(newFolderName.trim(), currentFolderId);
@@ -183,7 +288,7 @@ export default function DocumentManager() {
       animationType="slide" transparent visible={showSortSheet}
       onRequestClose={() => setShowSortSheet(false)}
     >
-      <View style={styles.overlay}>
+      <View style={[styles.overlay, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         <View style={styles.bottomSheet}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>Trier les documents par…</Text>
@@ -281,7 +386,7 @@ export default function DocumentManager() {
       )}
 
       {loading ? (
-        <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 20 }} />
+        <DocumentsSkeleton />
       ) : (
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -425,7 +530,7 @@ const styles = StyleSheet.create({
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, marginTop: 40 },
   emptyTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#111827', marginTop: 16 },
   emptySub: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 6, textAlign: 'center', lineHeight: 20 },
-  emptyBtn: { marginTop: 24, backgroundColor: '#6D28D9', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
+  emptyBtn: { marginTop: 24, backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   emptyBtnText: { color: '#FFF', fontFamily: 'Outfit_600SemiBold', fontSize: 15 },
 
   emptyHint: { color: '#6B7280', fontSize: 16, fontFamily: 'Outfit_600SemiBold', textAlign: 'center', paddingVertical: 16 },

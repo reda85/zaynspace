@@ -29,6 +29,78 @@ import {
 
 const API_URL = 'https://zaynbackend-production.up.railway.app';
 
+
+// ── Shimmer skeleton (même pattern que les autres écrans) ────────────────────
+function SkeletonBox({ width, height, borderRadius = 8, style }) {
+  const anim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        { width, height, borderRadius, backgroundColor: '#E5E7EB', opacity: anim },
+        style,
+      ]}
+    />
+  );
+}
+
+function PlanCardSkeleton() {
+  return (
+    <View style={planSkeletonStyles.card}>
+      <View style={planSkeletonStyles.header}>
+        <View style={planSkeletonStyles.left}>
+          <SkeletonBox width={36} height={36} borderRadius={18} />
+          <SkeletonBox width="55%" height={15} borderRadius={4} style={{ marginLeft: 10 }} />
+        </View>
+        <SkeletonBox width={28} height={13} borderRadius={4} />
+      </View>
+    </View>
+  );
+}
+
+function PlansSkeleton() {
+  return (
+    <View>
+      {[0, 1, 2, 3].map(i => <PlanCardSkeleton key={i} />)}
+    </View>
+  );
+}
+
+const planSkeletonStyles = StyleSheet.create({
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 16,
+    marginVertical: 6,
+    marginHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  left: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+});
+
+
 export default function ProjectPlans() {
   const [selectedProject] = useAtom(selectedProjectAtom);
   const [, setCategories] = useAtom(categoriesAtom);
@@ -37,6 +109,7 @@ export default function ProjectPlans() {
   const [pinCounts, setPinCounts] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [editMode, setEditMode] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [user] = useAtom(loggedInUserAtom);
   const navigation = useNavigation();
 
@@ -101,6 +174,7 @@ export default function ProjectPlans() {
     let cancelled = false;
 
     const fetchPlans = async () => {
+      setLoading(true); // ── NEW
       const { data: plansData, error } = await supabase
         .from('plans')
         .select('*')
@@ -123,6 +197,7 @@ export default function ProjectPlans() {
       const counts = {};
       pinsData.forEach((p) => { counts[p.plan_id] = (counts[p.plan_id] || 0) + 1; });
       setPinCounts(counts);
+      setLoading(false); // ── NEW
     };
 
     fetchPlans();
@@ -369,7 +444,10 @@ export default function ProjectPlans() {
         />
       </View>
 
-      <FlatList
+      {loading ? (
+        <PlansSkeleton />
+      ) : (
+        <FlatList
         data={filteredPlans}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -406,7 +484,7 @@ export default function ProjectPlans() {
           </TouchableOpacity>
         )}
       />
-
+      )}
       {editMode && (
         <TouchableOpacity style={styles.fab} onPress={pickFile}>
           <Feather name="upload-cloud" size={22} color="white" />
@@ -552,9 +630,19 @@ export default function ProjectPlans() {
       </Modal>
 
       {/* ── Rename Modal ─────────────────────────────────────────────────────── */}
-      <Modal visible={renameModalVisible} transparent animationType="fade" onRequestClose={() => setRenameModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
+     <Modal
+  visible={renameModalVisible}
+  transparent
+  animationType="fade"
+  statusBarTranslucent
+  navigationBarTranslucent
+  onRequestClose={() => setRenameModalVisible(false)}
+>
+  <KeyboardAvoidingView
+    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    style={[styles.modalOverlay, { paddingBottom: Math.max(insets.bottom, 20) }]}
+  >
+    <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Renommer le plan</Text>
             <TextInput
               style={styles.modalInput}
@@ -657,6 +745,6 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: 'row', gap: 10 },
   modalBtnCancel: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: '#F3F4F6', alignItems: 'center' },
   modalBtnCancelText: { fontFamily: 'Outfit_500Medium', color: '#6B7280', fontSize: 15 },
-  modalBtnConfirm: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: '#6D28D9', alignItems: 'center' },
+  modalBtnConfirm: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: 'black', alignItems: 'center' },
   modalBtnConfirmText: { fontFamily: 'Outfit_500Medium', color: '#FFFFFF', fontSize: 15 },
 });

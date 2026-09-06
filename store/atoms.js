@@ -18,3 +18,4 @@ export const MetaPinAtom = atom({
   x: 0,
   y: 0,
 })
+export const PhotoPlanPositionAtom = atom(null); // { photoKey, x, y } | null

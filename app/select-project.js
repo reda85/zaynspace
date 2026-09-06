@@ -121,22 +121,56 @@ export default function SelectProjectScreen() {
   useEffect(() => { if (activeOrgId) fetchProjects(activeOrgId); }, [activeOrgId]);
 
   const handleOrgSelect = async (org) => {
-    setOrgModalVisible(false);
-    if (org.id === activeOrgId) return;
+  setOrgModalVisible(false);
+  if (org.id === activeOrgId) return;
 
-    await AsyncStorage.setItem(`last_organization_id_${user.id}`, org.id.toString());
-    const role = await fetchRoleForOrg(user.id, org.id);
+  await AsyncStorage.setItem(`last_organization_id_${user.id}`, org.id.toString());
+  const role = await fetchRoleForOrg(user.id, org.id);
 
-    setPlans([]);
-    setPins([]);
-    setCategories([]);
-    setStatuses([]);
-    setMembers([]);
+  setPlans([]);
+  setPins([]);
+  setCategories([]);
+  setStatuses([]);
+  setMembers([]);
+
+  setLoggedInUser((prev) => ({ ...prev, organization_id: org.id, role }));
+  setSelectedOrg(org);
+
+  // ── Sélectionne automatiquement le premier projet de la nouvelle org ──
+  try {
+    const { data: memberProjects, error: memberError } = await supabase
+      .from('members_projects')
+      .select('project_id')
+      .eq('member_id', user.id);
+
+    if (memberError) throw memberError;
+
+    const projectIds = memberProjects?.map((mp) => mp.project_id) ?? [];
+
+    if (projectIds.length === 0) {
+      setSelectedProject(null);
+      return;
+    }
+
+    const { data: orgProjects, error: projectsError } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('organization_id', org.id)
+      .in('id', projectIds)
+      .order('created_at', { ascending: false });
+
+    if (projectsError) throw projectsError;
+
+    const firstProject = orgProjects?.[0] ?? null;
+    setSelectedProject(firstProject);
+    if (firstProject) {
+      await AsyncStorage.setItem('last_project_id', String(firstProject.id));
+    }
+  } catch (err) {
+    console.error('Error auto-selecting first project:', err);
     setSelectedProject(null);
-
-    setLoggedInUser((prev) => ({ ...prev, organization_id: org.id, role }));
-    setSelectedOrg(org);
-  };
+  }
+};
 
   const handleSelectProject = async (project) => {
     await AsyncStorage.setItem('last_project_id', project.id.toString());
@@ -211,7 +245,7 @@ export default function SelectProjectScreen() {
       headerShadowVisible: false,
       headerStyle: { backgroundColor: '#F5F7FA' },
       headerLeft: () => (
-        <TouchableOpacity onPress={() => router.back()} style={{ marginLeft: 16 }}>
+        <TouchableOpacity onPress={() => router.back()} >
           <View style={styles.closeButton}>
             <X size={24} color="#000" />
           </View>
@@ -219,7 +253,7 @@ export default function SelectProjectScreen() {
       ),
       headerRight: () =>
         isAdmin ? (
-          <TouchableOpacity onPress={openCreateModal} style={{ marginRight: 16 }}>
+          <TouchableOpacity onPress={openCreateModal} >
             <View style={styles.addButton}>
               <Plus size={20} color="#fff" />
             </View>

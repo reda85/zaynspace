@@ -17,8 +17,8 @@ const CustomCheckbox = ({ checked, onPress }) => (
             height: 22,
             borderRadius: 6,
             borderWidth: 2,
-            borderColor: checked ? 'darkmagenta' : '#D1D5DB',
-            backgroundColor: checked ? 'darkmagenta' : 'white',
+            borderColor: checked ? 'black' : '#D1D5DB',
+            backgroundColor: checked ? 'black' : 'white',
             alignItems: 'center',
             justifyContent: 'center',
         }}
@@ -34,7 +34,7 @@ const AppCheckbox = ({ checked, onPress }) => {
             <Checkbox
                 status={checked ? 'checked' : 'unchecked'}
                 onPress={onPress}
-                color="darkmagenta"
+                color="black"
             />
         );
     }

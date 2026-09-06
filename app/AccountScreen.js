@@ -48,7 +48,7 @@ export default function AccountScreen() {
       headerLeft: () => (
         <TouchableOpacity
           onPress={() => router.back()}
-          style={{ marginLeft: 16 }}
+         
         >
           <View style={{
                       backgroundColor: 'white',

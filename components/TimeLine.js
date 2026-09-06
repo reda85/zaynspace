@@ -79,7 +79,18 @@ const ModificationDiff = ({ metadata }) => {
   );
 };
 
-export default function Timeline({ events = [], comments = [], showAllEvents = false }) {
+/**
+ * Timeline
+ *
+ * Props:
+ *   events, comments, showAllEvents — comportement historique inchangé.
+ *   onPlaceOnPlan — (photo) => void. Optionnel. Si fourni, transmis à
+ *                   ImageViewerModal pour chaque photo (avec plan_id/plan_x/
+ *                   plan_y de cette photo), qui affiche alors la section
+ *                   "Position sur le plan". Le parent (PinMetadataScreen) gère
+ *                   la navigation réelle vers le sélecteur de plan.
+ */
+export default function Timeline({ events = [], comments = [], showAllEvents = false, onPlaceOnPlan }) {
   const [selectedImage, setSelectedImage] = useState(null);
 
   // All items sorted by date ascending
@@ -95,12 +106,25 @@ export default function Timeline({ events = [], comments = [], showAllEvents = f
 
   const handleImagePress = (photo, userName) =>
     setSelectedImage({
-        id: photo.id,           // ← add this
+        id: photo.id,
         imageUrl: photo.public_url,
         userName,
         description: photo.description || '',
         created_at: photo.created_at,
+        planId: photo.plan_id ?? null,
+        planX: photo.plan_x ?? null,
+        planY: photo.plan_y ?? null,
+        photo, // objet complet, transmis tel quel à onPlaceOnPlan (contrat: {id, plan_id, plan_x, plan_y, ...})
     });
+
+  // Ferme le viewer puis délègue au parent, qui ouvre le sélecteur de plan
+  // pour CETTE photo (voir handleOpenPlanSelectorForPhoto dans PinMetadataScreen).
+  const handlePlaceOnPlan = () => {
+    if (!onPlaceOnPlan || !selectedImage?.photo) return;
+    const photo = selectedImage.photo;
+    setSelectedImage(null);
+    onPlaceOnPlan(photo);
+  };
 
   const renderItem = (item) => {
     const timestamp = dayjs(item.created_at).format('MMM D, YYYY h:mm A');
@@ -185,6 +209,10 @@ export default function Timeline({ events = [], comments = [], showAllEvents = f
         setSelectedImage(prev => ({ ...prev, description: newDesc }));
     }
 }}
+          planId={selectedImage.planId}
+          planX={selectedImage.planX}
+          planY={selectedImage.planY}
+          onPlaceOnPlan={onPlaceOnPlan ? handlePlaceOnPlan : undefined}
         />
       )}
     </View>
