@@ -82,7 +82,6 @@ import PlanMiniSnapshot from '../components/PlanMiniSnapshot';
 import Timeline from '../components/TimeLine';
 import { supabase } from '../lib/supabase';
 import { authHeaders } from '../lib/api';
-import { updatePinInSupabase } from '../services/supabaseService';
 import { categoriesAtom, membersAtom, MetaPinAtom, PhotoPlanPositionAtom, pinsAtom, selectedPinAtom, selectedProjectAtom, statusesAtom } from '../store/atoms';
 
 const formatDate = (dateString) => {
@@ -310,6 +309,7 @@ export default function PinMetadataScreen() {
             nameRef.current = data.name;
             setNote(data.note);
             noteRef.current = data.note;
+            lastSavedTextRef.current = { name: data.name ?? '', note: data.note ?? '' };
             setProjectNumber(data.projects?.project_number || '');
             setPinNumber(data.pin_number || '');
             setSelectedPin(data);
@@ -365,35 +365,43 @@ export default function PinMetadataScreen() {
         }
     }, [currentPinId]);
 
-    const debouncedSaveRef = useRef(
-    debounce(async (pdfName, fieldPatch) => {
-        const enrichedPatch = {
-            ...fieldPatch,
-            updated_at: new Date().toISOString(),
-            updated_by: currentMemberRef.current?.id,
-        };
-        if (!isAllowedPatch(enrichedPatch)) return;
-        console.log('Debounced save called with patch:', enrichedPatch);
-        setPins((prevPins) => {
-            const latestPin = prevPins.find(p => p.id === pin.id);
-            if (!latestPin) return prevPins;
-            const updatedPin = { ...latestPin, ...enrichedPatch };
-            delete updatedPin.assigned_to;
-            updatePinInSupabase(pdfName, updatedPin);
-            return prevPins.map(p => p.id === pin.id ? updatedPin : p);
-        });
-    }, 600)
-).current;
+    // ─── Enregistrement d'un pin ──────────────────────────────────────────────
+    // Seuls les champs modifiés sont envoyés, la réponse est attendue, et un
+    // échec est signalé à l'utilisateur au lieu d'être ignoré.
+    const SAVABLE_FIELDS = ['name', 'note', 'status_id', 'category_id', 'assigned_to_id', 'due_date'];
+    const lastSavedTextRef = useRef({ name: null, note: null });
 
-    const immediateSave = async (fieldPatch) => {
-        const enrichedPatch = buildPatch(fieldPatch);
-        console.log('Immediate save called with patch:', enrichedPatch);
-        if (!isAllowedPatch(enrichedPatch)) {
-            Alert.alert('Accès limité', 'Vous ne pouvez pas modifier ce champ.');
-            return;
+    const persistPatch = async (targetPinId, patch) => {
+        const dbPatch = {};
+        for (const key of SAVABLE_FIELDS) {
+            if (!(key in patch)) continue;
+            // La colonne s'appelle assigned_to ; l'écran manipule assigned_to_id.
+            dbPatch[key === 'assigned_to_id' ? 'assigned_to' : key] = patch[key] ?? null;
         }
+        if (Object.keys(dbPatch).length === 0) return;
+        dbPatch.updated_at = patch.updated_at;
+        if (patch.updated_by) dbPatch.updated_by = patch.updated_by;
+
+        const { data, error } = await supabase
+            .from('pdf_pins')
+            .update(dbPatch)
+            .eq('id', targetPinId)
+            .select('id');
+        if (error) throw error;
+        if (!data || data.length === 0) throw new Error('Aucune ligne mise à jour');
+    };
+
+    const immediateSave = async (fieldPatch, { silent = false } = {}) => {
+        const enrichedPatch = buildPatch(fieldPatch);
+        // Le contrôle porte sur les champs demandés : updated_at / updated_by sont
+        // ajoutés automatiquement et bloquaient à tort le changement de statut des invités.
+        if (!isAllowedPatch(fieldPatch)) {
+            if (!silent) Alert.alert('Accès limité', 'Vous ne pouvez pas modifier ce champ.');
+            return false;
+        }
+        const targetPinId = currentPinId;
         try {
-            if (!currentPinId) {
+            if (!targetPinId) {
                 const newTask = {
                     name,
                     note,
@@ -401,11 +409,15 @@ export default function PinMetadataScreen() {
                     status_id: status?.id,
                     category_id: category?.id,
                     due_date,
-                    assigned_to_id: assignee?.id,
+                    assigned_to: assignee?.id ?? null,
                     x: null,
                     y: null,
                     ...enrichedPatch,
                 };
+                if ('assigned_to_id' in newTask) {
+                    newTask.assigned_to = newTask.assigned_to_id ?? null;
+                    delete newTask.assigned_to_id;
+                }
                 const { data, error } = await supabase
                     .from('pdf_pins')
                     .insert([newTask])
@@ -414,39 +426,69 @@ export default function PinMetadataScreen() {
                 if (error) throw error;
                 setCurrentPinId(data.id);
                 setPins(prev => [...prev, data]);
-                return;
+                return true;
             }
-            const pdfName = pin?.pdf_name;
-            if (!pdfName || !pin?.id) return;
 
-            setPins((prevPins) => {
-                const latestPin = prevPins.find(p => p.id === pin.id);
-                if (!latestPin) return prevPins;
-                const updatedPin = { ...latestPin, ...enrichedPatch };
-                const pinToSave = { ...updatedPin };
-                delete pinToSave.assigned_to;
-                delete pinToSave.projects;
-                delete pinToSave.events;
-                delete pinToSave.categories;
-                delete pinToSave.Status;
-                updatePinInSupabase(pdfName, pinToSave);
-                return prevPins.map(p => p.id === pin.id ? updatedPin : p);
-            });
-        } catch {
-            Alert.alert('Erreur', 'Échec de mise à jour du pin');
+            await persistPatch(targetPinId, enrichedPatch);
+
+            if ('name' in fieldPatch) lastSavedTextRef.current.name = fieldPatch.name ?? '';
+            if ('note' in fieldPatch) lastSavedTextRef.current.note = fieldPatch.note ?? '';
+            setPins((prevPins) => prevPins.map(p => p.id === targetPinId ? { ...p, ...enrichedPatch } : p));
+            return true;
+        } catch (err) {
+            console.error('Pin save failed:', err?.message ?? err);
+            Alert.alert(
+                'Modification non enregistrée',
+                'Vérifiez votre connexion. La modification n\'a pas été envoyée.',
+                [
+                    {
+                        text: 'Annuler',
+                        style: 'cancel',
+                        // Réaffiche l'état réellement enregistré.
+                        onPress: () => { if (targetPinId && targetPinId === currentPinIdRef.current) getPinFromId(targetPinId); },
+                    },
+                    { text: 'Réessayer', onPress: () => { saveFieldsRef.current?.(fieldPatch, { silent }); } },
+                ]
+            );
+            return false;
         }
     };
+
+    // Toujours la dernière version de immediateSave : le debounce et l'écouteur
+    // de fermeture sont créés une seule fois et ne doivent pas garder le pin, le
+    // rôle ou l'identifiant du premier rendu.
+    const saveFieldsRef = useRef(immediateSave);
+    saveFieldsRef.current = immediateSave;
+    const currentPinIdRef = useRef(currentPinId);
+    currentPinIdRef.current = currentPinId;
+
+    // N'envoie le nom / la note que s'ils ont réellement changé.
+    const changedText = () => {
+        const patch = {};
+        if ((nameRef.current ?? '') !== (lastSavedTextRef.current.name ?? '')) patch.name = nameRef.current ?? '';
+        if ((noteRef.current ?? '') !== (lastSavedTextRef.current.note ?? '')) patch.note = noteRef.current ?? '';
+        return patch;
+    };
+    const changedTextRef = useRef(changedText);
+    changedTextRef.current = changedText;
+
+    const debouncedSaveRef = useRef(
+        debounce(() => {
+            const patch = changedTextRef.current();
+            if (Object.keys(patch).length > 0) saveFieldsRef.current?.(patch, { silent: true });
+        }, 600)
+    ).current;
 
     // ─── Flush name+note on screen close (beforeRemove) ──────────────────────
     useEffect(() => {
         const unsubscribe = navigation.addListener('beforeRemove', () => {
             debouncedSaveRef.cancel();
-            const pdfName = pin?.pdf_name;
-            if (!pdfName || !pin?.id) return;
-            immediateSave({ name: nameRef.current, note: noteRef.current });
+            if (!currentPinId) return;
+            const patch = changedTextRef.current();
+            if (Object.keys(patch).length > 0) saveFieldsRef.current?.(patch, { silent: true });
         });
         return unsubscribe;
-    }, [pin?.pdf_name, pin?.id]);
+    }, [currentPinId]);
 
     const assignPin = async ({ pinId, assignedByName, assigneeId, assignedUserEmail, assignedUserName }) => {
         const response = await fetch('https://zaynspace.com/api/send-task-notification', {
@@ -607,8 +649,8 @@ export default function PinMetadataScreen() {
         noteRef.current = text;
     };
 
-    const handleNameBlur = () => { debouncedSaveRef(pin?.pdf_name, { name }); };
-    const handleNoteBlur = () => { debouncedSaveRef(pin?.pdf_name, { note }); };
+    const handleNameBlur = () => { debouncedSaveRef(); };
+    const handleNoteBlur = () => { debouncedSaveRef(); };
     const handleOpenStatusSheet = () => { setShowStatusSheet(true); };
     const handleSelectStatus = (newStatus) => {
         setStatus(newStatus);
@@ -660,9 +702,9 @@ export default function PinMetadataScreen() {
     const handleSelectAssignee = async (member) => {
         setAssignee(member);
         setShowAssigneeSheet(false);
-        immediateSave({ assigned_to_id: member?.id ?? null });
+        const saved = await immediateSave({ assigned_to_id: member?.id ?? null });
+        if (!saved || !member?.id) return;
         try {
-            const { data: { user } } = await supabase.auth.getUser();
             await assignPin({
                 pinId: pin.id,
                 assignedByName: currentMemberRef.current?.name,
@@ -694,11 +736,19 @@ export default function PinMetadataScreen() {
         immediateSave({ due_date: null });
     };
 
+    // Avant de changer de pin : enregistrer le texte en cours sur le pin affiché,
+    // pour qu'il ne soit ni perdu ni écrit sur le pin suivant.
+    const flushTextEdits = () => {
+        debouncedSaveRef.cancel();
+        const patch = changedText();
+        if (Object.keys(patch).length > 0) immediateSave(patch, { silent: true });
+        lastSavedTextRef.current = { name: nameRef.current ?? '', note: noteRef.current ?? '' };
+    };
     const handleNavigateToPrevious = () => {
-        if (hasPrevious && pins) setCurrentPinId(pins[currentPinIndex - 1].id);
+        if (hasPrevious && pins) { flushTextEdits(); setCurrentPinId(pins[currentPinIndex - 1].id); }
     };
     const handleNavigateToNext = () => {
-        if (hasNext && pins) setCurrentPinId(pins[currentPinIndex + 1].id);
+        if (hasNext && pins) { flushTextEdits(); setCurrentPinId(pins[currentPinIndex + 1].id); }
     };
 
     const swipeGesture = Gesture.Pan()
