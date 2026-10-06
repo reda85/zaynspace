@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, Modal, ScrollView, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ImageViewerModal from '../../components/ImageViewerModal';
+import { cachedSelect } from '../../lib/offline';
 import { supabase } from '../../lib/supabase';
 import { selectedProjectAtom } from '../../store/atoms';
 
@@ -157,7 +158,9 @@ export default function MediaGalleryScreen() {
         query = query.lte('created_at', endOfDay.toISOString());
     }
 
-    const { data, error } = await query;
+    // Seule la liste sans filtre est gardée pour le hors-ligne.
+    const filtered = Boolean(selectedPlan || startDate || endDate);
+    const { data, error } = filtered ? await query : await cachedSelect(`medias-${project.id}`, () => query);
 
     if (error) {
         console.error('Failed to fetch media:', error);

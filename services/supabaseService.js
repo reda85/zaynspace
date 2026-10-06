@@ -1,65 +1,50 @@
+import { cachedSelect, runOrQueue, withPendingPins } from '../lib/offline';
 import { supabase } from '../lib/supabase';
 
 // ✅ Create (Add Pin)
+// Sans réseau, la création est mise en file d'attente et envoyée plus tard :
+// l'identifiant du pin est généré sur l'appareil, donc rien ne change ensuite.
 export const addPinToSupabase = async (pdfName, pin, userid) => {
-  console.log("Add pin to supabase:", pin);
-  const {data, error } = await supabase
-    .from('pdf_pins')
-    .upsert([{ pdf_name: pdfName, ...pin, created_by : userid, updated_at: new Date().toISOString() , updated_by : userid }], { onConflict: ['id'] })
-    .select('*,projects(*)');
-    console.log("Add pin response:", data, error);
-
-  if (error) {
-    console.error('Add pin error:', error);
-    throw error;
-  }
-  if (data) {
-    console.log('Pin added to Supabase:', data);
-   const insertedPin = data[0];
-
-    return {
-      pin: insertedPin,
-      status: 'Pin added to Supabase'
-    };
-  }
+  const row = { pdf_name: pdfName, ...pin, created_by: userid, updated_at: new Date().toISOString(), updated_by: userid };
+  let inserted = null;
+  const { queued } = await runOrQueue('pin.insert', { row }, async () => {
+    const { data, error } = await supabase
+      .from('pdf_pins')
+      .upsert([row], { onConflict: ['id'] })
+      .select('*,projects(*)');
+    if (error) throw error;
+    inserted = data?.[0] ?? null;
+  });
+  return {
+    pin: inserted ?? row,
+    queued,
+    status: queued ? 'Pin en attente d\'envoi' : 'Pin added to Supabase',
+  };
 };
 
 // ✅ Read (Load Pins for a PDF)
-export const loadPinsFromSupabase = async (planId,user) => {
-  if(user.role == 'guest'){
-    const { data, error } = await supabase
-      .from('pdf_pins')
-      .select('*,projects(*),categories(*),Status(*),pins_photos(*),  pin_tags(tag_id, tags(*)), events(*, pins_photos(*), members(*))')
-      .eq('plan_id', planId)
-      .is('deleted_at', null)
-      .eq('assigned_to', user.id)
-
-    if (error) {
-      console.error('Load pins error:', error);
-      throw error;
-    }
-
-    return {
-      pins: data || [],
-      status: 'Pins loaded from Supabase'
-    };
-  } else {
-    const { data, error } = await supabase
+// Hors ligne : dernière liste enregistrée, complétée des modifications en attente.
+export const loadPinsFromSupabase = async (planId, user) => {
+  const guest = user.role == 'guest';
+  const { data, error, cachedAt } = await cachedSelect(`pins-plan-${planId}${guest ? `-${user.id}` : ''}`, () => {
+    let query = supabase
       .from('pdf_pins')
       .select('*,projects(*),categories(*),Status(*),pins_photos(*), pin_tags(tag_id, tags(*)),events(*, pins_photos(*), members(*))')
       .is('deleted_at', null)
-      .eq('plan_id', planId)
+      .eq('plan_id', planId);
+    if (guest) query = query.eq('assigned_to', user.id);
+    return query;
+  });
 
-    if (error) {
-      console.error('Load pins error:', error);
-      throw error;
-    }
-
-    return {
-      pins: data || [],
-      status: 'Pins loaded from Supabase'
-    };
+  if (error && !error.offline) {
+    console.error('Load pins error:', error);
+    throw error;
   }
+
+  return {
+    pins: withPendingPins(data || [], { planId, assignedTo: guest ? user.id : undefined }, cachedAt),
+    status: 'Pins loaded from Supabase'
+  };
 };
 
 // ✅ Update (Modify One Pin)

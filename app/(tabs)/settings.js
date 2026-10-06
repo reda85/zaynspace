@@ -11,12 +11,14 @@ import {
 } from 'lucide-react-native';
 import { useEffect, useLayoutEffect, useState } from 'react';
 import {
+  Alert,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { removePushToken } from '../../hooks/useNotifications';
+import { clearOfflineData, isOnline, outbox } from '../../lib/offline';
 import { supabase } from '../../lib/supabase';
 import { sessionAtom } from '../../store/atoms';
 
@@ -69,9 +71,37 @@ export default function SettingsScreen() {
   }, []);
 
   const handleLogout = async () => {
+    // Sans réseau, la déconnexion ne peut pas aboutir côté serveur : on ne
+    // supprime rien de l'appareil tant qu'elle n'est pas réellement faite.
+    if (!isOnline()) {
+      Alert.alert('Indisponible hors ligne', 'Reconnectez-vous au réseau pour vous déconnecter.');
+      return;
+    }
+    // Des modifications faites hors ligne attendent encore d'être envoyées ?
+    const waiting = (await outbox.list()).length;
+    if (waiting > 0) {
+      const proceed = await new Promise((resolve) => {
+        Alert.alert(
+          'Modifications non envoyées',
+          `${waiting} modification${waiting > 1 ? 's' : ''} faite${waiting > 1 ? 's' : ''} hors ligne ${waiting > 1 ? 'seront perdues' : 'sera perdue'} si vous vous déconnectez maintenant.`,
+          [
+            { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
+            { text: 'Se déconnecter', style: 'destructive', onPress: () => resolve(true) },
+          ],
+          { cancelable: false },
+        );
+      });
+      if (!proceed) return;
+    }
     // Tant que la session est valide : après la déconnexion, la base refuse la suppression.
     await removePushToken();
-    await supabase.auth.signOut();
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) {
+      Alert.alert('Erreur', 'La déconnexion a échoué. Vérifiez votre connexion et réessayez.');
+      return;
+    }
+    // Déconnexion faite : rien du compte ne reste sur l'appareil (plans, pins, photos en attente).
+    await clearOfflineData({ includePending: true }).catch(() => {});
     //console.log('Logged out');
    // setSession(null);
    // router.replace('/auth/sign-in');
