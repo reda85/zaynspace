@@ -1,5 +1,6 @@
 // components/AuthGate.tsx
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import { useRouter, useSegments } from 'expo-router';
 import { useAtom, useSetAtom } from 'jotai';
 import { useEffect, useRef, useState } from 'react';
@@ -7,6 +8,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { useNotifications } from '../hooks/useNotifications';
 import { fetchRoleForOrg } from '../lib/fetchRoleForOrg';
+import { cachedSelect, clearOfflineData, isNetworkError, isOnline, readCache } from '../lib/offline';
 import { supabase } from '../lib/supabase';
 import {
   categoriesAtom,
@@ -21,12 +23,38 @@ import {
 
 const lastOrgKey = (memberId) => `last_organization_id_${memberId}`;
 
-async function fetchMember(authId, retryOnce = true) {
-  const { data: user, error } = await supabase
+// Compte dont la session est enregistrée sur l'appareil : permet de rouvrir
+// l'application sans réseau, quand le jeton a expiré et ne peut pas être renouvelé.
+const SESSION_USER_KEY = '@offline/session-user';
+// Dernier compte ayant utilisé l'appareil : les données locales d'un autre
+// compte sont effacées à la connexion.
+const LAST_USER_KEY = '@offline/last-user';
+
+// Compte dont la session est enregistrée sur l'appareil ET dont le profil est
+// disponible localement (sans profil, impossible de continuer sans réseau).
+async function cachedAccount() {
+  const authId = await AsyncStorage.getItem(SESSION_USER_KEY).catch(() => null);
+  if (!authId) return null;
+  return (await readCache(`member-${authId}`)) ? authId : null;
+}
+
+async function deviceIsOffline() {
+  const net = await NetInfo.fetch().catch(() => null);
+  return net ? !(net.isConnected && net.isInternetReachable !== false) : false;
+}
+
+// Délai laissé à Supabase pour rendre la session avant d'ouvrir l'application
+// sur le profil local (réseau annoncé mais lent ou inutilisable).
+const OFFLINE_START_DELAY_MS = 4000;
+
+async function fetchMember(authId, retryOnce = true, cacheOnly = false) {
+  // Hors ligne : uniquement la copie locale, sans attendre un délai réseau.
+  if (cacheOnly) return readCache(`member-${authId}`);
+  const { data: user, error } = await cachedSelect(`member-${authId}`, () => supabase
     .from('members')
     .select('*')
     .eq('auth_id', authId)
-    .single();
+    .single());
 
   if (user) return user;
 
@@ -62,15 +90,34 @@ export function AuthGate({ children }) {
   useEffect(() => {
     let mounted = true;
 
+    // Vrai dès que Supabase a rendu une réponse définitive (session réelle ou
+    // déconnexion) : le mode hors ligne ne doit plus la remplacer.
+    let resolved = false;
+
     async function handleSession(newSession) {
       if (!mounted) return;
+      if (newSession?.offline) {
+        if (resolved) return;
+      } else {
+        resolved = true;
+      }
       setSession(newSession ?? null);
 
       if (newSession?.user) {
+        if (!newSession.offline) {
+          const authId = newSession.user.id;
+          const lastUser = await AsyncStorage.getItem(LAST_USER_KEY).catch(() => null);
+          if (lastUser && lastUser !== authId) {
+            // Autre compte sur le même appareil : rien de l'ancien ne doit rester.
+            await clearOfflineData({ includePending: true }).catch(() => {});
+          }
+          await AsyncStorage.multiSet([[LAST_USER_KEY, authId], [SESSION_USER_KEY, authId]]).catch(() => {});
+        }
         if (loggedInUserRef.current) return;
 
         // 1. Fetch base member row
-        const user = await fetchMember(newSession.user.id);
+        const cacheOnly = Boolean(newSession.offline);
+        const user = await fetchMember(newSession.user.id, true, cacheOnly);
         if (!mounted || !user) return;
 
         // 2. Determine which org to activate, scoped to THIS member
@@ -78,23 +125,25 @@ export function AuthGate({ children }) {
         const activeOrgId = lastOrgId ?? user.organization_id;
 
         // 3. Fetch role for that org
-        const role = await fetchRoleForOrg(user.id, activeOrgId);
+        const role = await fetchRoleForOrg(user.id, activeOrgId, { cacheOnly });
 
         // 4. If role is null the stored org is invalid for this user — fall back
         //    to their default org and clear the stale key
         const verifiedOrgId = role ? activeOrgId : user.organization_id;
         const verifiedRole  = role ?? user.role;
 
-        if (!role && lastOrgId) {
+        if (!role && lastOrgId && !cacheOnly && isOnline()) {
           await AsyncStorage.removeItem(lastOrgKey(user.id));
         }
 
         // 5. Always fetch and set the active org so the org picker is never empty
-        const { data: activeOrg } = await supabase
+        const { data: activeOrg } = cacheOnly
+          ? { data: await readCache(`org-${verifiedOrgId}`) }
+          : await cachedSelect(`org-${verifiedOrgId}`, () => supabase
           .from('organizations')
           .select('id, name')
           .eq('id', verifiedOrgId)
-          .single();
+          .single());
 
         if (mounted) {
           setLoggedInUser({
@@ -109,11 +158,43 @@ export function AuthGate({ children }) {
       }
     }
 
+    const enterOffline = (authId) => handleSession({ user: { id: authId }, offline: true });
+
+    // Pas de session utilisable : vraie déconnexion, ou simple absence de réseau ?
+    // Sans réseau, Supabase ne peut pas renouveler un jeton expiré et rend une
+    // session vide, alors que le compte est toujours connecté sur l'appareil.
+    async function handleNoSession() {
+      const authId = await cachedAccount();
+      if (!mounted) return;
+      if (authId) {
+        if (await deviceIsOffline()) { await enterOffline(authId); return; }
+        // Réseau annoncé : on redemande la session. Elle peut aboutir cette fois,
+        // ou échouer pour cause de réseau (connexion inutilisable).
+        const { data, error } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (data?.session) { await handleSession(data.session); return; }
+        if (error && isNetworkError(error)) { await enterOffline(authId); return; }
+      }
+      await handleSession(null);
+    }
+
+    // Démarrage sans réseau : ne pas attendre les tentatives de renouvellement
+    // du jeton (plusieurs dizaines de secondes) pour ouvrir l'application.
+    let offlineTimer = null;
+    (async () => {
+      const authId = await cachedAccount();
+      if (!authId || !mounted || resolved) return;
+      if (await deviceIsOffline()) { await enterOffline(authId); return; }
+      offlineTimer = setTimeout(() => { if (mounted && !resolved) enterOffline(authId); }, OFFLINE_START_DELAY_MS);
+    })();
+
     const { data: sub } = supabase.auth.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
       authStateHandled.current = true;
 
       if (event === 'SIGNED_OUT') {
+        resolved = true;
+        await AsyncStorage.removeItem(SESSION_USER_KEY).catch(() => {});
         setSession(null);
         setLoggedInUser(null);
         setPlans([]);
@@ -126,24 +207,31 @@ export function AuthGate({ children }) {
         return;
       }
 
-      if (event === 'TOKEN_REFRESHED') {
-        setSession(newSession ?? null);
+      // Jeton renouvelé pour un utilisateur déjà chargé : seule la session change.
+      // (Sinon — retour du réseau après un démarrage difficile — on charge le profil.)
+      if (event === 'TOKEN_REFRESHED' && newSession && loggedInUserRef.current) {
+        resolved = true;
+        setSession(newSession);
         return;
       }
 
-      await handleSession(newSession);
+      if (newSession) await handleSession(newSession);
+      // Hors du rappel d'authentification : handleNoSession interroge de nouveau la session.
+      else setTimeout(() => { handleNoSession(); }, 0);
     });
 
     supabase.auth.getSession().then(async ({ data, error }) => {
       if (!mounted) return;
       if (error) console.error('[AuthGate] getSession error:', error);
       if (!authStateHandled.current) {
-        await handleSession(data.session ?? null);
+        if (data.session) await handleSession(data.session);
+        else await handleNoSession();
       }
     });
 
     return () => {
       mounted = false;
+      if (offlineTimer) clearTimeout(offlineTimer);
       sub.subscription.unsubscribe();
     };
   }, []);

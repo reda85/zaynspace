@@ -86,7 +86,9 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { getOutboxOps, isNetworkError, isOnline, photoUri, queue, savePendingPhotoFile } from "../lib/offline";
 import { supabase } from "../lib/supabase";
+import uuid from "react-native-uuid";
 import { loggedInUserAtom, PhotoPlanPositionAtom, selectedPinAtom } from "../store/atoms";
 
 global.Buffer = global.Buffer || Buffer;
@@ -783,7 +785,7 @@ export default function DrawingScreen() {
 
       // Envoi d'une photo : fichier, miniature, puis ligne pins_photos.
       const gallerySaved = new Set();
-      const uploadOnePhoto = async ({ base64, thumbBase64, index }, filename, attempt) => {
+      const uploadOnePhoto = async ({ base64, thumbBase64, index }, filename, attempt, photoId) => {
         const ext = "jpg";
         const mime = "image/jpeg";
         // filename est fixé par photo avant les tentatives (voir plus bas).
@@ -854,7 +856,10 @@ export default function DrawingScreen() {
 
         const { data: photoInsert, error: insertError } = await supabase
           .from("pins_photos")
-          .insert([{
+          .upsert([{
+            // Identifiant fixé sur l'appareil : une nouvelle tentative (ou l'envoi
+            // différé) de la même photo ne crée pas de doublon.
+            id: photoId,
             pin_id: pin?.id,
             project_id: pin?.project_id,
             public_url: publicUrl,
@@ -867,11 +872,46 @@ export default function DrawingScreen() {
             plan_id: planPos?.planId ?? null,
             plan_x: planPos?.x ?? null,
             plan_y: planPos?.y ?? null,
-          }])
+          }], { onConflict: "id" })
           .select()
           .single();
 
         if (insertError) throw insertError;
+      };
+
+      // Photo gardée sur l'appareil et mise en file d'attente d'envoi.
+      const queuePhoto = async ({ base64, thumbBase64, index }, filename, photoId) => {
+        await savePendingPhotoFile(filename, base64);
+        let thumbFile = null;
+        if (thumbBase64) {
+          thumbFile = `thumb_${filename}`;
+          await savePendingPhotoFile(thumbFile, thumbBase64);
+        }
+        if (shouldSaveToGallery && !gallerySaved.has(index)) {
+          try {
+            await MediaLibrary.saveToLibraryAsync(photoUri(filename));
+            gallerySaved.add(index);
+          } catch (e) {
+            console.warn('[gallery] save failed:', e?.message);
+          }
+        }
+        const currentPhoto = photos[index];
+        const planPos = photoPlanPositions[index];
+        await queue('photo.upload', {
+          id: photoId,
+          file: filename,
+          thumbFile,
+          pin_id: pin?.id,
+          project_id: pin?.project_id,
+          description: descriptions[index] ?? null,
+          date: new Date().toISOString(),
+          sender_id: loggedInUser?.id ?? null,
+          latitude: typeof currentPhoto === 'object' ? currentPhoto.latitude ?? null : null,
+          longitude: typeof currentPhoto === 'object' ? currentPhoto.longitude ?? null : null,
+          plan_id: planPos?.planId ?? null,
+          plan_x: planPos?.x ?? null,
+          plan_y: planPos?.y ?? null,
+        });
       };
 
       // Chaque photo est tentée jusqu'à 3 fois ; un échec n'interrompt pas les
@@ -883,18 +923,45 @@ export default function DrawingScreen() {
         const batch = processedImages.slice(batchStart, batchStart + BATCH_SIZE);
 
         await Promise.all(batch.map(async (item) => {
-          const filename = `drawing_${Date.now()}_${item.index}.jpg`;
+          // Nom unique : plusieurs appareils envoient dans le même dossier de projet.
+          const filename = `drawing_${Date.now()}_${item.index}_${Math.random().toString(36).slice(2, 8)}.jpg`;
+          // Un seul identifiant et un seul nom de fichier par photo, quel que soit le chemin d'envoi.
+          const photoId = uuid.v4();
           let lastError = null;
-          for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt++) {
+
+          // Sans réseau, ou tant que des envois attendent (le pin lui-même peut
+          // être en attente de création), la photo part directement en file.
+          const mustQueue = !isOnline() || getOutboxOps().some((o) => o.status === 'pending');
+          if (mustQueue) {
             try {
-              await uploadOnePhoto(item, filename, attempt);
+              await queuePhoto(item, filename, photoId);
               uploadedIndexesRef.current.add(item.index);
-              lastError = null;
-              break;
             } catch (e) {
               lastError = e;
-              console.warn(`[upload] photo ${item.index} tentative ${attempt}:`, e?.message);
-              if (attempt < UPLOAD_ATTEMPTS) await new Promise((r) => setTimeout(r, attempt * 1500));
+            }
+          } else {
+            for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt++) {
+              try {
+                await uploadOnePhoto(item, filename, attempt, photoId);
+                uploadedIndexesRef.current.add(item.index);
+                lastError = null;
+                break;
+              } catch (e) {
+                lastError = e;
+                console.warn(`[upload] photo ${item.index} tentative ${attempt}:`, e?.message);
+                if (isNetworkError(e) && !isOnline()) break;   // réseau perdu : inutile d'insister
+                if (attempt < UPLOAD_ATTEMPTS) await new Promise((r) => setTimeout(r, attempt * 1500));
+              }
+            }
+            // Coupure réseau : la photo est gardée sur l'appareil et envoyée plus tard.
+            if (lastError && isNetworkError(lastError)) {
+              try {
+                await queuePhoto(item, filename, photoId);
+                uploadedIndexesRef.current.add(item.index);
+                lastError = null;
+              } catch (e) {
+                lastError = e;
+              }
             }
           }
           if (lastError) failedIndexes.push(item.index);
@@ -940,7 +1007,7 @@ export default function DrawingScreen() {
         const failed = failedIndexes.length;
         Alert.alert(
           "Envoi incomplet",
-          `${failed} photo${failed > 1 ? "s" : ""} sur ${total} n'${failed > 1 ? "ont" : "a"} pas pu être envoyée${failed > 1 ? "s" : ""}. Vérifiez votre connexion.`,
+          `${failed} photo${failed > 1 ? "s" : ""} sur ${total} n'${failed > 1 ? "ont" : "a"} pas pu être enregistrée${failed > 1 ? "s" : ""}.`,
           [
             { text: "Réessayer", onPress: () => handleSave() },
             { text: "Continuer sans", style: "destructive", onPress: goToPin },

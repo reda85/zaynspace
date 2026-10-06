@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import { router, useNavigation } from 'expo-router';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { MapPinned } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -21,6 +21,16 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
 import { authHeaders } from '../../../lib/api';
+import {
+  cachedSelect,
+  cancelDownload,
+  downloadPlan,
+  getOfflinePlans,
+  isOnline,
+  removeOfflinePlan,
+  syncTickAtom,
+} from '../../../lib/offline';
+import { remoteTileUrl } from '../../../lib/tileUrl';
 import {
   categoriesAtom,
   loggedInUserAtom,
@@ -112,7 +122,67 @@ export default function ProjectPlans() {
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [user] = useAtom(loggedInUserAtom);
+  const syncTick = useAtomValue(syncTickAtom);
   const navigation = useNavigation();
+
+  // ── Plans disponibles hors ligne ─────────────────────────────────────────────
+  const [offlinePlans, setOfflinePlans] = useState({});       // { [planId]: { complete, tiles, total } }
+  const [downloads, setDownloads] = useState({});             // { [planId]: { done, total } }
+
+  useEffect(() => { getOfflinePlans().then(setOfflinePlans).catch(() => {}); }, []);
+
+  const requireNetwork = () => {
+    if (isOnline()) return true;
+    Alert.alert('Indisponible hors ligne', 'Cette action nécessite une connexion.');
+    return false;
+  };
+
+  const saveForOffline = async (plan) => {
+    if (!requireNetwork()) return false;
+    if (!plan.width || !plan.height) {
+      Alert.alert('Plan non disponible', 'Ce plan ne peut pas être enregistré pour le moment.');
+      return false;
+    }
+    setDownloads((prev) => ({ ...prev, [plan.id]: { done: 0, total: 1 } }));
+    try {
+      const result = await downloadPlan(
+        plan,
+        (level, col, row) => remoteTileUrl({ planId: plan.id, tilesPath: plan.tiles_path }, level, col, row),
+        (done, total) => setDownloads((prev) => (prev[plan.id] ? { ...prev, [plan.id]: { done, total } } : prev)),
+      );
+      setOfflinePlans(await getOfflinePlans());
+      if (!result.complete && !result.cancelled && !result.busy) {
+        Alert.alert('Téléchargement incomplet', `${result.tiles} éléments sur ${result.total} enregistrés pour « ${plan.name} ». Relancez le téléchargement pour terminer.`);
+      }
+      return Boolean(result.complete);
+    } catch (err) {
+      Alert.alert('Erreur', 'Le plan n\'a pas pu être enregistré sur l\'appareil.');
+      return false;
+    } finally {
+      setDownloads((prev) => { const next = { ...prev }; delete next[plan.id]; return next; });
+    }
+  };
+
+  const onOfflinePress = (plan) => {
+    if (downloads[plan.id]) { cancelDownload(plan.id); return; }
+    if (offlinePlans[plan.id]?.complete) {
+      Alert.alert('Disponible hors ligne', `« ${plan.name} » est enregistré sur cet appareil.`, [
+        { text: 'Retirer de l\'appareil', style: 'destructive', onPress: async () => setOfflinePlans(await removeOfflinePlan(plan.id)) },
+        { text: 'Fermer', style: 'cancel' },
+      ]);
+      return;
+    }
+    saveForOffline(plan);
+  };
+
+  const saveAllForOffline = async () => {
+    if (!requireNetwork()) return;
+    for (const plan of plans) {
+      if (offlinePlans[plan.id]?.complete) continue;
+      // Un plan à la fois : le téléchargement reste raisonnable sur un réseau mobile.
+      await saveForOffline(plan);
+    }
+  };
 
   // ── Rename modal ────────────────────────────────────────────────────────────
   const [renameModalVisible, setRenameModalVisible] = useState(false);
@@ -176,40 +246,47 @@ export default function ProjectPlans() {
 
     const fetchPlans = async () => {
       setLoading(true); // ── NEW
-      const { data: plansData, error } = await supabase
-        .from('plans')
-        .select('*')
-        .is('deleted_at', null)
-        .eq('status', 'ready')
-        .eq('project_id', selectedProject.id);
+      try {
+        const pid = selectedProject.id;
+        const { data: plansData, error } = await cachedSelect(`plans-${pid}`, () => supabase
+          .from('plans')
+          .select('*')
+          .is('deleted_at', null)
+          .eq('status', 'ready')
+          .eq('project_id', selectedProject.id));
 
-      if (cancelled || error || !plansData) return;
-      setPlans(plansData);
+        if (cancelled || error || !plansData) return;
+        setPlans(plansData);
 
-      if (plansData.length === 0) return;
-      const planIds = plansData.map((p) => p.id);
+        if (plansData.length === 0) return;
+        const planIds = plansData.map((p) => p.id);
 
-      let query = supabase.from('pdf_pins').select('plan_id').in('plan_id', planIds);
-      if (user.role === 'guest') query = query.eq('assigned_to', user.id);
+        const guest = user.role === 'guest';
+        const { data: pinsData } = await cachedSelect(`plan-pin-counts-${pid}${guest ? `-${user.id}` : ''}`, () => {
+          let query = supabase.from('pdf_pins').select('plan_id').is('deleted_at', null).in('plan_id', planIds);
+          if (guest) query = query.eq('assigned_to', user.id);
+          return query;
+        });
+        if (cancelled || !pinsData) return;
 
-      const { data: pinsData } = await query;
-      if (cancelled || !pinsData) return;
-
-      const counts = {};
-      pinsData.forEach((p) => { counts[p.plan_id] = (counts[p.plan_id] || 0) + 1; });
-      setPinCounts(counts);
-      setLoading(false); // ── NEW
+        const counts = {};
+        pinsData.forEach((p) => { counts[p.plan_id] = (counts[p.plan_id] || 0) + 1; });
+        setPinCounts(counts);
+      } finally {
+        // Toujours lever l'indicateur de chargement (aucun plan, erreur, hors ligne…).
+        if (!cancelled) setLoading(false);
+      }
     };
 
     fetchPlans();
     return () => { cancelled = true; };
-  }, [selectedProject, user]);
+  }, [selectedProject, user, syncTick]);
 
   // ── Fetch categories & statuses ─────────────────────────────────────────────
   useEffect(() => {
     if (!selectedProject) return;
     let cancelled = false;
-    supabase.from('categories').select('*').eq('project_id', selectedProject.id).order('order')
+    cachedSelect(`categories-${selectedProject.id}`, () => supabase.from('categories').select('*').eq('project_id', selectedProject.id).order('order'))
       .then(({ data }) => { if (!cancelled && data) setCategories(data); });
     return () => { cancelled = true; };
   }, [selectedProject]);
@@ -217,7 +294,7 @@ export default function ProjectPlans() {
   useEffect(() => {
     if (!selectedProject) return;
     let cancelled = false;
-    supabase.from('Status').select('*').eq('project_id', selectedProject.id).order('order')
+    cachedSelect(`statuses-${selectedProject.id}`, () => supabase.from('Status').select('*').eq('project_id', selectedProject.id).order('order'))
       .then(({ data }) => { if (!cancelled && data) setStatuses(data); });
     return () => { cancelled = true; };
   }, [selectedProject]);
@@ -298,6 +375,7 @@ export default function ProjectPlans() {
 
   // ── Pick file ───────────────────────────────────────────────────────────────
   const pickFile = async () => {
+    if (!requireNetwork()) return;
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: 'application/pdf',
@@ -401,7 +479,7 @@ export default function ProjectPlans() {
   };
 
   // ── Rename ──────────────────────────────────────────────────────────────────
-  const openRenameModal = (plan) => { setPlanToRename(plan); setNewPlanName(plan.name); setRenameModalVisible(true); };
+  const openRenameModal = (plan) => { if (!requireNetwork()) return; setPlanToRename(plan); setNewPlanName(plan.name); setRenameModalVisible(true); };
 
   const confirmRename = async () => {
     if (!planToRename || !newPlanName.trim()) return;
@@ -415,6 +493,7 @@ export default function ProjectPlans() {
 
   // ── Delete ──────────────────────────────────────────────────────────────────
   const deletePlan = (plan) => {
+    if (!requireNetwork()) return;
     Alert.alert('Supprimer le plan', `Supprimer "${plan.name}" ?`, [
       { text: 'Annuler', style: 'cancel' },
       {
@@ -445,6 +524,15 @@ export default function ProjectPlans() {
         />
       </View>
 
+      {!loading && plans.length > 0 && plans.some((p) => !offlinePlans[p.id]?.complete) && (
+        <TouchableOpacity style={styles.offlineAll} onPress={saveAllForOffline} disabled={Object.keys(downloads).length > 0}>
+          <Feather name="download-cloud" size={15} color="#111827" />
+          <Text style={styles.offlineAllText}>
+            {Object.keys(downloads).length > 0 ? 'Enregistrement des plans…' : 'Rendre tous les plans disponibles hors ligne'}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {loading ? (
         <PlansSkeleton />
       ) : (
@@ -468,6 +556,22 @@ export default function ProjectPlans() {
                 <Feather name="map-pin" size={16} color="#6B7280" />
                 <Text style={styles.pinCountText}>{pinCounts[item.id] || 0}</Text>
               </View>
+              <TouchableOpacity
+                style={styles.offlineBtn}
+                onPress={() => onOfflinePress(item)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Disponible hors ligne"
+              >
+                {downloads[item.id] ? (
+                  <Text style={styles.offlineProgress}>
+                    {Math.round((downloads[item.id].done / Math.max(1, downloads[item.id].total)) * 100)}%
+                  </Text>
+                ) : offlinePlans[item.id]?.complete ? (
+                  <Feather name="check-circle" size={18} color="#059669" />
+                ) : (
+                  <Feather name="download-cloud" size={18} color="#6B7280" />
+                )}
+              </TouchableOpacity>
             </View>
 
             {editMode && (
@@ -689,6 +793,10 @@ const styles = StyleSheet.create({
   planName: { fontSize: 15, color: '#111827', fontFamily: 'Outfit_500Medium', flex: 1 },
   pinCountContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   pinCountText: { fontFamily: 'Outfit_400Regular', color: '#4B5563', fontSize: 14 },
+  offlineBtn: { marginLeft: 12, minWidth: 34, alignItems: 'center' },
+  offlineProgress: { fontFamily: 'Outfit_500Medium', color: '#111827', fontSize: 12 },
+  offlineAll: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 4, marginBottom: 4 },
+  offlineAllText: { fontFamily: 'Outfit_500Medium', color: '#111827', fontSize: 13 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
 
   // Renommer — grey border / white background / black text

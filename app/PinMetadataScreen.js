@@ -5,7 +5,7 @@ import {
     useSpeechRecognitionEvent,
 } from 'expo-speech-recognition';
 
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import debounce from 'lodash/debounce';
 import {
     AccessibilityIcon,
@@ -82,6 +82,8 @@ import PlanMiniSnapshot from '../components/PlanMiniSnapshot';
 import Timeline from '../components/TimeLine';
 import { supabase } from '../lib/supabase';
 import { authHeaders } from '../lib/api';
+import { cachedSelect, outboxOpsAtom, pendingPhotos, runOrQueue, syncTickAtom, withPendingPins } from '../lib/offline';
+import { Image as PendingPhotoImage } from 'expo-image';
 import { categoriesAtom, membersAtom, MetaPinAtom, PhotoPlanPositionAtom, pinsAtom, selectedPinAtom, selectedProjectAtom, statusesAtom } from '../store/atoms';
 
 const formatDate = (dateString) => {
@@ -157,6 +159,9 @@ export default function PinMetadataScreen() {
     const [currentPinId, setCurrentPinId] = useState(pinId);
     const [currentRole, setCurrentRole] = useState(null);
     const currentMemberRef = useRef(null);
+    // Relit les photos en attente à chaque changement de la file d'envoi.
+    const outboxOps = useAtomValue(outboxOpsAtom);
+    const waitingPhotos = outboxOps.length > 0 && currentPinId ? pendingPhotos(currentPinId) : [];
     const pin = pins?.find((p) => p.id === currentPinId) ?? {};
 
     const currentPinIndex = pins?.findIndex((p) => p.id === currentPinId) ?? -1;
@@ -295,11 +300,15 @@ export default function PinMetadataScreen() {
 
     async function getPinFromId(id) {
         if (!id) return;
-        const { data, error } = await supabase
+        let { data, error, cachedAt } = await cachedSelect(`pin-${id}`, () => supabase
             .from('pdf_pins')
             .select('*,projects(*),events(*,pins_photos(*),members(*)),assigned_to(*),categories(*),Status(*),plans(*),pin_tags(tag_id, tags(*))')
             .eq('id', id)
-            .single();
+            .single());
+        // Hors ligne et pin jamais ouvert (ou créé sans réseau) : celui de la liste déjà chargée.
+        if (!data && error?.offline) data = pins?.find((p) => p.id === id) ?? null;
+        // Les modifications en attente d'envoi restent affichées.
+        if (data) data = withPendingPins([data], {}, cachedAt)[0] ?? data;
         if (data) {
             if (skipNextReloadRef.current) {
                 skipNextReloadRef.current = false;
@@ -340,11 +349,11 @@ export default function PinMetadataScreen() {
                     .getPublicUrl(data.plans.png_url);
                 setPlanPngPublicUrl(urlData.publicUrl);
             }
-            const { data: commentsData } = await supabase
+            const { data: commentsData } = await cachedSelect(`comments-${id}`, () => supabase
                 .from('comments')
                 .select('*, members(*)')
                 .eq('pin_id', id)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false }));
 
             if (commentsData) setComments(commentsData);
         }
@@ -382,13 +391,17 @@ export default function PinMetadataScreen() {
         dbPatch.updated_at = patch.updated_at;
         if (patch.updated_by) dbPatch.updated_by = patch.updated_by;
 
-        const { data, error } = await supabase
-            .from('pdf_pins')
-            .update(dbPatch)
-            .eq('id', targetPinId)
-            .select('id');
-        if (error) throw error;
-        if (!data || data.length === 0) throw new Error('Aucune ligne mise à jour');
+        // Sans réseau, la modification est mise en file d'attente et envoyée plus
+        // tard ; un refus du serveur, lui, remonte comme une erreur.
+        await runOrQueue('pin.update', { id: targetPinId, patch: dbPatch }, async () => {
+            const { data, error } = await supabase
+                .from('pdf_pins')
+                .update(dbPatch)
+                .eq('id', targetPinId)
+                .select('id');
+            if (error) throw error;
+            if (!data || data.length === 0) throw new Error('Aucune ligne mise à jour');
+        });
     };
 
     const immediateSave = async (fieldPatch, { silent = false } = {}) => {
@@ -439,7 +452,7 @@ export default function PinMetadataScreen() {
             console.error('Pin save failed:', err?.message ?? err);
             Alert.alert(
                 'Modification non enregistrée',
-                'Vérifiez votre connexion. La modification n\'a pas été envoyée.',
+                'La modification a été refusée ou n\'a pas pu être enregistrée.',
                 [
                     {
                         text: 'Annuler',
@@ -478,6 +491,15 @@ export default function PinMetadataScreen() {
             if (Object.keys(patch).length > 0) saveFieldsRef.current?.(patch, { silent: true });
         }, 600)
     ).current;
+
+    // Après un envoi (photos ou modifications faites hors ligne), recharger le pin
+    // pour afficher ce que le serveur a enregistré — sauf si un texte est en cours de saisie.
+    const syncTick = useAtomValue(syncTickAtom);
+    useEffect(() => {
+        if (!syncTick || !currentPinId) return;
+        if (Object.keys(changedTextRef.current()).length > 0) return;
+        getPinFromId(currentPinId);
+    }, [syncTick]);
 
     // ─── Flush name+note on screen close (beforeRemove) ──────────────────────
     useEffect(() => {
@@ -816,15 +838,16 @@ export default function PinMetadataScreen() {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            const { error } = await supabase
-                                .from('pdf_pins')
-                                .update({
-                                    deleted_at: new Date().toISOString(),
-                                    updated_at: new Date().toISOString(),
-                                    updated_by: currentMemberRef.current?.id,
-                                })
-                                .eq('id', pin.id);
-                            if (error) throw error;
+                            const patch = {
+                                deleted_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                            };
+                            if (currentMemberRef.current?.id) patch.updated_by = currentMemberRef.current.id;
+                            // Sans réseau, la suppression est mise en file d'attente.
+                            await runOrQueue('pin.update', { id: pin.id, patch }, async () => {
+                                const { error } = await supabase.from('pdf_pins').update(patch).eq('id', pin.id);
+                                if (error) throw error;
+                            });
                             setPins((prev) => prev?.filter((p) => p.id !== pin.id) || []);
                             Alert.alert('Succès', 'Pin supprimé avec succès');
                             handleClose();
@@ -1395,6 +1418,24 @@ export default function PinMetadataScreen() {
                                 <Text style={[styles.tabText, showAllEvents && styles.activeTabText]}>Plus de mises à jour</Text>
                             </TouchableOpacity>
                         </View>
+
+                        {waitingPhotos.length > 0 && (
+                            <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+                                <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 13, color: '#92400E', marginBottom: 6 }}>
+                                    {waitingPhotos.length} photo{waitingPhotos.length > 1 ? 's' : ''} en attente d'envoi
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                    {waitingPhotos.map((photo) => (
+                                        <PendingPhotoImage
+                                            key={photo.id}
+                                            source={{ uri: photo.uri }}
+                                            style={{ width: 72, height: 72, borderRadius: 8, marginRight: 8, opacity: photo.failed ? 0.4 : 0.85 }}
+                                            contentFit="cover"
+                                        />
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
 
                         {(events || comments) && (
                             <Timeline

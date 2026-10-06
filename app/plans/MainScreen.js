@@ -8,12 +8,13 @@ import { addPinToSupabase, deletePinFromSupabase, loadPinsFromSupabase, updatePi
 
 import { useIsFocused } from '@react-navigation/native';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { ChevronLeft } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import uuid from 'react-native-uuid';
 
 import PdfViewerWithTiles from '../../components/PdfViewerWithTiles.js';
+import { cachedSelect, readCache, syncTickAtom } from '../../lib/offline';
 import { supabase } from '../../lib/supabase.js';
 import { loggedInUserAtom, pinsAtom, selectedProjectAtom } from '../../store/atoms.js';
 
@@ -35,6 +36,7 @@ export default function MainScreen() {
     const [loggedInUser, setLoggedInUser] = useAtom(loggedInUserAtom);
     const [pinsState, setPinsState] = useAtom(pinsAtom);
     const [planId, setPlanId] = useState(null);
+    const syncTick = useAtomValue(syncTickAtom);
 
     // Header configuration
     useEffect(() => {
@@ -69,11 +71,26 @@ export default function MainScreen() {
         try {
             setLoadingPdf(true);
 
-            const { data, error } = await supabase
+            let { data, error } = await cachedSelect(`plan-info-${myplanid}`, () => supabase
                 .from('plans')
                 .select('width, height, tiles_path, status, pages')
                 .eq('id', myplanid)
-                .single();
+                .single());
+
+            // Hors ligne et plan jamais ouvert : ses dimensions sont dans la liste des plans du projet.
+            if (error?.offline && selectedProject?.id) {
+                const list = await readCache(`plans-${selectedProject.id}`);
+                const fromList = (list ?? []).find((p) => p.id === myplanid);
+                if (fromList) { data = fromList; error = null; }
+            }
+            if (error?.offline) {
+                Alert.alert(
+                    'Indisponible hors ligne',
+                    "Ce plan n'a pas encore été chargé sur cet appareil.",
+                    [{ text: 'OK', onPress: () => router.navigate('/plans') }],
+                );
+                return;
+            }
 
             if (error) throw error;
             if (!data) throw new Error('Plan not found');
@@ -116,7 +133,7 @@ export default function MainScreen() {
         } finally {
             setLoadingPdf(false);  // ← unblocks the viewer
         }
-    }, [myplanid]);
+    }, [myplanid, selectedProject?.id]);
 
     useEffect(() => {
         if (isFocused && myplanid) {
@@ -163,7 +180,7 @@ export default function MainScreen() {
         if (isFocused && planId && pdfInfo) {
             loadPins();
         }
-    }, [isFocused, planId, pdfInfo, loadPins]);
+    }, [isFocused, planId, pdfInfo, loadPins, syncTick]);
 
     // ── Pin handlers ──────────────────────────────────────────────────────────
     const handlePinDrop = async (pdfCoordinates) => {
@@ -200,9 +217,9 @@ export default function MainScreen() {
             if (!updatedPin.id || !pins.find(p => p.id === updatedPin.id)) {
                 if (!updatedPin.id) updatedPin.id = uuid.v4();
                 await addPinToSupabase(planId, updatedPin, loggedInUser.id);
-            } else {
-                await updatePinInSupabase(planId, updatedPin, loggedInUser.id);
             }
+            // Pin existant : la modification est déjà enregistrée (ou mise en
+            // attente) par l'afficheur ; seul l'état local est mis à jour ici.
 
             setPins(prev =>
                 prev.some(p => p.id === updatedPin.id)

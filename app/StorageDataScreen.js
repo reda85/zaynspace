@@ -11,6 +11,8 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert } from 'react-native';
+import { clearOfflineData, offlineUsage } from '../lib/offline';
 
 /* ---- Storage keys ---- */
 const KEYS = {
@@ -26,6 +28,27 @@ export default function StorageDataScreen() {
   const [dataOption1, setDataOption1] = useState(false);   // compressImages
   const [dataOption2, setDataOption2] = useState(true);    // optimizeStorage
   const [loading, setLoading] = useState(true);
+  const [offlineBytes, setOfflineBytes] = useState(null);
+
+  const refreshOfflineUsage = () => offlineUsage().then((u) => setOfflineBytes(u.total)).catch(() => setOfflineBytes(0));
+  useEffect(() => { refreshOfflineUsage(); }, []);
+
+  const formatSize = (bytes) => {
+    if (bytes === null) return '…';
+    if (bytes < 1024 * 1024) return `${Math.max(0, Math.round(bytes / 1024))} Ko`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} Mo`;
+  };
+
+  const onClearOffline = () => {
+    Alert.alert(
+      'Vider les données hors ligne',
+      'Les plans et listes enregistrés sur cet appareil seront supprimés. Les modifications et photos en attente d\'envoi sont conservées.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Vider', style: 'destructive', onPress: async () => { await clearOfflineData(); refreshOfflineUsage(); } },
+      ],
+    );
+  };
 
   /* ---------- LOAD PERSISTED VALUES ---------- */
   useEffect(() => {
@@ -167,6 +190,21 @@ export default function StorageDataScreen() {
             thumbColor={dataOption2 ? '#3B82F6' : '#F3F4F6'}
           />
         </View>
+
+        <View style={styles.divider} />
+
+        {/* Offline data */}
+        <TouchableOpacity style={styles.menuItem} onPress={onClearOffline} activeOpacity={0.7}>
+          <View style={styles.menuLeft}>
+            <BoxIcon size={20} color="#6B7280" />
+            <View style={styles.menuText}>
+              <Text style={styles.menuTitle}>Données hors ligne</Text>
+              <Text style={styles.menuSubtitle}>
+                {formatSize(offlineBytes)} sur cet appareil · toucher pour vider
+              </Text>
+            </View>
+          </View>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );

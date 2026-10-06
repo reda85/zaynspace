@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRouter } from 'expo-router';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
 import { CameraIcon, Clock, MapPin, MapPinnedIcon, MessageSquare, Pencil } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
+import { cachedSelect, syncTickAtom, withPendingPins } from '../../lib/offline';
 import { categoriesAtom, loggedInUserAtom, membersAtom, pinsAtom, plansAtom, selectedProjectAtom, statusesAtom } from '../../store/atoms';
 
 import { fetchGroups, getUnreadCount } from '../../services/discussionsService';
@@ -80,6 +81,7 @@ export default function AcceuilScreen() {
   const navigation = useNavigation();
   const router = useRouter();
   const [user] = useAtom(loggedInUserAtom);
+  const syncTick = useAtomValue(syncTickAtom);
 
   const [loadingData, setLoadingData] = useState(false);
 
@@ -118,10 +120,10 @@ export default function AcceuilScreen() {
 
     const fetchProjectsAndInit = async () => {
       // AFTER
-const { data: memberProjects, error } = await supabase
+const { data: memberProjects, error } = await cachedSelect(`home-projects-${user.id}`, () => supabase
   .from('members_projects')
   .select('projects(*)')
-  .eq('member_id', user.id);
+  .eq('member_id', user.id));
 
 const data = memberProjects
   ?.map(mp => mp.projects)
@@ -164,51 +166,52 @@ const data = memberProjects
 
     const fetchAllData = async () => {
       try {
-        const { data: plansData } = await supabase
+        const pid = selectedProject.id;
+        const { data: plansData } = await cachedSelect(`plans-${pid}`, () => supabase
           .from('plans').select('*').is('deleted_at', null).eq('status', 'ready')
-          .eq('project_id', selectedProject.id);
+          .eq('project_id', selectedProject.id));
         if (plansData) setPlans(plansData);
 
         if (user.role === 'guest') {
-          const { data: pinsData } = await supabase
+          const { data: pinsData, error: pinsError, cachedAt } = await cachedSelect(`pins-home-${pid}-${user.id}`, () => supabase
             .from('pdf_pins').select('*,Status(*),categories(*),projects(*),pin_tags(tag_id, tags(*))')
             .is('deleted_at', null)
-            .eq('project_id', selectedProject.id).eq('assigned_to', user.id);
-          if (pinsData) setPins(pinsData);
+            .eq('project_id', selectedProject.id).eq('assigned_to', user.id));
+          if (pinsData || pinsError?.offline) setPins(withPendingPins(pinsData ?? [], { projectId: pid, assignedTo: user.id }, cachedAt));
         } else {
-          const { data: pinsData } = await supabase
+          const { data: pinsData, error: pinsError, cachedAt } = await cachedSelect(`pins-home-${pid}`, () => supabase
             .from('pdf_pins').select('*,Status(*),categories(*),projects(*),pin_tags(tag_id, tags(*))')
             .is('deleted_at', null)
-            .eq('project_id', selectedProject.id);
-          if (pinsData) setPins(pinsData);
+            .eq('project_id', selectedProject.id));
+          if (pinsData || pinsError?.offline) setPins(withPendingPins(pinsData ?? [], { projectId: pid }, cachedAt));
         }
 
-        const { data: eventsData } = await supabase
+        const { data: eventsData } = await cachedSelect(`events-${pid}`, () => supabase
           .from('events').select('*,pdf_pins(*),members(*)')
           .eq('project_id', selectedProject.id)
-          .order('created_at', { ascending: false }).limit(10);
+          .order('created_at', { ascending: false }).limit(10));
         if (eventsData) setEvents(eventsData);
 
-        const { data: statusData } = await supabase
-          .from('Status').select('*').eq('project_id', selectedProject.id).order('order');
+        const { data: statusData } = await cachedSelect(`statuses-${pid}`, () => supabase
+          .from('Status').select('*').eq('project_id', selectedProject.id).order('order'));
         if (statusData) setStatuses(statusData);
 
-        const { data: catData } = await supabase
-          .from('categories').select('*').eq('project_id', selectedProject.id).order('order');
+        const { data: catData } = await cachedSelect(`categories-${pid}`, () => supabase
+          .from('categories').select('*').eq('project_id', selectedProject.id).order('order'));
         if (catData) setCategories(catData);
 
-        const { data: membersProjectsData } = await supabase
+        const { data: membersProjectsData } = await cachedSelect(`members-${pid}`, () => supabase
           .from('members_projects')
           .select(`*, projects(*), members(*)`)
-          .eq('project_id', selectedProject.id);
+          .eq('project_id', selectedProject.id));
 
         const memberIds = membersProjectsData?.map(mp => mp.members.id) ?? [];
 
-        const { data: rolesData } = await supabase
+        const { data: rolesData } = await cachedSelect(`roles-${user.organization_id}-${pid}`, () => supabase
           .from('members_organizations')
           .select('member_id, role')
           .eq('organization_id', user.organization_id)
-          .in('member_id', memberIds);
+          .in('member_id', memberIds));
 
         const rolesMap = Object.fromEntries(
           rolesData?.map(r => [r.member_id, r.role]) ?? []
@@ -222,7 +225,6 @@ const data = memberProjects
         })) ?? [];
 
         if (membersData) {
-          console.log("Members data:", membersData);
           setMembers(membersData);
         }
 
@@ -242,7 +244,7 @@ const data = memberProjects
     };
 
     fetchAllData();
-  }, [selectedProject?.id, user]);
+  }, [selectedProject?.id, user, syncTick]);
 
   const categoryOptions = [
     { label: 'Tous', value: 'all', color: '#1E293B' },

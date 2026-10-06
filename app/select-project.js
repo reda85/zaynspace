@@ -27,6 +27,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchRoleForOrg } from '../lib/fetchRoleForOrg';
+import { cachedSelect } from '../lib/offline';
 import { supabase } from '../lib/supabase';
 import {
   categoriesAtom,
@@ -72,10 +73,10 @@ export default function SelectProjectScreen() {
 
   const fetchOrgs = async () => {
     setLoadingOrgs(true);
-    const { data, error } = await supabase
+    const { data, error } = await cachedSelect(`orgs-${user.id}`, () => supabase
       .from('members_organizations')
       .select('organization_id, organizations(id, name)')
-      .eq('member_id', user.id);
+      .eq('member_id', user.id));
 
     if (error) console.error('Error loading orgs:', error);
     else setOrgs(data.map((row) => row.organizations));
@@ -85,10 +86,10 @@ export default function SelectProjectScreen() {
   const fetchProjects = async (orgId) => {
     setLoadingProjects(true);
     try {
-      const { data: memberProjects, error: memberError } = await supabase
+      const { data: memberProjects, error: memberError } = await cachedSelect(`my-project-ids-${user.id}`, () => supabase
         .from('members_projects')
         .select('project_id')
-        .eq('member_id', user.id);
+        .eq('member_id', user.id));
 
       if (memberError) throw memberError;
 
@@ -100,12 +101,12 @@ export default function SelectProjectScreen() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await cachedSelect(`projects-${orgId}-${user.id}`, () => supabase
         .from('projects')
         .select('*')
         .eq('organization_id', orgId)
         .in('id', projectIds)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }));
 
       if (error) throw error;
       setProjects(data ?? []);
@@ -138,10 +139,10 @@ export default function SelectProjectScreen() {
 
   // ── Sélectionne automatiquement le premier projet de la nouvelle org ──
   try {
-    const { data: memberProjects, error: memberError } = await supabase
+    const { data: memberProjects, error: memberError } = await cachedSelect(`my-project-ids-${user.id}`, () => supabase
       .from('members_projects')
       .select('project_id')
-      .eq('member_id', user.id);
+      .eq('member_id', user.id));
 
     if (memberError) throw memberError;
 
@@ -152,12 +153,12 @@ export default function SelectProjectScreen() {
       return;
     }
 
-    const { data: orgProjects, error: projectsError } = await supabase
+    const { data: orgProjects, error: projectsError } = await cachedSelect(`projects-${org.id}-${user.id}`, () => supabase
       .from('projects')
       .select('*')
       .eq('organization_id', org.id)
       .in('id', projectIds)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }));
 
     if (projectsError) throw projectsError;
 

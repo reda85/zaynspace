@@ -61,6 +61,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import uuid from 'react-native-uuid';
 import { useMemoryOptimization } from '../hooks/useMemoryOptimization';
 import { supabase } from '../lib/supabase';
+import { isOnline, loadPlanTiles, localTileUri, runOrQueue } from '../lib/offline';
+import { remoteTileUrl } from '../lib/tileUrl';
 import { categoriesAtom, selectedPinAtom, statusesAtom } from "../store/atoms";
 import MapPin from './MapPin';
 import PdfViewerFilterOverlay from './PdfViewerFilterOverlay';
@@ -280,15 +282,19 @@ export default function PdfViewerWithTiles({
     diskCacheClearInterval: 60000,
   });
 
+  // Tuiles enregistrées sur l'appareil (plan rendu disponible hors ligne) :
+  // chargées une fois, puis utilisées en priorité sur le réseau.
+  const [localTilesVersion, setLocalTilesVersion] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    loadPlanTiles(planId).then((set) => { if (!cancelled && set.size > 0) setLocalTilesVersion((v) => v + 1); });
+    return () => { cancelled = true; };
+  }, [planId]);
+
   const getTileUrl = useCallback((level, col, row) => {
-    if (USE_BACKEND) {
-      return `${API_URL}/api/tiles/${planId}/${level}/${col}_${row}.jpeg`;
-    } else {
-      const storagePath = `${pdfInfo.tilesPath}_files/${level}/${col}_${row}.jpeg`;
-      const { data } = supabase.storage.from('project-plans').getPublicUrl(storagePath);
-      return data.publicUrl;
-    }
-  }, [planId, pdfInfo.tilesPath]);
+    return localTileUri(planId, level, col, row)
+      ?? remoteTileUrl({ planId, tilesPath: pdfInfo.tilesPath }, level, col, row);
+  }, [planId, pdfInfo.tilesPath, localTilesVersion]);
 
   const renderLayer = useCallback((level, isBaseLevel = false) => {
     const tileSize = TILE_SIZE;
@@ -373,11 +379,14 @@ export default function PdfViewerWithTiles({
   }, [categories, statuses, selectedProject, pdfName, plan_id, permission, onPinUpdate, startCameraForPin, requestPermission]);
 
   const handlePinPress = useCallback(async (pin) => {
-    const { data } = await supabase
-      .from('pdf_pins')
-      .select('*,projects(*),categories(*),Status(*)')
-      .eq('id', pin.id)
-      .single();
+    // Hors ligne : on affiche directement le pin déjà chargé.
+    const { data } = isOnline()
+      ? await supabase
+        .from('pdf_pins')
+        .select('*,projects(*),categories(*),Status(*)')
+        .eq('id', pin.id)
+        .single()
+      : { data: null };
     if (data) {
       setProjectNumber(data.projects?.project_number || '');
       setPinNumber(data.pin_number || '');
@@ -412,10 +421,16 @@ export default function PdfViewerWithTiles({
       const sortedStatuses = [...statuses].sort((a, b) => a.order - b.order);
       const lastStatus = sortedStatuses[sortedStatuses.length - 1];
       if (lastStatus && bottomSheetPin.status_id !== lastStatus.id) {
-        const { error } = await supabase
-          .from('pdf_pins')
-          .update({ status_id: lastStatus.id })
-          .eq('id', bottomSheetPin.id);
+        let error = null;
+        try {
+          const patch = { status_id: lastStatus.id, updated_at: new Date().toISOString() };
+          await runOrQueue('pin.update', { id: bottomSheetPin.id, patch }, async () => {
+            const res = await supabase.from('pdf_pins').update(patch).eq('id', bottomSheetPin.id);
+            if (res.error) throw res.error;
+          });
+        } catch (err) {
+          error = err;
+        }
         if (!error) {
           setBottomSheetPin({ ...bottomSheetPin, status_id: lastStatus.id, Status: lastStatus });
           setNormalizedPins(prev =>

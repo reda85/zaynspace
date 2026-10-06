@@ -3,7 +3,8 @@ import { useIsFocused } from '@react-navigation/native';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useNavigation } from 'expo-router';
 import * as Sharing from 'expo-sharing';
-import { useAtom } from 'jotai';
+import { useAtom, useAtomValue } from 'jotai';
+import uuid from 'react-native-uuid';
 import { groupBy } from 'lodash';
 import { ArrowDownNarrowWideIcon, ListFilter, Plus } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -32,6 +33,7 @@ import PlanFilter from '../../components/FilterPanel/PlanFilter';
 import StatusFilter from '../../components/FilterPanel/StatusFilter';
 import TaskListItem from '../../components/TaskListItem';
 import { supabase } from '../../lib/supabase';
+import { cachedSelect, isOnline, queue, syncTickAtom, withPendingPins } from '../../lib/offline';
 
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
@@ -1199,6 +1201,10 @@ useEffect(() => {
     planningObservations,
 }) => {
     if (selectedIds.size === 0 || isDownloading) return;
+    if (!isOnline()) {
+        Alert.alert('Indisponible hors ligne', 'La génération du rapport nécessite une connexion.');
+        return;
+    }
     setShowReportModal(false);
     setIsDownloading(true);
     try {
@@ -1291,6 +1297,28 @@ useEffect(() => {
         if (!newTaskName.trim() || isCreatingTask) return;
         setIsCreatingTask(true);
         try {
+            if (!isOnline()) {
+                // Hors ligne : la tâche est créée sur l'appareil et envoyée plus tard.
+                // Son numéro est attribué par le serveur à l'envoi.
+                const nowIso = new Date().toISOString();
+                const row = {
+                    id: uuid.v4(),
+                    project_id: projects?.id,
+                    name: newTaskName.trim(),
+                    note: newTaskDescription.trim() || null,
+                    created_by: loggedInUser?.id,
+                    updated_by: loggedInUser?.id,
+                    created_at: nowIso,
+                    updated_at: nowIso,
+                    status_id: statuses?.[0]?.id ?? null,
+                };
+                await queue('pin.insert', { row });
+                setPins(prev => getSortedPins([...prev, { ...row, Status: statuses?.[0] ?? null, _pending: true }], sortField, sortDirection));
+                setNewTaskName('');
+                setNewTaskDescription('');
+                setShowCreateTaskModal(false);
+                return;
+            }
             const { data: existingPins } = await supabase
                 .from('pdf_pins')
                 .select('pin_number')
@@ -1337,40 +1365,33 @@ useEffect(() => {
 
     const fetchPins = useCallback(async () => {
         setLoading(true);
-        if (loggedInUser?.role == 'guest') {
-            const { data, error } = await supabase
+        const pid = projects?.id;
+        const guest = loggedInUser?.role == 'guest';
+        // Hors ligne : dernière liste enregistrée, complétée des modifications en attente.
+        const { data, error, cachedAt } = await cachedSelect(`pins-tasks-${pid}${guest ? `-${loggedInUser.id}` : ''}`, () => {
+            let query = supabase
                 .from('pdf_pins')
                 .select('*, assigned_to(*), categories(*), Status(*), pins_photos(*), pin_tags(tag_id, tags(*))')
                 .is('deleted_at', null)
-                .eq('project_id', projects?.id)
-                .eq('assigned_to', loggedInUser.id);
-            if (data) {
-                const sortedData = getSortedPins(data, sortField, sortDirection);
-                setPins(sortedData);
-                setFilteredPins(sortedData);
-            } else {
-                console.error('Error loading pins:', error);
-            }
+                .eq('project_id', pid);
+            if (guest) query = query.eq('assigned_to', loggedInUser.id);
+            return query;
+        });
+        if (data || error?.offline) {
+            const merged = withPendingPins(data ?? [], { projectId: pid, assignedTo: guest ? loggedInUser.id : undefined }, cachedAt);
+            const sortedData = getSortedPins(merged, sortField, sortDirection);
+            setPins(sortedData);
+            setFilteredPins(sortedData);
         } else {
-            const { data, error } = await supabase
-                .from('pdf_pins')
-                .select('*, assigned_to(*), categories(*), Status(*), pins_photos(*), pin_tags(tag_id, tags(*))')
-                .is('deleted_at', null)
-                .eq('project_id', projects?.id);
-            if (data) {
-                const sortedData = getSortedPins(data, sortField, sortDirection);
-                setPins(sortedData);
-                setFilteredPins(sortedData);
-            } else {
-                console.error('Error loading pins:', error);
-            }
+            console.error('Error loading pins:', error);
         }
         setLoading(false);
     }, [projects?.id, sortField, sortDirection, setPins, loggedInUser]);
 
+    const syncTick = useAtomValue(syncTickAtom);
     useEffect(() => {
         if (projects && isFocused) fetchPins();
-    }, [projects, isFocused, fetchPins]);
+    }, [projects, isFocused, fetchPins, syncTick]);
 
     const handleOpenSortSheet = useCallback(() => setShowSortSheet(true), []);
 
