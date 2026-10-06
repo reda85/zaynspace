@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
+import { authHeaders } from '../../../lib/api';
 import {
   categoriesAtom,
   loggedInUserAtom,
@@ -270,7 +271,7 @@ export default function ProjectPlans() {
     const timeoutId = setTimeout(() => {
       pollingIntervalRef.current = setInterval(async () => {
         try {
-          const response = await fetch(`${API_URL}/api/upload-pdf/status/${planId}`);
+          const response = await fetch(`${API_URL}/api/upload-pdf/status/${planId}`, { headers: await authHeaders() });
           const data = await response.json();
           setUploadState(prev => ({ ...prev, progress: data.processing_progress || 0, status: data.status }));
 
@@ -349,7 +350,7 @@ export default function ProjectPlans() {
       const response = await fetch(`${API_URL}/api/upload-pdf`, {
         method: 'POST',
         body: formData,
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: await authHeaders({ 'Content-Type': 'multipart/form-data' }),
       });
 
       if (!response.ok) {

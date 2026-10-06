@@ -81,6 +81,7 @@ import PinTagEditor from '../components/PinTagEditor';
 import PlanMiniSnapshot from '../components/PlanMiniSnapshot';
 import Timeline from '../components/TimeLine';
 import { supabase } from '../lib/supabase';
+import { authHeaders } from '../lib/api';
 import { updatePinInSupabase } from '../services/supabaseService';
 import { categoriesAtom, membersAtom, MetaPinAtom, PhotoPlanPositionAtom, pinsAtom, selectedPinAtom, selectedProjectAtom, statusesAtom } from '../store/atoms';
 
@@ -450,7 +451,7 @@ export default function PinMetadataScreen() {
     const assignPin = async ({ pinId, assignedByName, assigneeId, assignedUserEmail, assignedUserName }) => {
         const response = await fetch('https://zaynspace.com/api/send-task-notification', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: await authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 deepLink: `https://zaynspace.com/task/${pinId}`,
                 taskId: pinId,
@@ -468,7 +469,7 @@ export default function PinMetadataScreen() {
 
         const res = await fetch('https://zaynbackend-production.up.railway.app/api/pins/assign', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: await authHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 pinId,
                 type: 'pin_assigned',
