@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { removePushToken } from '../../hooks/useNotifications';
 import { supabase } from '../../lib/supabase';
 import { sessionAtom } from '../../store/atoms';
 
@@ -68,7 +69,8 @@ export default function SettingsScreen() {
   }, []);
 
   const handleLogout = async () => {
-    
+    // Tant que la session est valide : après la déconnexion, la base refuse la suppression.
+    await removePushToken();
     await supabase.auth.signOut();
     //console.log('Logged out');
    // setSession(null);

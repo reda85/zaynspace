@@ -24,13 +24,15 @@ export default function AccountScreen() {
   const navigation = useNavigation();
   const [user] = useAtom(loggedInUserAtom);
 
-  console.log('🔍 User data in AccountScreen:', user);
 
   
  // const [name, setName] = useState(user?.name);
   const name = user?.name;
   const email = user?.email;
-  const memberStatus = user?.role === 'admin' ? 'Administrateur' : ('guest' ? 'Invité' : 'Membre');
+  const memberStatus = user?.role === 'admin'
+    ? 'Administrateur'
+    : (['guest', 'Invités'].includes(user?.role) ? 'Invité' : 'Membre');
+  const initials = (name || email || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
   /* ---------- HEADER (same as Settings) ---------- */
   useLayoutEffect(() => {
@@ -101,7 +103,7 @@ export default function AccountScreen() {
         >
           <Image
             source={{
-              uri: 'https://ui-avatars.com/api/?name=MR&background=111827&color=fff',
+              uri: user?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=111827&color=fff`,
             }}
             style={styles.avatar}
           />

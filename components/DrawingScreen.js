@@ -68,7 +68,7 @@ import {
   Type,
   X
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -170,6 +170,8 @@ export default function DrawingScreen() {
   const [canvasSize, setCanvasSize] = useState({ width: 300, height: 400 });
   const [descriptions, setDescriptions] = useState(photos.map(() => ""));
   const [isSaving, setIsSaving] = useState(false);
+  // Index des photos déjà envoyées (fichier + ligne) : jamais renvoyées lors d'une nouvelle tentative.
+  const uploadedIndexesRef = useRef(new Set());
   const [savingProgress, setSavingProgress] = useState(0);
   const [toolPanelOpen, setToolPanelOpen] = useState(false);
   const [selectedTextIndexState, setSelectedTextIndexState] = useState(null);
@@ -754,6 +756,7 @@ export default function DrawingScreen() {
         const chunkPromises = [];
 
         for (let j = i; j < Math.min(i + RENDER_CHUNK_SIZE, photoUris.length); j++) {
+          if (uploadedIndexesRef.current.has(j)) continue;
        chunkPromises.push((async () => {
             const img = images[j];
             const photoPaths = paths[j] || [];
@@ -778,95 +781,123 @@ export default function DrawingScreen() {
       const BATCH_SIZE = 3;
       let completedCount = 0;
 
+      // Envoi d'une photo : fichier, miniature, puis ligne pins_photos.
+      const gallerySaved = new Set();
+      const uploadOnePhoto = async ({ base64, thumbBase64, index }, filename, attempt) => {
+        const ext = "jpg";
+        const mime = "image/jpeg";
+        // filename est fixé par photo avant les tentatives (voir plus bas).
+        const fileUri  = `${FileSystem.documentDirectory}${filename}`;
+
+        await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: "base64" });
+
+        if (shouldSaveToGallery && !gallerySaved.has(index)) {
+          await MediaLibrary.saveToLibraryAsync(fileUri);
+          gallerySaved.add(index);
+        }
+
+        const fileBuffer = Buffer.from(base64, "base64");
+        const uploadPath = `${pin?.project_id}/${filename}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("pinphotos")
+          .upload(uploadPath, fileBuffer, { contentType: mime });
+
+        // Une tentative précédente a pu aboutir sans que la réponse nous parvienne.
+        const alreadyThere = attempt > 1 && /exist/i.test(uploadError?.message || '');
+        if (uploadError && !alreadyThere) throw uploadError;
+
+
+
+        // ── Miniature (non bloquant : repli sur public_url si échec) ──
+       // ── Miniature (version debug) ──
+        let thumbUrl = null;
+        try {
+          if (!thumbBase64) {
+            console.warn(`[thumb] pas de thumbBase64 pour index ${index} — l'édition #2 (le rendu) n'est probablement pas appliquée`);
+          } else {
+            const thumbPath = `${pin?.project_id}/thumb_${filename}`;
+            const thumbBuffer = Buffer.from(thumbBase64, "base64");
+            console.log(`[thumb] upload ${thumbPath} (${thumbBuffer.length} octets)`);
+            const { error: thumbError } = await supabase.storage
+              .from("pinphotos")
+              .upload(thumbPath, thumbBuffer, { contentType: mime });
+            if (thumbError && !(attempt > 1 && /exist/i.test(thumbError.message || ''))) {
+              console.warn(`[thumb] erreur upload:`, thumbError.message);
+            } else {
+              thumbUrl = supabase.storage.from("pinphotos").getPublicUrl(thumbPath).data.publicUrl;
+              console.log(`[thumb] ok -> ${thumbUrl}`);
+            }
+          }
+        } catch (e) {
+          console.warn(`[thumb] exception:`, e?.message);
+        }
+        console.log(`[thumb] thumbUrl final pour ${index}:`, thumbUrl);
+
+
+
+        if (shouldOptimize) {
+          await FileSystem.deleteAsync(fileUri, { idempotent: true });
+        }
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("pinphotos")
+          .getPublicUrl(uploadPath);
+
+        // 🌍 Extract geolocation from photo object (if available)
+        const currentPhoto = photos[index];
+        const latitude = typeof currentPhoto === 'object' ? currentPhoto.latitude : null;
+        const longitude = typeof currentPhoto === 'object' ? currentPhoto.longitude : null;
+
+        // 📍 Position sur le plan (si l'utilisateur a placé cette photo)
+        const planPos = photoPlanPositions[index];
+
+        const { data: photoInsert, error: insertError } = await supabase
+          .from("pins_photos")
+          .insert([{
+            pin_id: pin?.id,
+            project_id: pin?.project_id,
+            public_url: publicUrl,
+            thumb_url: thumbUrl,
+            description: descriptions[index],
+            date: new Date().toISOString(),
+            sender_id: loggedInUser?.id,
+            latitude,
+            longitude,
+            plan_id: planPos?.planId ?? null,
+            plan_x: planPos?.x ?? null,
+            plan_y: planPos?.y ?? null,
+          }])
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+      };
+
+      // Chaque photo est tentée jusqu'à 3 fois ; un échec n'interrompt pas les
+      // autres, et les photos déjà envoyées ne sont jamais renvoyées.
+      const UPLOAD_ATTEMPTS = 3;
+      const failedIndexes = [];
+
       for (let batchStart = 0; batchStart < processedImages.length; batchStart += BATCH_SIZE) {
         const batch = processedImages.slice(batchStart, batchStart + BATCH_SIZE);
 
-        await Promise.all(batch.map(async ({ base64, thumbBase64, index }) => {
-          const ext = "jpg";
-          const mime = "image/jpeg";
-          const filename = `drawing_${Date.now()}_${index}.${ext}`;
-          const fileUri  = `${FileSystem.documentDirectory}${filename}`;
-
-          await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: "base64" });
-
-          if (shouldSaveToGallery) {
-            await MediaLibrary.saveToLibraryAsync(fileUri);
-          }
-
-          const fileBuffer = Buffer.from(base64, "base64");
-          const uploadPath = `${pin?.project_id}/${filename}`;
-
-          const { error: uploadError } = await supabase.storage
-            .from("pinphotos")
-            .upload(uploadPath, fileBuffer, { contentType: mime });
-
-          if (uploadError) throw uploadError;
-
-
-
-          // ── Miniature (non bloquant : repli sur public_url si échec) ──
-         // ── Miniature (version debug) ──
-          let thumbUrl = null;
-          try {
-            if (!thumbBase64) {
-              console.warn(`[thumb] pas de thumbBase64 pour index ${index} — l'édition #2 (le rendu) n'est probablement pas appliquée`);
-            } else {
-              const thumbPath = `${pin?.project_id}/thumb_${filename}`;
-              const thumbBuffer = Buffer.from(thumbBase64, "base64");
-              console.log(`[thumb] upload ${thumbPath} (${thumbBuffer.length} octets)`);
-              const { error: thumbError } = await supabase.storage
-                .from("pinphotos")
-                .upload(thumbPath, thumbBuffer, { contentType: mime });
-              if (thumbError) {
-                console.warn(`[thumb] erreur upload:`, thumbError.message);
-              } else {
-                thumbUrl = supabase.storage.from("pinphotos").getPublicUrl(thumbPath).data.publicUrl;
-                console.log(`[thumb] ok -> ${thumbUrl}`);
-              }
+        await Promise.all(batch.map(async (item) => {
+          const filename = `drawing_${Date.now()}_${item.index}.jpg`;
+          let lastError = null;
+          for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt++) {
+            try {
+              await uploadOnePhoto(item, filename, attempt);
+              uploadedIndexesRef.current.add(item.index);
+              lastError = null;
+              break;
+            } catch (e) {
+              lastError = e;
+              console.warn(`[upload] photo ${item.index} tentative ${attempt}:`, e?.message);
+              if (attempt < UPLOAD_ATTEMPTS) await new Promise((r) => setTimeout(r, attempt * 1500));
             }
-          } catch (e) {
-            console.warn(`[thumb] exception:`, e?.message);
           }
-          console.log(`[thumb] thumbUrl final pour ${index}:`, thumbUrl);
-
-
-
-          if (shouldOptimize) {
-            await FileSystem.deleteAsync(fileUri, { idempotent: true });
-          }
-
-          const { data: { publicUrl } } = supabase.storage
-            .from("pinphotos")
-            .getPublicUrl(uploadPath);
-
-          // 🌍 Extract geolocation from photo object (if available)
-          const currentPhoto = photos[index];
-          const latitude = typeof currentPhoto === 'object' ? currentPhoto.latitude : null;
-          const longitude = typeof currentPhoto === 'object' ? currentPhoto.longitude : null;
-
-          // 📍 Position sur le plan (si l'utilisateur a placé cette photo)
-          const planPos = photoPlanPositions[index];
-
-          const { data: photoInsert, error: insertError } = await supabase
-            .from("pins_photos")
-            .insert([{
-              pin_id: pin?.id,
-              project_id: pin?.project_id,
-              public_url: publicUrl,
-              thumb_url: thumbUrl,
-              description: descriptions[index],
-              date: new Date().toISOString(),
-              sender_id: loggedInUser?.id,
-              latitude,
-              longitude,
-              plan_id: planPos?.planId ?? null,
-              plan_x: planPos?.x ?? null,
-              plan_y: planPos?.y ?? null,
-            }])
-            .select()
-            .single();
-
-          if (insertError) throw insertError;
+          if (lastError) failedIndexes.push(item.index);
 
           completedCount++;
           const uploadProgress = 40 + (60 * completedCount / processedImages.length);
@@ -874,32 +905,52 @@ export default function DrawingScreen() {
         }));
       }
 
-      if (returnToPinId) {
-        router.push({
-          pathname: "/PinMetadataScreen",
-          params: {
-            pinId: returnToPinId,
-            from: "Pdf",
-            myuri,
-            myname,
-            myplanid,
-            photoUris: JSON.stringify([]),
-            refresh: String(Date.now()),
-          },
-        });
-      } else {
-        router.push({
-          pathname: "/PinMetadataScreen",
-          params: {
-            pinId: pin?.id,
-            from: "Pdf",
-            myuri,
-            myname,
-            myplanid,
-            photoUris: JSON.stringify([]),
-          },
-        });
+
+      const goToPin = () => {
+        if (returnToPinId) {
+          router.push({
+            pathname: "/PinMetadataScreen",
+            params: {
+              pinId: returnToPinId,
+              from: "Pdf",
+              myuri,
+              myname,
+              myplanid,
+              photoUris: JSON.stringify([]),
+              refresh: String(Date.now()),
+            },
+          });
+        } else {
+          router.push({
+            pathname: "/PinMetadataScreen",
+            params: {
+              pinId: pin?.id,
+              from: "Pdf",
+              myuri,
+              myname,
+              myplanid,
+              photoUris: JSON.stringify([]),
+            },
+          });
+        }
+      };
+
+      if (failedIndexes.length > 0) {
+        const total = photoUris.length;
+        const failed = failedIndexes.length;
+        Alert.alert(
+          "Envoi incomplet",
+          `${failed} photo${failed > 1 ? "s" : ""} sur ${total} n'${failed > 1 ? "ont" : "a"} pas pu être envoyée${failed > 1 ? "s" : ""}. Vérifiez votre connexion.`,
+          [
+            { text: "Réessayer", onPress: () => handleSave() },
+            { text: "Continuer sans", style: "destructive", onPress: goToPin },
+            { text: "Fermer", style: "cancel" },
+          ]
+        );
+        return;
       }
+
+      goToPin();
     } catch (err) {
       console.error(err);
       Alert.alert("Error", err.message || "Could not save drawings.");

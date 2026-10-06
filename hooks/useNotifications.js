@@ -1,8 +1,11 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
 import { useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import * as Crypto from 'expo-crypto';
 import { supabase } from '../lib/supabase';
 
 // Configure notification behavior
@@ -28,7 +31,16 @@ export function useNotifications(session) {
       const expoPushToken = await registerForPushNotificationsAsync();
       if (!expoPushToken) return;
 
-      const deviceId = getDeviceId();
+      const deviceId = await getDeviceId();
+
+      // Un même appareil ne garde qu'une ligne : les anciennes (identifiant
+      // d'appareil dérivé de la version d'OS) provoquaient des envois en double.
+      await supabase
+        .from('user_fcm_tokens')
+        .delete()
+        .eq('user_id', session.user.id)
+        .eq('fcm_token', expoPushToken)
+        .neq('device_id', deviceId);
 
       await supabase.from('user_fcm_tokens').upsert(
         {
@@ -41,16 +53,19 @@ export function useNotifications(session) {
         { onConflict: 'user_id,device_id' }
       );
 
-      // Foreground notifications
-      notificationListener = Notifications.addNotificationReceivedListener(notification => {
-        const { title, body } = notification.request.content;
-        Alert.alert(title ?? 'Notification', body ?? '');
-      });
+      // Application ouverte : la bannière système s'affiche déjà
+      // (setNotificationHandler), pas de fenêtre bloquante en plus.
 
-      // Notification tap
-      responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-        console.log('Notification tapped:', response);
-      });
+      // Appui sur une notification : ouvrir l'élément concerné.
+      responseListener = Notifications.addNotificationResponseReceivedListener(openFromNotification);
+
+      // Application lancée par un appui sur une notification.
+      const last = await Notifications.getLastNotificationResponseAsync();
+      if (last && last.notification.request.identifier !== lastHandledId) {
+        // Laisse la navigation se monter, et ne rejoue pas cet appui au prochain lancement.
+        setTimeout(() => openFromNotification(last), 400);
+        Notifications.clearLastNotificationResponseAsync?.();
+      }
     };
 
     init();
@@ -60,14 +75,8 @@ export function useNotifications(session) {
     return () => {
       notificationListener?.remove();
       responseListener?.remove();
-
-      const deviceId = getDeviceId();
-      supabase
-        .from('user_fcm_tokens')
-        .delete()
-        .match({ user_id: session.user.id, device_id: deviceId })
-        .then(() => console.log('Push token removed on session end'))
-        .catch(err => console.warn('Could not remove push token:', err));
+      // Le jeton de cet appareil est supprimé par removePushToken(), appelé
+      // avant la déconnexion : ici la session n'existe déjà plus.
     };
   }, [session?.user?.id]);
 }
@@ -76,7 +85,7 @@ export function useNotifications(session) {
 
 async function requestPermission() {
   if (!Device.isDevice) {
-    Alert.alert('Must use physical device for Push Notifications');
+    console.warn('Push notifications need a physical device');
     return false;
   }
 
@@ -89,7 +98,8 @@ async function requestPermission() {
   }
 
   if (finalStatus !== 'granted') {
-    Alert.alert('Failed to get push token for push notification!');
+    // Refus de l'utilisateur : pas d'alerte à chaque lancement.
+    console.warn('Push notification permission not granted');
     return false;
   }
 
@@ -122,10 +132,52 @@ async function registerForPushNotificationsAsync() {
   }
 }
 
-// Synchronous — Device fields are already resolved at import time
-function getDeviceId() {
-  const deviceName = Device.deviceName || 'unknown';
-  const osVersion  = Device.osVersion  || 'unknown';
-  const modelName  = Device.modelName  || 'unknown';
-  return `${Platform.OS}-${deviceName}-${modelName}-${osVersion}`.replace(/\s+/g, '-');
+// Identifiant d'appareil stable, généré une fois et conservé. L'ancien était
+// dérivé du nom et de la version d'OS : chaque mise à jour créait un doublon.
+const DEVICE_ID_KEY = '@push/device_id';
+async function getDeviceId() {
+  try {
+    const stored = await AsyncStorage.getItem(DEVICE_ID_KEY);
+    if (stored) return stored;
+    const created = `${Platform.OS}-${Crypto.randomUUID()}`;
+    await AsyncStorage.setItem(DEVICE_ID_KEY, created);
+    return created;
+  } catch {
+    const modelName = Device.modelName || 'unknown';
+    return `${Platform.OS}-${modelName}`.replace(/\s+/g, '-');
+  }
+}
+
+// À appeler AVANT supabase.auth.signOut() : retire le jeton de cet appareil
+// pour que le backend cesse de lui envoyer les notifications du compte.
+export async function removePushToken() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+    const deviceId = await getDeviceId();
+    await supabase
+      .from('user_fcm_tokens')
+      .delete()
+      .match({ user_id: session.user.id, device_id: deviceId });
+  } catch (err) {
+    console.warn('Could not remove push token:', err?.message);
+  }
+}
+
+let lastHandledId = null;
+function openFromNotification(response) {
+  try {
+    lastHandledId = response?.notification?.request?.identifier ?? null;
+    const data = response?.notification?.request?.content?.data ?? {};
+    if (data.type === 'pin_assigned' && data.pinId) {
+      router.push({ pathname: '/PinMetadataScreen', params: { pinId: String(data.pinId), from: 'Notification' } });
+    } else if (data.type === 'discussion_message' && data.groupId) {
+      router.push({
+        pathname: '/discussions/chat',
+        params: { groupId: String(data.groupId), groupName: response.notification.request.content.title ?? '' },
+      });
+    }
+  } catch (err) {
+    console.warn('Could not open notification target:', err?.message);
+  }
 }

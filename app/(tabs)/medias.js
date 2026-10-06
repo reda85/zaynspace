@@ -146,7 +146,7 @@ export default function MediaGalleryScreen() {
         .eq('project_id', project.id)
         .is('pdf_pins.deleted_at', null);
     if (selectedPlan) {
-        query = query.eq('pin_id', selectedPlan);
+        query = query.eq('pdf_pins.plan_id', selectedPlan);
     }
     if (startDate) {
         query = query.gte('created_at', startDate.toISOString());
