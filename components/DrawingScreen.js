@@ -202,6 +202,9 @@ export default function DrawingScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photoUris.join('|')]);
 
+  // Déclaré AVANT backgroundDisplayRect, qui le lit dès le premier rendu.
+  const [canvasSize, setCanvasSize] = useState({ width: 300, height: 400 });
+
   // Rectangle où l'image doit être dessinée à l'écran pour préserver son ratio
   // (au lieu d'être étirée pour remplir tout le canvas — c'est ce qui causait
   // l'effet "écrasé"). Recalculé à chaque changement de photo/taille de canvas.
@@ -241,7 +244,6 @@ export default function DrawingScreen() {
   const [textInput, setTextInput] = useState("");
   const [addingText, setAddingText] = useState(false);
   const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
-  const [canvasSize, setCanvasSize] = useState({ width: 300, height: 400 });
   const [descriptions, setDescriptions] = useState(photos.map(() => ""));
   const [isSaving, setIsSaving] = useState(false);
   // Index des photos déjà envoyées (fichier + ligne) : jamais renvoyées lors d'une nouvelle tentative.
