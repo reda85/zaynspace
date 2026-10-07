@@ -153,8 +153,7 @@ export default function PinMetadataScreen() {
     const [availablePlans, setAvailablePlans] = useState([]);
     const [loadingPlans, setLoadingPlans] = useState(false);
     // ── Cible du sélecteur de plan : 'pin' (comportement historique) ou l'objet
-    // photo en cours de placement (voir handleOpenPlanSelectorForPhoto). ──
-    const [planSelectorTarget, setPlanSelectorTarget] = useState('pin');
+    // photo en cours de placement (voir handleStartPhotoPlacement plus bas). ──
 
     const [currentPinId, setCurrentPinId] = useState(pinId);
     const [currentRole, setCurrentRole] = useState(null);
@@ -568,39 +567,35 @@ export default function PinMetadataScreen() {
         }
     };
 
-    // ─── Sélection d'un plan dans la sheet — branche selon la cible ──────────
-    // 'pin' (comportement historique, écran /PinPlacementScreen) ou une PHOTO
-    // individuelle (mode 'photo' de /ImagePinPlacementScreen, voir
-    // handleOpenPlanSelectorForPhoto ci-dessous).
+    // ─── Sélection d'un plan dans la sheet — flux du PIN uniquement ──────────
+    // (Les photos utilisent désormais le sélecteur INLINE intégré à
+    // ImageViewerModal — voir handleStartPhotoPlacement / handlePhotoPlanChosen
+    // plus bas — précisément pour éviter d'enchaîner deux <Modal> natifs, cause
+    // du gel iOS.)
+    //
+    // ⚠️ Fermer un <Modal> natif ET pousser un nouvel écran avant la fin de
+    // l'animation de fermeture peut bloquer UIKit sur iOS. On ferme donc la
+    // sheet (setShowPlanSelector(false)) et on ne déclenche la navigation
+    // qu'après sa fermeture réelle, via onDismiss (voir
+    // handlePlanSelectorDismiss), avec un filet de sécurité par délai.
+    const pendingPlanNavigationRef = useRef(null);
+
+    const handlePlanSelectorDismiss = () => {
+        if (pendingPlanNavigationRef.current) {
+            const navigate = pendingPlanNavigationRef.current;
+            pendingPlanNavigationRef.current = null;
+            navigate();
+        }
+    };
+
     const handlePlanSelected = (selectedPlan) => {
-        setShowPlanSelector(false);
         const pdfInfo = {
             width: selectedPlan.width,
             height: selectedPlan.height,
             tilesPath: selectedPlan.tiles_path,
         };
 
-        if (planSelectorTarget && planSelectorTarget !== 'pin') {
-            const photo = planSelectorTarget;
-            const existingOnThisPlan = photo.plan_id === selectedPlan.id;
-            router.push({
-                pathname: '/ImagePinPlacementScreen',
-                params: {
-                    myname: selectedPlan.name,
-                    myplanid: selectedPlan.id,
-                    mode: 'photo',
-                    photoKey: String(photo.id),
-                    pinIdToPlace: pin.id,
-                    x: existingOnThisPlan ? photo.plan_x : undefined,
-                    y: existingOnThisPlan ? photo.plan_y : undefined,
-                    pdfInfo: JSON.stringify(pdfInfo),
-                },
-            });
-            setPlanSelectorTarget('pin');
-            return;
-        }
-
-        router.push({
+        const navigate = () => router.push({
             pathname: '/PinPlacementScreen',
             params: {
                 myplanid: selectedPlan.id,
@@ -611,27 +606,111 @@ export default function PinMetadataScreen() {
                 pdfInfo: JSON.stringify(pdfInfo)
             }
         });
+
+        pendingPlanNavigationRef.current = navigate;
+        setShowPlanSelector(false);
+        // onDismiss (iOS) n'est pas fiable à 100% avec transparent={true} sur
+        // certaines versions de RN — filet de sécurité par délai sur LES DEUX
+        // plateformes. Si onDismiss se déclenche avant, le ref est déjà vidé et
+        // ce timeout ne fait rien.
+        setTimeout(() => {
+            if (pendingPlanNavigationRef.current === navigate) {
+                pendingPlanNavigationRef.current = null;
+                navigate();
+            }
+        }, 350);
     };
 
-    // ─── Ouvre le sélecteur de plan pour placer/déplacer UNE PHOTO ───────────
+    // ─── Photo DÉJÀ placée sur un plan (plan_id connu) ───────────────────────
     // À passer à <Timeline onPlaceOnPlan={handleOpenPlanSelectorForPhoto} />.
-    // Timeline doit appeler onPlaceOnPlan(photo) où photo est l'objet
-    // pins_photos complet (au minimum : id, plan_id, plan_x, plan_y).
-    const handleOpenPlanSelectorForPhoto = useCallback((photo) => {
+    // Va DIRECT sur ce plan avec sa position existante — comme pour le pin lui-
+    // même. Aucun sélecteur ici : il n'a pas lieu d'être puisqu'on sait déjà
+    // sur quel plan aller. ImageViewerModal a déjà fermé son propre modal AVANT
+    // d'appeler ce callback (voir closeThenRun côté ImageViewerModal), donc ce
+    // router.push ne s'enchaîne derrière AUCUN modal encore ouvert.
+    const handleOpenPlanSelectorForPhoto = useCallback(async (photo) => {
         if (!canEditEverythingElse) return;
-        if (!photo?.id) {
-            Alert.alert('Erreur', 'Photo introuvable');
-            return;
+        if (!photo?.id || !photo.plan_id) return;
+
+        try {
+            const { data: planData, error } = await supabase
+                .from('plans')
+                .select('id, name, width, height, tiles_path')
+                .eq('id', photo.plan_id)
+                .single();
+            if (error) throw error;
+            if (!planData) { Alert.alert('Erreur', 'Plan introuvable'); return; }
+            if (!planData.width || !planData.height || !planData.tiles_path) {
+                Alert.alert('Erreur', 'Informations du plan incomplètes');
+                return;
+            }
+            const pdfInfo = { width: planData.width, height: planData.height, tilesPath: planData.tiles_path };
+            router.push({
+                pathname: '/ImagePinPlacementScreen',
+                params: {
+                    myname: planData.name,
+                    myplanid: planData.id,
+                    mode: 'photo',
+                    source: 'pin',
+                    photoKey: String(photo.id),
+                    pinIdToPlace: pin.id,
+                    x: photo.plan_x,
+                    y: photo.plan_y,
+                    pdfInfo: JSON.stringify(pdfInfo),
+                },
+            });
+        } catch (err) {
+            console.error('Erreur chargement du plan de la photo:', err);
+            Alert.alert('Erreur', 'Impossible de charger le plan');
         }
-        setPlanSelectorTarget(photo);
+    }, [canEditEverythingElse, pin?.id, router]);
+
+    // ─── Photo PAS ENCORE placée — sélecteur INLINE (dans ImageViewerModal) ──
+    // handleStartPhotoPlacement : l'utilisateur ouvre le panneau de sélection ;
+    // on charge juste la liste des plans du projet (réutilise fetchProjectPlans
+    // /availablePlans/loadingPlans, déjà utilisés par la sheet du pin — jamais
+    // utilisés simultanément en pratique).
+    const handleStartPhotoPlacement = useCallback(() => {
+        if (!canEditEverythingElse) return;
         fetchProjectPlans();
-        setShowPlanSelector(true);
     }, [canEditEverythingElse, selectedProject?.id, pin?.project_id]);
+
+    // handlePhotoPlanChosen : un plan a été choisi dans le panneau inline pour
+    // CETTE photo. ImageViewerModal a déjà fermé son modal AVANT d'appeler ce
+    // callback (closeThenRun), donc ce router.push est un push "propre", sans
+    // aucun modal encore ouvert derrière lui.
+    const handlePhotoPlanChosen = useCallback((photo, selectedPlan) => {
+        if (!photo?.id) return;
+        const pdfInfo = {
+            width: selectedPlan.width,
+            height: selectedPlan.height,
+            tilesPath: selectedPlan.tiles_path,
+        };
+        router.push({
+            pathname: '/ImagePinPlacementScreen',
+            params: {
+                myname: selectedPlan.name,
+                myplanid: selectedPlan.id,
+                mode: 'photo',
+                source: 'pin',
+                photoKey: String(photo.id),
+                pinIdToPlace: pin.id,
+                pdfInfo: JSON.stringify(pdfInfo),
+            },
+        });
+    }, [pin?.id, router]);
 
     // ─── Récupère la position choisie dans ImagePinPlacementScreen (mode
     // 'photo') et la persiste sur pins_photos, puis rafraîchit le pin ──────────
+    // ⚠️ PhotoPlanPositionAtom est global : si DrawingScreen a été poussé
+    // au-dessus de cet écran (Pin → Ajouter photos → Caméra → Dessin) et
+    // qu'une photo y est placée sur un plan, CET écran reçoit AUSSI la mise à
+    // jour. Dans ce cas photoKey est un index de tableau (ex: "0"), pas un UUID
+    // pins_photos — d'où l'erreur "invalid input syntax for type uuid". On
+    // ignore donc toute mise à jour qui ne vient pas explicitement de CET écran.
     useEffect(() => {
         if (!photoPlanUpdate || photoPlanUpdate.photoKey == null) return;
+        if (photoPlanUpdate.source !== 'pin') return;
         const photoId = photoPlanUpdate.photoKey;
 
         (async () => {
@@ -1144,7 +1223,7 @@ export default function PinMetadataScreen() {
     );
 
     const PlanSelectorSheet = () => (
-        <Modal animationType="slide" transparent visible={showPlanSelector} onRequestClose={() => setShowPlanSelector(false)}>
+        <Modal animationType="slide" transparent visible={showPlanSelector} onRequestClose={() => setShowPlanSelector(false)} onDismiss={handlePlanSelectorDismiss}>
             <View style={styles.modalOverlay}>
                 <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
                     <View style={styles.sheetHeader}>
@@ -1359,7 +1438,6 @@ export default function PinMetadataScreen() {
                                 <TouchableOpacity
                                     style={styles.pinLocationCard}
                                     onPress={() => {
-                                        setPlanSelectorTarget('pin');
                                         const pdfInfo = { width: plan.width, height: plan.height, tilesPath: plan.tiles_path };
                                         router.push({
                                             pathname: '/PinPlacementScreen',
@@ -1392,7 +1470,6 @@ export default function PinMetadataScreen() {
                                     style={[styles.placePinButton, !canEditEverythingElse && styles.disabledButton]}
                                     onPress={() => {
                                         if (!canEditEverythingElse) return;
-                                        setPlanSelectorTarget('pin');
                                         fetchProjectPlans();
                                         setShowPlanSelector(true);
                                     }}
@@ -1443,6 +1520,10 @@ export default function PinMetadataScreen() {
                                 comments={comments}
                                 showAllEvents={showAllEvents}
                                 onPlaceOnPlan={handleOpenPlanSelectorForPhoto}
+                                onStartPlacement={handleStartPhotoPlacement}
+                                availablePlans={availablePlans}
+                                loadingAvailablePlans={loadingPlans}
+                                onPlanChosen={handlePhotoPlanChosen}
                             />
                         )}
                     </ScrollView>

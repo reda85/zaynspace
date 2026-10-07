@@ -84,14 +84,36 @@ const ModificationDiff = ({ metadata }) => {
  *
  * Props:
  *   events, comments, showAllEvents — comportement historique inchangé.
- *   onPlaceOnPlan — (photo) => void. Optionnel. Si fourni, transmis à
- *                   ImageViewerModal pour chaque photo (avec plan_id/plan_x/
- *                   plan_y de cette photo), qui affiche alors la section
- *                   "Position sur le plan". Le parent (PinMetadataScreen) gère
- *                   la navigation réelle vers le sélecteur de plan.
+ *
+ *   onPlaceOnPlan — (photo) => void. Photo DÉJÀ placée sur un plan : relayé
+ *                   tel quel depuis ImageViewerModal quand l'utilisateur
+ *                   touche la carte "Position sur le plan".
+ *
+ *   Photo PAS ENCORE placée — sélecteur de plan intégré à ImageViewerModal
+ *   (jamais un second Modal natif) :
+ *   onStartPlacement      — () => void. Le parent doit charger la liste des
+ *                            plans (ex: fetchProjectPlans()).
+ *   availablePlans        — Array<{ id, name, width, height, tiles_path }>.
+ *   loadingAvailablePlans — bool.
+ *   onPlanChosen          — (photo, plan) => void. Un plan a été choisi pour
+ *                            CETTE photo ; le parent gère la navigation.
  */
-export default function Timeline({ events = [], comments = [], showAllEvents = false, onPlaceOnPlan }) {
+export default function Timeline({
+  events = [],
+  comments = [],
+  showAllEvents = false,
+  onPlaceOnPlan,
+  onStartPlacement,
+  availablePlans,
+  loadingAvailablePlans,
+  onPlanChosen,
+}) {
   const [selectedImage, setSelectedImage] = useState(null);
+  // Visibilité séparée des données : on ne veut JAMAIS démonter
+  // ImageViewerModal en fermant (voir le fix de gel iOS ci-dessous) — on
+  // bascule seulement viewerVisible, et selectedImage garde ses données le
+  // temps de l'animation de fermeture.
+  const [viewerVisible, setViewerVisible] = useState(false);
 
   // All items sorted by date ascending
   const allItems = [
@@ -104,7 +126,7 @@ export default function Timeline({ events = [], comments = [], showAllEvents = f
     ? allItems
     : allItems.filter((item) => !(item.type === 'event' && item.category === 'modification'));
 
-  const handleImagePress = (photo, userName) =>
+  const handleImagePress = (photo, userName) => {
     setSelectedImage({
         id: photo.id,
         imageUrl: photo.public_url,
@@ -114,16 +136,31 @@ export default function Timeline({ events = [], comments = [], showAllEvents = f
         planId: photo.plan_id ?? null,
         planX: photo.plan_x ?? null,
         planY: photo.plan_y ?? null,
-        photo, // objet complet, transmis tel quel à onPlaceOnPlan (contrat: {id, plan_id, plan_x, plan_y, ...})
+        photo, // objet complet, transmis tel quel aux callbacks (contrat: {id, plan_id, plan_x, plan_y, ...})
     });
+    setViewerVisible(true);
+  };
 
-  // Ferme le viewer puis délègue au parent, qui ouvre le sélecteur de plan
-  // pour CETTE photo (voir handleOpenPlanSelectorForPhoto dans PinMetadataScreen).
+  const handleCloseViewer = () => setViewerVisible(false);
+
+  // Photo déjà placée : relaie tel quel au parent (qui gère la navigation
+  // après la fermeture du modal, gérée par ImageViewerModal lui-même).
   const handlePlaceOnPlan = () => {
     if (!onPlaceOnPlan || !selectedImage?.photo) return;
-    const photo = selectedImage.photo;
-    setSelectedImage(null);
-    onPlaceOnPlan(photo);
+    onPlaceOnPlan(selectedImage.photo);
+  };
+
+  // Photo pas encore placée : ouverture du panneau interne → déclenche le
+  // chargement des plans côté parent.
+  const handleStartPlacement = () => {
+    if (!onStartPlacement || !selectedImage?.photo) return;
+    onStartPlacement(selectedImage.photo);
+  };
+
+  // Un plan a été choisi dans le panneau interne pour la photo affichée.
+  const handlePlanChosen = (plan) => {
+    if (!onPlanChosen || !selectedImage?.photo) return;
+    onPlanChosen(selectedImage.photo, plan);
   };
 
   const renderItem = (item) => {
@@ -191,30 +228,33 @@ export default function Timeline({ events = [], comments = [], showAllEvents = f
         displayedItems.map(renderItem)
       )}
 
-      {selectedImage && (
-        <ImageViewerModal
-          visible={!!selectedImage}
-          onClose={() => setSelectedImage(null)}
-          imageUrl={selectedImage.imageUrl}
-          userName={selectedImage.userName}
-          date={selectedImage.created_at}
-          description={selectedImage.description}
-          onSaveDescription={async (newDesc) => {
-    const { error } = await supabase
-        .from('pins_photos')
-        .update({ description: newDesc })
-        .eq('id', selectedImage.id);
-    if (!error) {
-        // Update local state so the modal and overlay reflect the new description immediately
-        setSelectedImage(prev => ({ ...prev, description: newDesc }));
-    }
-}}
-          planId={selectedImage.planId}
-          planX={selectedImage.planX}
-          planY={selectedImage.planY}
-          onPlaceOnPlan={onPlaceOnPlan ? handlePlaceOnPlan : undefined}
-        />
-      )}
+      <ImageViewerModal
+        visible={viewerVisible}
+        onClose={handleCloseViewer}
+        imageUrl={selectedImage?.imageUrl}
+        userName={selectedImage?.userName}
+        date={selectedImage?.created_at}
+        description={selectedImage?.description}
+        onSaveDescription={async (newDesc) => {
+          if (!selectedImage?.id) return;
+          const { error } = await supabase
+              .from('pins_photos')
+              .update({ description: newDesc })
+              .eq('id', selectedImage.id);
+          if (!error) {
+              // Update local state so the modal and overlay reflect the new description immediately
+              setSelectedImage(prev => prev ? ({ ...prev, description: newDesc }) : prev);
+          }
+        }}
+        planId={selectedImage?.planId}
+        planX={selectedImage?.planX}
+        planY={selectedImage?.planY}
+        onPlaceOnPlan={onPlaceOnPlan ? handlePlaceOnPlan : undefined}
+        onStartPlacement={onStartPlacement ? handleStartPlacement : undefined}
+        availablePlans={availablePlans}
+        loadingAvailablePlans={loadingAvailablePlans}
+        onPlanChosen={onPlanChosen ? handlePlanChosen : undefined}
+      />
     </View>
   );
 }
