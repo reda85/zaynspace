@@ -155,7 +155,7 @@ export default function MainScreen() {
 
         try {
             setLoadingPins(true);
-            const { pins: supabasePins = [] } = await loadPinsFromSupabase(planId, loggedInUser);
+            const { pins: supabasePins = [] } = await loadPinsFromSupabase(planId, loggedInUser, selectedProject?.id);
             setPins(supabasePins);
             setPinsState(supabasePins);
         } catch (error) {
@@ -165,7 +165,7 @@ export default function MainScreen() {
         } finally {
             setLoadingPins(false);
         }
-    }, [planId, loggedInUser]);
+    }, [planId, loggedInUser, selectedProject?.id]);
 
     // ── Clear stale pins the moment planId changes ────────────────────────────
     // This fires before the loadPins effect, ensuring the viewer

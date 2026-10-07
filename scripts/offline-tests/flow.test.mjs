@@ -22,6 +22,16 @@ r = await off.cachedSelect('pins-plan-L1', async () => { throw new Error('no net
 assert.equal(r.data[0].id, 'S1'); assert.equal(r.fromCache, true);
 ok('read falls back to the copy saved on the device');
 
+// a plan never opened online still shows its pins from the project lists
+off.setOnline(true);
+await off.cachedSelect('pins-tasks-P', async () => ({ data: [{ id: 'S1', plan_id: 'L1', project_id: 'P' }, { id: 'S9', plan_id: 'L9', project_id: 'P', name: 'on another plan' }], error: null }));
+off.setOnline(false);
+assert.equal((await off.cachedSelect('pins-plan-L9', async () => ({}))).error.offline, true);
+let local = await off.cachedPlanPins('L9', 'P');
+assert.deepEqual(local.pins.map((p) => p.id), ['S9']);
+assert.equal(await off.cachedPlanPins('L9', 'OTHER'), null);
+ok('offline: a plan never opened online gets its pins from the project list');
+
 // ── 2. offline: create pin, edit it, attach a photo, edit an existing pin ──
 sb.db.pdf_pins.set('S1', { id: 'S1', name: 'server pin', status_id: 'open' });
 const row = { id: 'NEW', x: 0.4, y: 0.6, name: '', project_id: 'P', plan_id: 'L1', pdf_name: 'RDC', created_by: 'm1', photoUris: [] };
