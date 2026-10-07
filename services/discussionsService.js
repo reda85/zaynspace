@@ -2,9 +2,8 @@
 import { decode } from 'base64-arraybuffer';
 import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../lib/supabase';
-import { authHeaders } from '../lib/api';
+import { backendFetch } from '../lib/api';
 
-const BACKEND_URL = 'https://zaynbackend-production.up.railway.app';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GROUPS
@@ -346,9 +345,9 @@ const _notifyGroupMembers = async (groupId, sender, content, messageId) => {
     : 'A envoyé une pièce jointe';
 
   // Reuse your existing bulk notification endpoint
-  await fetch(`${BACKEND_URL}/api/notifications/send-bulk`, {
+  await backendFetch('/api/notifications/send-bulk', {
     method: 'POST',
-    headers: await authHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       userIds,
       title: group?.name ?? 'Discussion',

@@ -81,7 +81,7 @@ import PinTagEditor from '../components/PinTagEditor';
 import PlanMiniSnapshot from '../components/PlanMiniSnapshot';
 import Timeline from '../components/TimeLine';
 import { supabase } from '../lib/supabase';
-import { authHeaders } from '../lib/api';
+import { authHeaders, backendFetch } from '../lib/api';
 import { cachedSelect, outboxOpsAtom, pendingPhotos, runOrQueue, syncTickAtom, withPendingPins } from '../lib/offline';
 import { Image as PendingPhotoImage } from 'expo-image';
 import { categoriesAtom, membersAtom, MetaPinAtom, PhotoPlanPositionAtom, pinsAtom, selectedPinAtom, selectedProjectAtom, statusesAtom } from '../store/atoms';
@@ -530,15 +530,16 @@ export default function PinMetadataScreen() {
         if (response.ok) console.log('✅ Email sent successfully:', result);
         else console.error('❌ Error sending email:', result);
 
-        const res = await fetch('https://zaynbackend-production.up.railway.app/api/pins/assign', {
+        const res = await backendFetch('/api/pins/assign', {
             method: 'POST',
-            headers: await authHeaders({ 'Content-Type': 'application/json' }),
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 pinId,
                 type: 'pin_assigned',
                 taskName: pin?.name || 'Sans nom',
                 assignedToUserId: assigneeId,
                 assignedBy: assignedByName,
+                assignedByName,
                 deepLink: `https://zaynspace.com/pin/${pinId}`,
             }),
         });

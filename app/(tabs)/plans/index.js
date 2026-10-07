@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
-import { authHeaders } from '../../../lib/api';
+import { backendFetch } from '../../../lib/api';
 import {
   cachedSelect,
   cancelDownload,
@@ -39,7 +39,6 @@ import {
   statusesAtom,
 } from '../../../store/atoms';
 
-const API_URL = 'https://zaynbackend-production.up.railway.app';
 
 
 // ── Shimmer skeleton (même pattern que les autres écrans) ────────────────────
@@ -351,7 +350,7 @@ export default function ProjectPlans() {
     const timeoutId = setTimeout(() => {
       pollingIntervalRef.current = setInterval(async () => {
         try {
-          const response = await fetch(`${API_URL}/api/upload-pdf/status/${planId}`, { headers: await authHeaders() });
+          const response = await backendFetch(`/api/upload-pdf/status/${planId}`);
           const data = await response.json();
           setUploadState(prev => ({ ...prev, progress: data.processing_progress || 0, status: data.status }));
 
@@ -428,10 +427,10 @@ export default function ProjectPlans() {
       });
       formData.append('projectId', selectedProject.id);
 
-      const response = await fetch(`${API_URL}/api/upload-pdf`, {
+      const response = await backendFetch('/api/upload-pdf', {
         method: 'POST',
         body: formData,
-        headers: await authHeaders({ 'Content-Type': 'multipart/form-data' }),
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (!response.ok) {
@@ -502,9 +501,24 @@ export default function ProjectPlans() {
       {
         text: 'Supprimer', style: 'destructive',
         onPress: async () => {
-          await supabase.from('plans').delete().eq('id', plan.id);
-          await supabase.storage.from('project-plans').remove([plan.file_url]);
-          setPlans(prev => prev.filter(p => p.id !== plan.id));
+          // La suppression passe par le backend : il vérifie les droits et
+          // nettoie les fichiers du plan (PDF, aperçus, tuiles).
+          try {
+            const response = await backendFetch(`/api/upload-pdf/${plan.id}`, { method: 'DELETE' });
+            if (!response.ok) {
+              Alert.alert(
+                'Suppression impossible',
+                response.status === 403
+                  ? 'Seul un administrateur de l\'organisation peut supprimer un plan.'
+                  : 'Le plan n\'a pas pu être supprimé. Réessayez.',
+              );
+              return;
+            }
+            setPlans(prev => prev.filter(p => p.id !== plan.id));
+            setOfflinePlans(await removeOfflinePlan(plan.id));
+          } catch (err) {
+            Alert.alert('Suppression impossible', 'Vérifiez votre connexion et réessayez.');
+          }
         },
       },
     ]);
