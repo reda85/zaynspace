@@ -178,6 +178,10 @@ export default function DrawingScreen() {
   // encore totalement prête. Image.getSize() ne touche jamais l'objet Skia —
   // il lit juste le fichier — donc c'est sans risque ici.
   const [photoDimensions, setPhotoDimensions] = useState(photos.map(() => null));
+  // Dernière valeur connue, lisible depuis handleSave pendant qu'il attend
+  // (une fonction asynchrone ne voit pas les mises à jour d'état suivantes).
+  const photoDimensionsRef = useRef(photoDimensions);
+  photoDimensionsRef.current = photoDimensions;
 
   useEffect(() => {
     photoUris.forEach((uri, i) => {
@@ -838,11 +842,11 @@ export default function DrawingScreen() {
       }
       for (let i = 0; i < photoUris.length; i++) {
         let attempts = 0;
-        while (!photoDimensions[i] && attempts < 100) {
+        while (!photoDimensionsRef.current[i] && attempts < 100) {
           await new Promise((r) => setTimeout(r, 50));
           attempts++;
         }
-        if (!photoDimensions[i]) throw new Error(`Dimensions de l'image ${i} indisponibles`);
+        if (!photoDimensionsRef.current[i]) throw new Error(`Dimensions de l'image ${i} indisponibles`);
       }
 
       setSavingProgress(10);
@@ -857,7 +861,7 @@ export default function DrawingScreen() {
        chunkPromises.push((async () => {
             const img = images[j];
             const photoPaths = paths[j] || [];
-            const { width: imgW, height: imgH } = photoDimensions[j];
+            const { width: imgW, height: imgH } = photoDimensionsRef.current[j];
             const bytes = renderImageToSurface(img, photoPaths, canvasSize.width, canvasSize.height, imgW, imgH, shouldCompress);
             const base64 = encode(bytes);
             // 160px thumbnail — même pipeline Skia, petit + basse qualité
