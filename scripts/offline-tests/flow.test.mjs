@@ -138,6 +138,33 @@ assert.equal(tiles.localTileUri('OTHER', 14, 0, 0), null);
 assert.equal([...fsm.files.keys()].filter((k) => k.endsWith('.part')).length, 0);
 ok(`tiles: ${list.length} tiles for an 11367×5875 plan, interrupted download resumes, local lookup works`);
 
+// ── photos always go through the queue: saved on the device first, then sent ──
+off.setOnline(true); sb.net.down = false; await off.syncNow();
+await off.savePendingPhotoFile('q1.jpg', 'Q1');
+await off.savePendingPhotoFile('q2.jpg', 'Q2');
+await off.queue('photo.upload', { id: 'Q1', file: 'q1.jpg', thumbFile: null, pin_id: 'NEW', project_id: 'P', date: 'd' });
+await off.queue('photo.upload', { id: 'Q2', file: 'q2.jpg', thumbFile: null, pin_id: 'NEW', project_id: 'P', date: 'd' });
+let seen = [];
+let state = await off.waitForPhotos(['Q1', 'Q2'], { timeoutMs: 3000, onProgress: (s) => seen.push(s.waiting) });
+assert.deepEqual(state, { sent: 2, waiting: 0, refused: 0 });
+assert.equal(sb.db.pins_photos.has('Q1') && sb.db.pins_photos.has('Q2'), true);
+assert.equal(fsm.files.has('file:///doc/offline/photos/q1.jpg'), false, 'local copy removed once sent');
+// no network: nothing is lost, the wait returns at once and the photo stays queued with its file
+off.setOnline(false);
+await off.savePendingPhotoFile('q3.jpg', 'Q3');
+await off.queue('photo.upload', { id: 'Q3', file: 'q3.jpg', thumbFile: null, pin_id: 'NEW', project_id: 'P', date: 'd' });
+const t0 = Date.now();
+state = await off.waitForPhotos(['Q3'], { timeoutMs: 3000 });
+assert.deepEqual(state, { sent: 0, waiting: 1, refused: 0 }); assert.equal(Date.now() - t0 < 500, true);
+assert.equal(fsm.files.has('file:///doc/offline/photos/q3.jpg'), true);
+// network is back but slow: the wait gives up after its delay, the upload goes on
+sb.net.down = true; off.setOnline(true);
+state = await off.waitForPhotos(['Q3'], { timeoutMs: 700 });
+assert.equal(state.waiting, 1);
+sb.net.down = false; await off.syncNow();
+assert.equal(sb.db.pins_photos.has('Q3'), true);
+ok('photos: one path through the queue, wait reports sent / still waiting');
+
 // ── 8. clearing offline data keeps what has not been sent ──
 off.setOnline(false);
 await off.queue('pin.update', { id: 'S1', patch: { note: 'keep me' } });

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useIsFocused } from '@react-navigation/native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useAtom, useAtomValue } from 'jotai';
 import { CameraIcon, Clock, MapPin, MapPinnedIcon, MessageSquare, Pencil } from 'lucide-react-native';
@@ -82,6 +83,19 @@ export default function AcceuilScreen() {
   const router = useRouter();
   const [user] = useAtom(loggedInUserAtom);
   const syncTick = useAtomValue(syncTickAtom);
+  // La liste de pins est partagée avec l'écran du plan, qui y met les pins du
+  // plan ouvert. L'accueil ne la remplace donc que lorsqu'il est affiché (ou au
+  // changement de projet), et la recharge quand on y revient.
+  const isFocused = useIsFocused();
+  const isFocusedRef = useRef(isFocused);
+  isFocusedRef.current = isFocused;
+  const wasFocusedRef = useRef(isFocused);
+  const [focusTick, setFocusTick] = useState(0);
+  const lastLoadRef = useRef({ key: null, syncTick: null });
+  useEffect(() => {
+    if (isFocused && !wasFocusedRef.current) setFocusTick((n) => n + 1);
+    wasFocusedRef.current = isFocused;
+  }, [isFocused]);
 
   const [loadingData, setLoadingData] = useState(false);
 
@@ -164,27 +178,44 @@ const data = memberProjects
   useEffect(() => {
     if (!selectedProject?.id || !user?.id) return;
 
+    let cancelled = false;
+    // `force` : changement de projet, la liste doit être remplacée quoi qu'il arrive.
+    const loadHomePins = async (pid, force) => {
+      const guest = user.role === 'guest';
+      const { data: pinsData, error: pinsError, cachedAt } = await cachedSelect(`pins-home-${pid}${guest ? `-${user.id}` : ''}`, () => {
+        let query = supabase
+          .from('pdf_pins').select('*,Status(*),categories(*),projects(*),pin_tags(tag_id, tags(*))')
+          .is('deleted_at', null)
+          .eq('project_id', pid);
+        if (guest) query = query.eq('assigned_to', user.id);
+        return query;
+      });
+      // L'utilisateur a pu ouvrir un plan pendant la lecture : sa liste prime.
+      if (cancelled || (!force && !isFocusedRef.current)) return;
+      if (pinsData || pinsError?.offline) {
+        setPins(withPendingPins(pinsData ?? [], guest ? { projectId: pid, assignedTo: user.id } : { projectId: pid }, cachedAt));
+      }
+    };
+
     const fetchAllData = async () => {
       try {
         const pid = selectedProject.id;
+        const loadKey = `${pid}|${user.id}|${user.role}|${user.organization_id}`;
+        const projectChanged = lastLoadRef.current.key !== loadKey;
+        // Simple retour sur l'écran : seuls les pins sont relus.
+        const pinsOnly = !projectChanged && lastLoadRef.current.syncTick === syncTick;
+        const mayReplacePins = projectChanged || isFocusedRef.current;
+        lastLoadRef.current = { key: loadKey, syncTick };
+        if (pinsOnly) {
+          if (mayReplacePins) await loadHomePins(pid, false);
+          return;
+        }
         const { data: plansData } = await cachedSelect(`plans-${pid}`, () => supabase
           .from('plans').select('*').is('deleted_at', null).eq('status', 'ready')
           .eq('project_id', selectedProject.id));
         if (plansData) setPlans(plansData);
 
-        if (user.role === 'guest') {
-          const { data: pinsData, error: pinsError, cachedAt } = await cachedSelect(`pins-home-${pid}-${user.id}`, () => supabase
-            .from('pdf_pins').select('*,Status(*),categories(*),projects(*),pin_tags(tag_id, tags(*))')
-            .is('deleted_at', null)
-            .eq('project_id', selectedProject.id).eq('assigned_to', user.id));
-          if (pinsData || pinsError?.offline) setPins(withPendingPins(pinsData ?? [], { projectId: pid, assignedTo: user.id }, cachedAt));
-        } else {
-          const { data: pinsData, error: pinsError, cachedAt } = await cachedSelect(`pins-home-${pid}`, () => supabase
-            .from('pdf_pins').select('*,Status(*),categories(*),projects(*),pin_tags(tag_id, tags(*))')
-            .is('deleted_at', null)
-            .eq('project_id', selectedProject.id));
-          if (pinsData || pinsError?.offline) setPins(withPendingPins(pinsData ?? [], { projectId: pid }, cachedAt));
-        }
+        if (mayReplacePins) await loadHomePins(pid, projectChanged);
 
         const { data: eventsData } = await cachedSelect(`events-${pid}`, () => supabase
           .from('events').select('*,pdf_pins(*),members(*)')
@@ -244,7 +275,8 @@ const data = memberProjects
     };
 
     fetchAllData();
-  }, [selectedProject?.id, user, syncTick]);
+    return () => { cancelled = true; };
+  }, [selectedProject?.id, user, syncTick, focusTick]);
 
   const categoryOptions = [
     { label: 'Tous', value: 'all', color: '#1E293B' },

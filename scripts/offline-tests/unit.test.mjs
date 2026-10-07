@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { isNetworkError } from '../../lib/offline/errors.js';
 import { createCache } from '../../lib/offline/cache.js';
 import { createOutbox } from '../../lib/offline/outbox.js';
-import { overlayPins, pendingPhotosForPin, countPending, rememberSent, pinsForPlanFromCaches } from '../../lib/offline/pending.js';
+import { overlayPins, pendingPhotosForPin, countPending, rememberSent, pinsForPlanFromCaches, photoQueueState } from '../../lib/offline/pending.js';
 
 const memStorage = () => { const m = new Map(); return { get: async (k) => (m.has(k) ? JSON.parse(m.get(k)) : null), set: async (k, v) => { m.set(k, JSON.stringify(v)); }, remove: async (k) => { m.delete(k); }, _m: m }; };
 const netErr = () => new TypeError('Network request failed');
@@ -204,5 +204,18 @@ ok('error classification');
   assert.deepEqual(pinsForPlanFromCaches('L1', null, [{ t: 1, v: [{ ...A, deleted_at: 'x' }] }]).pins, []);
   assert.equal(pinsForPlanFromCaches('L1', null, [null, undefined]), null);
   ok('plan pins offline: rebuilt from plan + project copies, newest wins');
+}
+// where queued photos stand: sent / still waiting / refused by the server
+{
+  const ops = [
+    { type: 'photo.upload', status: 'pending', payload: { id: 'P1' } },
+    { type: 'photo.upload', status: 'failed', payload: { id: 'P2' } },
+    { type: 'photo.upload', status: 'pending', payload: { id: 'OTHER' } },
+    { type: 'pin.update', status: 'pending', payload: { id: 'P3' } },
+  ];
+  assert.deepEqual(photoQueueState(ops, ['P1', 'P2', 'P3']), { sent: 1, waiting: 1, refused: 1 });
+  assert.deepEqual(photoQueueState([], ['P1', 'P2']), { sent: 2, waiting: 0, refused: 0 });
+  assert.deepEqual(photoQueueState(null, []), { sent: 0, waiting: 0, refused: 0 });
+  ok('photo queue state: sent, waiting and refused are told apart');
 }
 console.log('ALL', n, 'PASSED');
