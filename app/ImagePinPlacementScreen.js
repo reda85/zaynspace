@@ -1,5 +1,5 @@
 import { Image as ExpoImage } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
 import { CheckIcon, X as CloseIcon, DropletsIcon, FireExtinguisherIcon, GripIcon, MapPin, PaintRoller, ZapIcon } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -48,7 +48,15 @@ const AnimatedView = Animated.createAnimatedComponent(View);
 export default function ImagePinPlacementScreen() {
     const params = useLocalSearchParams();
     const router = useRouter();
+    const navigation = useNavigation();
     const insets = useSafeAreaInsets();
+
+    // Masque le header natif du Stack (qui affichait par défaut le nom du
+    // fichier, "ImagePinPlacementScreen") — cet écran a son propre header
+    // custom rendu plus bas, on ne veut pas les deux empilés.
+    useEffect(() => {
+        navigation.setOptions({ headerShown: false });
+    }, [navigation]);
 
     const { 
         myuri, 
@@ -61,6 +69,10 @@ export default function ImagePinPlacementScreen() {
         pdfInfo: pdfInfoParam,  // Using same param name as PdfViewerWithTiles
         mode: modeParam,        // 'pin' (default) ou 'photo'
         photoKey,               // identifiant de la photo quand mode === 'photo'
+        source,                 // 'drawing' | 'pin' — quel écran a initié le placement,
+                                // relayé tel quel dans PhotoPlanPositionAtom pour que
+                                // seul cet écran traite la réponse (l'atome est global,
+                                // et un autre écran peut être resté monté sous la pile).
     } = params;
 
     // ── Mode: 'pin' place le pin entier (comportement historique, écrit dans pdf_pins).
@@ -361,6 +373,7 @@ export default function ImagePinPlacementScreen() {
                 planId: myplanid,
                 x: pendingCoordinates.x,
                 y: pendingCoordinates.y,
+                source,
             });
             router.back();
             return;
@@ -425,7 +438,7 @@ export default function ImagePinPlacementScreen() {
                         text: 'Retirer',
                         style: 'destructive',
                         onPress: () => {
-                            setPhotoPlanPosition({ photoKey, x: null, y: null });
+                            setPhotoPlanPosition({ photoKey, x: null, y: null, source });
                             router.back();
                         },
                     },

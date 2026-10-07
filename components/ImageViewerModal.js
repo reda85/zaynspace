@@ -1,9 +1,11 @@
 import { Calendar, Check, MapPin, Maximize2, Pencil, X } from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  FlatList,
   Image,
+  InteractionManager,
   Keyboard,
   Modal,
   Platform,
@@ -80,12 +82,22 @@ const formatDate = (value) => {
  *                        actuellement placée (colonne pins_photos.plan_id).
  *   planX, planY      — number | null. Position normalisée (0-1) sur ce plan
  *                        (pins_photos.plan_x / plan_y).
- *   onPlaceOnPlan     — () => void. Appelé quand l'utilisateur veut placer ou
- *                        modifier la position. Le PARENT gère la navigation
- *                        (fermer ce modal, ouvrir le sélecteur de plan, pousser
- *                        ImagePinPlacementScreen en mode "photo", puis relire
- *                        PhotoPlanPositionAtom au retour — même flux que dans
- *                        DrawingScreen). Si omis, la section n'apparaît pas.
+ *   onPlaceOnPlan     — () => void. Photo DÉJÀ placée : appelé quand
+ *                        l'utilisateur touche la carte "Position sur le plan"
+ *                        pour aller modifier sa position. Le PARENT gère la
+ *                        navigation (pousser ImagePinPlacementScreen en mode
+ *                        "photo"). Si omis, aucune section n'apparaît.
+ *
+ *   Photo PAS ENCORE placée — sélection du plan intégrée à CE modal (jamais un
+ *   second <Modal> natif, pour éviter le conflit de présentation UIKit sur
+ *   iOS) :
+ *   onStartPlacement      — () => void. Appelé à l'ouverture du panneau de
+ *                            sélection ; le parent doit alors charger la liste
+ *                            des plans (ex: fetchProjectPlans()).
+ *   availablePlans        — Array<{ id, name, width, height, tiles_path }>.
+ *   loadingAvailablePlans — bool.
+ *   onPlanChosen          — (plan) => void. Appelé une fois un plan choisi
+ *                            dans la liste ; le parent gère la navigation.
  */
 export default function ImageViewerModal({
   visible,
@@ -99,6 +111,10 @@ export default function ImageViewerModal({
   planX = null,
   planY = null,
   onPlaceOnPlan,
+  onStartPlacement,
+  availablePlans = [],
+  loadingAvailablePlans = false,
+  onPlanChosen,
 }) {
   const insets = useSafeAreaInsets();
 
@@ -112,6 +128,13 @@ export default function ImageViewerModal({
   const [planInfo, setPlanInfo] = useState(null); // { name, pngUrl } | null
   const [loadingPlanInfo, setLoadingPlanInfo] = useState(false);
   const hasPlanPosition = planId != null && planX != null && planY != null;
+
+  // ── Sélecteur de plan INLINE (jamais un second <Modal>) ───────────────────
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!visible) setPickerOpen(false);
+  }, [visible]);
 
   useEffect(() => {
     if (!visible || !planId) {
@@ -296,12 +319,63 @@ export default function ImageViewerModal({
   const canEdit = !!onSaveDescription;
   const dateLabel = formatDate(date);
 
+  // ── Fermeture sûre avant une action de navigation ─────────────────────────
+  // Ce Modal ne doit JAMAIS être fermé en même temps qu'un AUTRE Modal natif se
+  // présente (deadlock UIKit sur iOS). On ferme donc CE modal une seule fois,
+  // puis on attend sa fermeture réelle (InteractionManager + filet de sécurité
+  // par délai) avant d'exécuter l'action fournie (typiquement : router.push
+  // côté parent, jamais un second <Modal>).
+  const pendingActionRef = useRef(null);
+
+  const handleModalDismiss = () => {
+    if (pendingActionRef.current) {
+      const action = pendingActionRef.current;
+      pendingActionRef.current = null;
+      action();
+    }
+  };
+
+  const closeThenRun = (action) => {
+    pendingActionRef.current = action;
+    onClose();
+    const fire = () => {
+      if (pendingActionRef.current === action) {
+        pendingActionRef.current = null;
+        action();
+      }
+    };
+    InteractionManager.runAfterInteractions(fire);
+    setTimeout(fire, 600);
+  };
+
+  // Photo déjà placée : toucher la carte → fermeture puis délégation au parent.
+  const handleShowExistingPosition = () => {
+    if (!onPlaceOnPlan) return;
+    closeThenRun(() => onPlaceOnPlan());
+  };
+
+  // Photo pas encore placée : ouvre le panneau de sélection INLINE (pas de
+  // fermeture du modal ici — on reste sur place).
+  const handleOpenPicker = () => {
+    onStartPlacement && onStartPlacement();
+    setPickerOpen(true);
+  };
+
+  // Un plan est choisi dans la liste inline : on ferme le panneau, PUIS ce
+  // modal (une seule fermeture), puis on délègue au parent.
+  const handleChoosePlan = (plan) => {
+    setPickerOpen(false);
+    if (!onPlanChosen) return;
+    closeThenRun(() => onPlanChosen(plan));
+  };
+
   return (
     <Modal
       visible={visible}
       transparent={false}
       animationType="fade"
       onRequestClose={onClose}
+      onDismiss={handleModalDismiss}
       statusBarTranslucent
     >
       <StatusBar barStyle="light-content" backgroundColor="black" />
@@ -423,10 +497,10 @@ export default function ImageViewerModal({
           ) : null}
 
           {/* Position sur le plan — voir / modifier / placer */}
-          {onPlaceOnPlan && (
+          {(onPlaceOnPlan || onStartPlacement) && (
             <View style={styles.planSection}>
               {hasPlanPosition ? (
-                <TouchableOpacity style={styles.planCard} onPress={onPlaceOnPlan}>
+                <TouchableOpacity style={styles.planCard} onPress={handleShowExistingPosition}>
                   <View style={styles.planThumbWrapper}>
                     {loadingPlanInfo ? (
                       <ActivityIndicator size="small" color="#fff" />
@@ -462,7 +536,7 @@ export default function ImageViewerModal({
                   <Pencil size={16} color="rgba(255,255,255,0.5)" />
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.placeOnPlanButton} onPress={onPlaceOnPlan}>
+                <TouchableOpacity style={styles.placeOnPlanButton} onPress={handleOpenPicker}>
                   <MapPin size={16} color="rgba(255,255,255,0.7)" />
                   <Text style={styles.placeOnPlanText}>Placer sur le plan</Text>
                 </TouchableOpacity>
@@ -471,6 +545,45 @@ export default function ImageViewerModal({
           )}
 
         </View>
+
+        {/* ── Sélecteur de plan INLINE — une simple View superposée dans CE
+             même Modal, jamais un second <Modal> natif (c'est la cause du gel
+             iOS observé quand deux Modals RN s'enchaînaient). ── */}
+        {pickerOpen && (
+          <View style={styles.pickerOverlay}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setPickerOpen(false)}
+            />
+            <View style={[styles.pickerSheet, { paddingBottom: insets.bottom + 16 }]}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>Choisir un plan</Text>
+                <TouchableOpacity onPress={() => setPickerOpen(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <X size={22} color="#fff" />
+                </TouchableOpacity>
+              </View>
+              {loadingAvailablePlans ? (
+                <ActivityIndicator size="large" color="#fff" style={{ marginVertical: 32 }} />
+              ) : availablePlans.length === 0 ? (
+                <Text style={styles.pickerEmptyText}>Aucun plan disponible pour ce projet</Text>
+              ) : (
+                <FlatList
+                  data={availablePlans}
+                  keyExtractor={(item) => item.id.toString()}
+                  style={{ maxHeight: 320 }}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity style={styles.pickerItem} onPress={() => handleChoosePlan(item)}>
+                      <MapPin size={18} color="#fff" />
+                      <Text style={styles.pickerItemText} numberOfLines={1}>{item.name}</Text>
+                    </TouchableOpacity>
+                  )}
+                  ItemSeparatorComponent={() => <View style={styles.pickerSeparator} />}
+                />
+              )}
+            </View>
+          </View>
+        )}
       </GestureHandlerRootView>
     </Modal>
   );
@@ -719,5 +832,54 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Outfit_500Medium',
     color: 'rgba(255,255,255,0.7)',
+  },
+
+  // ── Sélecteur de plan inline ───────────────────────────────────────────────
+  pickerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'flex-end',
+    zIndex: 50,
+  },
+  pickerSheet: {
+    backgroundColor: '#1c1c1e',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 16,
+    paddingHorizontal: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  pickerTitle: {
+    fontSize: 16,
+    fontFamily: 'Outfit_600SemiBold',
+    color: '#fff',
+  },
+  pickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 14,
+  },
+  pickerItemText: {
+    fontSize: 15,
+    fontFamily: 'Outfit_400Regular',
+    color: '#fff',
+    flexShrink: 1,
+  },
+  pickerSeparator: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  pickerEmptyText: {
+    fontSize: 14,
+    fontFamily: 'Outfit_400Regular',
+    color: 'rgba(255,255,255,0.5)',
+    textAlign: 'center',
+    paddingVertical: 24,
   },
 });

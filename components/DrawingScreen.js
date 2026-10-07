@@ -100,9 +100,38 @@ const OPTIMIZE_KEY   = "@settings/optimizeStorage";
 
 const COLORS = ["red", "blue", "green", "black", "purple"];
 const TOOLS = ["pen", "line", "arrow", "text"];
+
+// ── Rectangle "contain" (proportionné, centré) d'une image dans un conteneur ──
+// Utilisé à la fois pour l'affichage à l'écran ET pour le rendu final exporté,
+// afin que les deux restent parfaitement cohérents (sinon les traits de dessin
+// se désalignent par rapport à la photo dans le fichier sauvegardé). Les
+// dimensions passées viennent toujours de Image.getSize() (voir plus bas),
+// jamais de l'objet Skia lui-même.
+const getContainRect = (imgWidth, imgHeight, containerWidth, containerHeight) => {
+  if (!imgWidth || !imgHeight || !containerWidth || !containerHeight) {
+    return { x: 0, y: 0, width: containerWidth || 0, height: containerHeight || 0 };
+  }
+  const containerRatio = containerWidth / containerHeight;
+  const imgRatio = imgWidth / imgHeight;
+  let width, height;
+  if (imgRatio > containerRatio) {
+    width = containerWidth;
+    height = width / imgRatio;
+  } else {
+    height = containerHeight;
+    width = height * imgRatio;
+  }
+  return {
+    x: (containerWidth - width) / 2,
+    y: (containerHeight - height) / 2,
+    width,
+    height,
+  };
+};
 const FONT_SIZES = [12, 16, 20, 28, 36];
 
 export default function DrawingScreen() {
+  console.log('🧪 DEBUG-BUILD-MARKER v4 — si tu ne vois PAS cette ligne dans tes logs, ton app tourne sur un ancien bundle en cache.');
   const route = useRoute();
   const { myuri, myname, myplanid, returnToPinId } = route.params || {};
   const params = useLocalSearchParams();
@@ -139,6 +168,45 @@ export default function DrawingScreen() {
   const photoUris = photos.map(photo => typeof photo === 'string' ? photo : photo.uri);
   const images = photoUris.map((uri) => useImage(uri));
   const background = images[currentIndex];
+
+  // ── Dimensions réelles des photos, via l'API React Native classique ───────
+  // On évite volontairement d'appeler .width()/.height() sur l'objet Skia
+  // (useImage()) pour calculer le cadrage à l'écran : selon les versions de
+  // @shopify/react-native-skia, la bibliothèque peut elle-même faire cet appel
+  // en interne (dans son propre code, hors de portée d'un try/catch côté JS)
+  // dès qu'on lui passe fit="contain", ce qui plante si l'image n'est pas
+  // encore totalement prête. Image.getSize() ne touche jamais l'objet Skia —
+  // il lit juste le fichier — donc c'est sans risque ici.
+  const [photoDimensions, setPhotoDimensions] = useState(photos.map(() => null));
+
+  useEffect(() => {
+    photoUris.forEach((uri, i) => {
+      if (!uri || photoDimensions[i]) return;
+      Image.getSize(
+        uri,
+        (w, h) => {
+          setPhotoDimensions(prev => {
+            if (prev[i]) return prev;
+            const copy = [...prev];
+            copy[i] = { width: w, height: h };
+            return copy;
+          });
+        },
+        (err) => console.warn(`Image.getSize a échoué pour ${uri}:`, err?.message)
+      );
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photoUris.join('|')]);
+
+  // Rectangle où l'image doit être dessinée à l'écran pour préserver son ratio
+  // (au lieu d'être étirée pour remplir tout le canvas — c'est ce qui causait
+  // l'effet "écrasé"). Recalculé à chaque changement de photo/taille de canvas.
+  const backgroundDisplayRect = useMemo(() => {
+    const dims = photoDimensions[currentIndex];
+    return dims
+      ? getContainRect(dims.width, dims.height, canvasSize.width, canvasSize.height)
+      : { x: 0, y: 0, width: canvasSize.width, height: canvasSize.height };
+  }, [photoDimensions, currentIndex, canvasSize.width, canvasSize.height]);
 
   // ── Keyboard height tracking ──
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -313,6 +381,7 @@ export default function DrawingScreen() {
         myname,
         myplanid: selectedPlan.id,
         mode: 'photo',
+        source: 'drawing',
         photoKey: String(currentIndex),
         pinIdToPlace: pin?.id,
         x: existingForThisPlan?.x,
@@ -323,8 +392,15 @@ export default function DrawingScreen() {
   }, [photoPlanPositions, currentIndex, myuri, myname, pin?.id, router]);
 
   // ── Récupère la position (+ le plan choisi) renvoyée par ImagePinPlacementScreen ──
+  // ⚠️ PhotoPlanPositionAtom est global : si PinMetadataScreen est resté monté
+  // plus bas dans la pile (Pin → Ajouter photos → Caméra → Dessin), il écoute
+  // LE MÊME atome. On ignore donc toute mise à jour qui n'a pas été envoyée
+  // depuis CET écran (source !== 'drawing'), sans quoi PinMetadataScreen
+  // tenterait — en plus de nous — de traiter le même événement et planterait
+  // (photoKey est ici un index de tableau, pas un UUID de pins_photos).
   useEffect(() => {
     if (!photoPlanUpdate || photoPlanUpdate.photoKey == null) return;
+    if (photoPlanUpdate.source !== 'drawing') return;
     const idx = Number(photoPlanUpdate.photoKey);
     if (!Number.isNaN(idx)) {
       setPhotoPlanPositions(prev => {
@@ -338,11 +414,10 @@ export default function DrawingScreen() {
     setPhotoPlanUpdate(null);
   }, [photoPlanUpdate]);
 
-  const renderImageToSurface = useCallback((img, photoPaths, canvasWidth, canvasHeight, shouldCompress = true, options = {}) => {
+  const renderImageToSurface = useCallback((img, photoPaths, canvasWidth, canvasHeight, imgWidth, imgHeight, shouldCompress = true, options = {}) => {
     const MAX_DIMENSION = options.maxDimension ?? (shouldCompress ? 1920 : 2560);
 
-    const imgWidth = img.width();
-    const imgHeight = img.height();
+    if (!imgWidth || !imgHeight) throw new Error("Dimensions de l'image indisponibles");
 
     let outputWidth = imgWidth;
     let outputHeight = imgHeight;
@@ -364,8 +439,14 @@ export default function DrawingScreen() {
       Skia.Paint()
     );
 
-    const scaleX = outputWidth / canvasWidth;
-    const scaleY = outputHeight / canvasHeight;
+    // Rectangle où l'image était RÉELLEMENT affichée à l'écran (letterboxée en
+    // "contain" pour préserver son ratio — voir <SkiaImage> plus bas). Les
+    // traits/texte ont été dessinés en coordonnées BRUTES du canvas ; il faut
+    // donc les rapporter à ce rectangle, pas au canvas entier, sinon ils se
+    // désalignent par rapport à la photo une fois exportés.
+    const displayRect = getContainRect(imgWidth, imgHeight, canvasWidth, canvasHeight);
+    const scaleX = outputWidth / displayRect.width;
+    const scaleY = outputHeight / displayRect.height;
 
     photoPaths.forEach((item) => {
       if (item.type === "path") {
@@ -376,8 +457,14 @@ export default function DrawingScreen() {
         paint.setAntiAlias(true);
 
         const path = item.path.copy();
-        const matrix = Skia.Matrix();
-        matrix.scale(scaleX, scaleY);
+        // Matrice affine explicite (soustraire l'offset du letterbox PUIS
+        // mettre à l'échelle) — construite directement pour éviter toute
+        // ambiguïté sur l'ordre de composition scale/translate de Skia.Matrix.
+        const matrix = Skia.Matrix([
+          scaleX, 0, -displayRect.x * scaleX,
+          0, scaleY, -displayRect.y * scaleY,
+          0, 0, 1,
+        ]);
         path.transform(matrix);
 
         canvas.drawPath(path, paint);
@@ -389,8 +476,8 @@ export default function DrawingScreen() {
 
         if (!itemFont) return;
 
-        const finalX = item.x * scaleX;
-        const finalY = item.y * scaleY;
+        const finalX = (item.x - displayRect.x) * scaleX;
+        const finalY = (item.y - displayRect.y) * scaleY;
         const itemScale = item.scale || 1.0;
 
         const textScale = Math.min(scaleX, scaleY) * itemScale;
@@ -749,6 +836,14 @@ export default function DrawingScreen() {
         }
         if (!images[i]) throw new Error(`Image ${i} failed to load`);
       }
+      for (let i = 0; i < photoUris.length; i++) {
+        let attempts = 0;
+        while (!photoDimensions[i] && attempts < 100) {
+          await new Promise((r) => setTimeout(r, 50));
+          attempts++;
+        }
+        if (!photoDimensions[i]) throw new Error(`Dimensions de l'image ${i} indisponibles`);
+      }
 
       setSavingProgress(10);
       const processedImages = [];
@@ -762,10 +857,11 @@ export default function DrawingScreen() {
        chunkPromises.push((async () => {
             const img = images[j];
             const photoPaths = paths[j] || [];
-            const bytes = renderImageToSurface(img, photoPaths, canvasSize.width, canvasSize.height, shouldCompress);
+            const { width: imgW, height: imgH } = photoDimensions[j];
+            const bytes = renderImageToSurface(img, photoPaths, canvasSize.width, canvasSize.height, imgW, imgH, shouldCompress);
             const base64 = encode(bytes);
             // 160px thumbnail — même pipeline Skia, petit + basse qualité
-            const thumbBytes = renderImageToSurface(img, photoPaths, canvasSize.width, canvasSize.height, shouldCompress, { maxDimension: 160, quality: 60 });
+            const thumbBytes = renderImageToSurface(img, photoPaths, canvasSize.width, canvasSize.height, imgW, imgH, shouldCompress, { maxDimension: 160, quality: 60 });
             const thumbBase64 = encode(thumbBytes);
             return { base64, thumbBase64, index: j };
           })());
@@ -1090,10 +1186,10 @@ export default function DrawingScreen() {
             {background && (
               <SkiaImage
                 image={background}
-                x={0}
-                y={0}
-                width={canvasSize.width}
-                height={canvasSize.height}
+                x={backgroundDisplayRect.x}
+                y={backgroundDisplayRect.y}
+                width={backgroundDisplayRect.width}
+                height={backgroundDisplayRect.height}
                 fit="fill"
               />
             )}
