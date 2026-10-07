@@ -31,6 +31,7 @@ import {
   syncTickAtom,
 } from '../../../lib/offline';
 import { remoteTileUrl } from '../../../lib/tileUrl';
+import { loadPinsFromSupabase } from '../../../services/supabaseService';
 import {
   categoriesAtom,
   loggedInUserAtom,
@@ -151,6 +152,8 @@ export default function ProjectPlans() {
         (done, total) => setDownloads((prev) => (prev[plan.id] ? { ...prev, [plan.id]: { done, total } } : prev)),
       );
       setOfflinePlans(await getOfflinePlans());
+      // Les pins du plan sont enregistrés avec lui, même s'il n'a jamais été ouvert.
+      await loadPinsFromSupabase(plan.id, user, selectedProject?.id).catch(() => {});
       if (!result.complete && !result.cancelled && !result.busy) {
         Alert.alert('Téléchargement incomplet', `${result.tiles} éléments sur ${result.total} enregistrés pour « ${plan.name} ». Relancez le téléchargement pour terminer.`);
       }

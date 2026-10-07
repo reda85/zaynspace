@@ -1,4 +1,4 @@
-import { cachedSelect, runOrQueue, withPendingPins } from '../lib/offline';
+import { cachedPlanPins, cachedSelect, runOrQueue, withPendingPins } from '../lib/offline';
 import { supabase } from '../lib/supabase';
 
 // ✅ Create (Add Pin)
@@ -24,9 +24,10 @@ export const addPinToSupabase = async (pdfName, pin, userid) => {
 
 // ✅ Read (Load Pins for a PDF)
 // Hors ligne : dernière liste enregistrée, complétée des modifications en attente.
-export const loadPinsFromSupabase = async (planId, user) => {
+export const loadPinsFromSupabase = async (planId, user, projectId = null) => {
   const guest = user.role == 'guest';
-  const { data, error, cachedAt } = await cachedSelect(`pins-plan-${planId}${guest ? `-${user.id}` : ''}`, () => {
+  const suffix = guest ? `-${user.id}` : '';
+  let { data, error, cachedAt, fromCache } = await cachedSelect(`pins-plan-${planId}${suffix}`, () => {
     let query = supabase
       .from('pdf_pins')
       .select('*,projects(*),categories(*),Status(*),pins_photos(*), pin_tags(tag_id, tags(*)),events(*, pins_photos(*), members(*))')
@@ -35,6 +36,14 @@ export const loadPinsFromSupabase = async (planId, user) => {
     if (guest) query = query.eq('assigned_to', user.id);
     return query;
   });
+
+  // Hors ligne : la liste de ce plan n'existe que s'il a déjà été ouvert en
+  // ligne, et peut être plus ancienne que les listes du projet (accueil,
+  // tâches), qui contiennent les pins de tous les plans. On combine les trois.
+  if (fromCache) {
+    const local = await cachedPlanPins(planId, projectId, suffix);
+    if (local) { data = local.pins; cachedAt = local.cachedAt; error = null; }
+  }
 
   if (error && !error.offline) {
     console.error('Load pins error:', error);

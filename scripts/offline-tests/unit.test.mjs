@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { isNetworkError } from '../../lib/offline/errors.js';
 import { createCache } from '../../lib/offline/cache.js';
 import { createOutbox } from '../../lib/offline/outbox.js';
-import { overlayPins, pendingPhotosForPin, countPending, rememberSent } from '../../lib/offline/pending.js';
+import { overlayPins, pendingPhotosForPin, countPending, rememberSent, pinsForPlanFromCaches } from '../../lib/offline/pending.js';
 
 const memStorage = () => { const m = new Map(); return { get: async (k) => (m.has(k) ? JSON.parse(m.get(k)) : null), set: async (k, v) => { m.set(k, JSON.stringify(v)); }, remove: async (k) => { m.delete(k); }, _m: m }; };
 const netErr = () => new TypeError('Network request failed');
@@ -178,5 +178,31 @@ ok('error classification');
   const old = rememberSent(recent, { type: 'pin.update', payload: { id: 'B', patch: {} } }, 5000 + 8 * 24 * 3600 * 1000);
   assert.equal(old.length, 1, 'entries older than a week are dropped');
   ok('overlay: sent changes bridge a stale cached copy');
+}
+// pins of a plan rebuilt from the copies on the device
+{
+  const A = { id: 'A', plan_id: 'L1', name: 'a', x: 0.1, y: 0.1 };
+  const B = { id: 'B', plan_id: 'L1', name: 'b', x: 0.2, y: 0.2 };
+  const C = { id: 'C', plan_id: 'L2', name: 'c', x: 0.3, y: 0.3 };
+  const T = { id: 'T', plan_id: null, name: 'task without plan' };
+  // plan never opened online: only the project lists know its pins
+  let r = pinsForPlanFromCaches('L1', null, [{ t: 10, v: [A, B, C, T] }, null]);
+  assert.deepEqual(r.pins.map((p) => p.id), ['A', 'B']); assert.equal(r.cachedAt, 10);
+  assert.deepEqual(pinsForPlanFromCaches('L2', null, [{ t: 10, v: [A, B, C, T] }]).pins.map((p) => p.id), ['C']);
+  // plan opened long ago, project list is newer: new pin appears, deleted pin goes, details kept
+  const planCopy = { t: 5, v: [{ ...A, name: 'old a', events: [{ id: 'e1' }] }, { id: 'GONE', plan_id: 'L1' }] };
+  r = pinsForPlanFromCaches('L1', planCopy, [{ t: 10, v: [A, B, C] }]);
+  assert.deepEqual(r.pins.map((p) => p.id), ['A', 'B']);
+  assert.equal(r.pins[0].name, 'a'); assert.deepEqual(r.pins[0].events, [{ id: 'e1' }]); assert.equal(r.cachedAt, 10);
+  // plan copy is the newest: used as is
+  r = pinsForPlanFromCaches('L1', { t: 20, v: [A] }, [{ t: 10, v: [A, B] }]);
+  assert.deepEqual(r.pins.map((p) => p.id), ['A']); assert.equal(r.cachedAt, 20);
+  // newest of the two project lists wins
+  r = pinsForPlanFromCaches('L1', null, [{ t: 10, v: [A] }, { t: 30, v: [A, B] }]);
+  assert.deepEqual(r.pins.map((p) => p.id), ['A', 'B']);
+  // soft-deleted rows in a project list are ignored; an empty plan is a valid answer; no copy at all → null
+  assert.deepEqual(pinsForPlanFromCaches('L1', null, [{ t: 1, v: [{ ...A, deleted_at: 'x' }] }]).pins, []);
+  assert.equal(pinsForPlanFromCaches('L1', null, [null, undefined]), null);
+  ok('plan pins offline: rebuilt from plan + project copies, newest wins');
 }
 console.log('ALL', n, 'PASSED');
