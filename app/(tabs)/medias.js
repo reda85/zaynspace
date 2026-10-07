@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Dimensions, Modal, ScrollView, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ImageViewerModal from '../../components/ImageViewerModal';
+import { requestReport } from '../../lib/api';
 import { cachedSelect } from '../../lib/offline';
 import { supabase } from '../../lib/supabase';
 import { selectedProjectAtom } from '../../store/atoms';
@@ -250,30 +251,23 @@ export default function MediaGalleryScreen() {
     const idsArray = Array.from(selectedIds);
     const idsQuery = idsArray.join(",");
 
-    const apiUrl = `https://zaynbackend-production.up.railway.app/api/mediareport?projectId=${project.id}&selectedIds=${idsQuery}`;
-    console.log("API URL:", apiUrl);
-    
     const dateString = new Date().toISOString().substring(0, 10).replace(/-/g, '');
     const downloadFileName = `Rapport_Medias_${project?.id || 'Export'}_${dateString}.pdf`;
     const localUri = FileSystem.documentDirectory + downloadFileName;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const downloadResult = await FileSystem.downloadAsync(
-        apiUrl,
-        localUri,
-        {
-          httpMethod: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-        }
+      // Le backend génère le PDF et renvoie un lien de téléchargement signé.
+      const report = await requestReport(
+        '/api/mediareport',
+        { projectId: project.id, selectedIds: idsArray },
+        { fallbackGet: `/api/mediareport?projectId=${project.id}&selectedIds=${idsQuery}` },
       );
+
+      const downloadResult = await FileSystem.downloadAsync(report.downloadUrl, localUri);
 
       if (downloadResult.status !== 200) {
         console.error(`Erreur de téléchargement API: Statut ${downloadResult.status}`);
-        showMessage(`Erreur lors de la génération du PDF. Statut: ${downloadResult.status}`);
+        showMessage(`Erreur lors du téléchargement du PDF. Statut: ${downloadResult.status}`);
         return;
       }
 

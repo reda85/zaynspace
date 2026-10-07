@@ -33,6 +33,7 @@ import PlanFilter from '../../components/FilterPanel/PlanFilter';
 import StatusFilter from '../../components/FilterPanel/StatusFilter';
 import TaskListItem from '../../components/TaskListItem';
 import { supabase } from '../../lib/supabase';
+import { requestReport } from '../../lib/api';
 import { cachedSelect, isOnline, queue, syncTickAtom, withPendingPins } from '../../lib/offline';
 
 import * as ImagePicker from 'expo-image-picker';
@@ -1221,28 +1222,14 @@ useEffect(() => {
             planningObservations,
         };
 
-        const { data: { session } } = await supabase.auth.getSession();
-        const apiUrl = "https://zaynbackend-production.up.railway.app/api/report";
-
-        console.log('🚀 Requesting PDF generation...');
-        const response = await fetch(apiUrl, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                'Authorization': `Bearer ${session.access_token}`,
-            },
-            body: JSON.stringify(requestBody),
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            Alert.alert('Erreur API', `${response.status}\n${errorText.substring(0, 200)}`);
+        // Le rapport est généré en arrière-plan côté serveur ; on attend son lien.
+        let json;
+        try {
+            json = await requestReport('/api/report', requestBody);
+        } catch (err) {
+            Alert.alert('Erreur', `Le rapport n'a pas pu être généré.\n${err.message}`);
             return;
         }
-
-        // ── Backend now returns JSON with a signed download URL ──
-        const json = await response.json();
         const { downloadUrl, fileName: serverFileName, fileSize } = json;
 
         if (!downloadUrl) {
