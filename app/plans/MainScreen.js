@@ -1,7 +1,7 @@
 /* use client */
 
 import { Camera } from 'expo-camera';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import 'react-native-url-polyfill/auto';
 import { addPinToSupabase, deletePinFromSupabase, loadPinsFromSupabase, updatePinInSupabase } from '../../services/supabaseService.js';
@@ -37,6 +37,12 @@ export default function MainScreen() {
     const [pinsState, setPinsState] = useAtom(pinsAtom);
     const [planId, setPlanId] = useState(null);
     const syncTick = useAtomValue(syncTickAtom);
+    // La liste partagée peut être remplacée par un autre écran (tous les pins du
+    // projet) : le plan n'affiche que les siens.
+    const planPins = useMemo(
+        () => (pinsState ?? []).filter((p) => String(p.plan_id) === String(planId)),
+        [pinsState, planId]
+    );
 
     // Header configuration
     useEffect(() => {
@@ -273,7 +279,7 @@ export default function MainScreen() {
                 <PdfViewerWithTiles
                     planId={myplanid}
                     pdfInfo={pdfInfo}
-                    pins={pinsState}
+                    pins={planPins}
                     myuri={myuri}
                     myname={myname}
                     onPinDrop={handlePinDrop}

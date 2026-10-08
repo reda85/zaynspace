@@ -86,7 +86,7 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { runOnJS, useSharedValue } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { getOutboxOps, isNetworkError, isOnline, photoUri, queue, savePendingPhotoFile } from "../lib/offline";
+import { isOnline, photoUri, queue, savePendingPhotoFile, waitForPhotos } from "../lib/offline";
 import { supabase } from "../lib/supabase";
 import uuid from "react-native-uuid";
 import { loggedInUserAtom, PhotoPlanPositionAtom, selectedPinAtom } from "../store/atoms";
@@ -800,6 +800,12 @@ export default function DrawingScreen() {
   };
 
   const handleSave = async () => {
+    // Sans pin ni projet, les photos partiraient dans un dossier inexistant et
+    // resteraient refusées : mieux vaut le dire tout de suite.
+    if (!pin?.id || !pin?.project_id) {
+      Alert.alert("Enregistrement impossible", "Le pin de ces photos n'a pas pu être retrouvé. Revenez au pin et réessayez.");
+      return;
+    }
     try {
       setIsSaving(true);
       setSavingProgress(0);
@@ -885,101 +891,11 @@ export default function DrawingScreen() {
       const BATCH_SIZE = 3;
       let completedCount = 0;
 
-      // Envoi d'une photo : fichier, miniature, puis ligne pins_photos.
+      // Une seule voie pour toutes les photos, avec ou sans réseau : le fichier est
+      // d'abord écrit sur l'appareil et inscrit dans la file d'envoi, puis envoyé.
+      // Une photo ne dépend donc plus de la mémoire de l'écran : si l'application
+      // est fermée ou si l'envoi échoue en route, elle repart au prochain passage.
       const gallerySaved = new Set();
-      const uploadOnePhoto = async ({ base64, thumbBase64, index }, filename, attempt, photoId) => {
-        const ext = "jpg";
-        const mime = "image/jpeg";
-        // filename est fixé par photo avant les tentatives (voir plus bas).
-        const fileUri  = `${FileSystem.documentDirectory}${filename}`;
-
-        await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: "base64" });
-
-        if (shouldSaveToGallery && !gallerySaved.has(index)) {
-          await MediaLibrary.saveToLibraryAsync(fileUri);
-          gallerySaved.add(index);
-        }
-
-        const fileBuffer = Buffer.from(base64, "base64");
-        const uploadPath = `${pin?.project_id}/${filename}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("pinphotos")
-          .upload(uploadPath, fileBuffer, { contentType: mime });
-
-        // Une tentative précédente a pu aboutir sans que la réponse nous parvienne.
-        const alreadyThere = attempt > 1 && /exist/i.test(uploadError?.message || '');
-        if (uploadError && !alreadyThere) throw uploadError;
-
-
-
-        // ── Miniature (non bloquant : repli sur public_url si échec) ──
-       // ── Miniature (version debug) ──
-        let thumbUrl = null;
-        try {
-          if (!thumbBase64) {
-            console.warn(`[thumb] pas de thumbBase64 pour index ${index} — l'édition #2 (le rendu) n'est probablement pas appliquée`);
-          } else {
-            const thumbPath = `${pin?.project_id}/thumb_${filename}`;
-            const thumbBuffer = Buffer.from(thumbBase64, "base64");
-            console.log(`[thumb] upload ${thumbPath} (${thumbBuffer.length} octets)`);
-            const { error: thumbError } = await supabase.storage
-              .from("pinphotos")
-              .upload(thumbPath, thumbBuffer, { contentType: mime });
-            if (thumbError && !(attempt > 1 && /exist/i.test(thumbError.message || ''))) {
-              console.warn(`[thumb] erreur upload:`, thumbError.message);
-            } else {
-              thumbUrl = supabase.storage.from("pinphotos").getPublicUrl(thumbPath).data.publicUrl;
-              console.log(`[thumb] ok -> ${thumbUrl}`);
-            }
-          }
-        } catch (e) {
-          console.warn(`[thumb] exception:`, e?.message);
-        }
-        console.log(`[thumb] thumbUrl final pour ${index}:`, thumbUrl);
-
-
-
-        if (shouldOptimize) {
-          await FileSystem.deleteAsync(fileUri, { idempotent: true });
-        }
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("pinphotos")
-          .getPublicUrl(uploadPath);
-
-        // 🌍 Extract geolocation from photo object (if available)
-        const currentPhoto = photos[index];
-        const latitude = typeof currentPhoto === 'object' ? currentPhoto.latitude : null;
-        const longitude = typeof currentPhoto === 'object' ? currentPhoto.longitude : null;
-
-        // 📍 Position sur le plan (si l'utilisateur a placé cette photo)
-        const planPos = photoPlanPositions[index];
-
-        const { data: photoInsert, error: insertError } = await supabase
-          .from("pins_photos")
-          .upsert([{
-            // Identifiant fixé sur l'appareil : une nouvelle tentative (ou l'envoi
-            // différé) de la même photo ne crée pas de doublon.
-            id: photoId,
-            pin_id: pin?.id,
-            project_id: pin?.project_id,
-            public_url: publicUrl,
-            thumb_url: thumbUrl,
-            description: descriptions[index],
-            date: new Date().toISOString(),
-            sender_id: loggedInUser?.id,
-            latitude,
-            longitude,
-            plan_id: planPos?.planId ?? null,
-            plan_x: planPos?.x ?? null,
-            plan_y: planPos?.y ?? null,
-          }], { onConflict: "id" })
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-      };
 
       // Photo gardée sur l'appareil et mise en file d'attente d'envoi.
       const queuePhoto = async ({ base64, thumbBase64, index }, filename, photoId) => {
@@ -1016,10 +932,9 @@ export default function DrawingScreen() {
         });
       };
 
-      // Chaque photo est tentée jusqu'à 3 fois ; un échec n'interrompt pas les
-      // autres, et les photos déjà envoyées ne sont jamais renvoyées.
-      const UPLOAD_ATTEMPTS = 3;
+      // 1. Mise en sécurité sur l'appareil (40 → 60 %).
       const failedIndexes = [];
+      const queuedPhotoIds = [];
 
       for (let batchStart = 0; batchStart < processedImages.length; batchStart += BATCH_SIZE) {
         const batch = processedImages.slice(batchStart, batchStart + BATCH_SIZE);
@@ -1027,53 +942,32 @@ export default function DrawingScreen() {
         await Promise.all(batch.map(async (item) => {
           // Nom unique : plusieurs appareils envoient dans le même dossier de projet.
           const filename = `drawing_${Date.now()}_${item.index}_${Math.random().toString(36).slice(2, 8)}.jpg`;
-          // Un seul identifiant et un seul nom de fichier par photo, quel que soit le chemin d'envoi.
+          // Identifiant fixé sur l'appareil : un second envoi ne crée pas de doublon.
           const photoId = uuid.v4();
-          let lastError = null;
-
-          // Sans réseau, ou tant que des envois attendent (le pin lui-même peut
-          // être en attente de création), la photo part directement en file.
-          const mustQueue = !isOnline() || getOutboxOps().some((o) => o.status === 'pending');
-          if (mustQueue) {
-            try {
-              await queuePhoto(item, filename, photoId);
-              uploadedIndexesRef.current.add(item.index);
-            } catch (e) {
-              lastError = e;
-            }
-          } else {
-            for (let attempt = 1; attempt <= UPLOAD_ATTEMPTS; attempt++) {
-              try {
-                await uploadOnePhoto(item, filename, attempt, photoId);
-                uploadedIndexesRef.current.add(item.index);
-                lastError = null;
-                break;
-              } catch (e) {
-                lastError = e;
-                console.warn(`[upload] photo ${item.index} tentative ${attempt}:`, e?.message);
-                if (isNetworkError(e) && !isOnline()) break;   // réseau perdu : inutile d'insister
-                if (attempt < UPLOAD_ATTEMPTS) await new Promise((r) => setTimeout(r, attempt * 1500));
-              }
-            }
-            // Coupure réseau : la photo est gardée sur l'appareil et envoyée plus tard.
-            if (lastError && isNetworkError(lastError)) {
-              try {
-                await queuePhoto(item, filename, photoId);
-                uploadedIndexesRef.current.add(item.index);
-                lastError = null;
-              } catch (e) {
-                lastError = e;
-              }
-            }
+          try {
+            await queuePhoto(item, filename, photoId);
+            uploadedIndexesRef.current.add(item.index);
+            queuedPhotoIds.push(photoId);
+          } catch (e) {
+            console.warn(`[photo] enregistrement local ${item.index}:`, e?.message);
+            failedIndexes.push(item.index);
           }
-          if (lastError) failedIndexes.push(item.index);
 
           completedCount++;
-          const uploadProgress = 40 + (60 * completedCount / processedImages.length);
-          setSavingProgress(uploadProgress);
+          setSavingProgress(40 + (20 * completedCount / processedImages.length));
         }));
       }
 
+      // 2. Envoi (60 → 100 %). On attend un moment pour que l'écran suivant
+      // affiche les photos ; au-delà, l'envoi se poursuit en arrière-plan.
+      let photoState = { sent: 0, waiting: queuedPhotoIds.length, refused: 0 };
+      if (queuedPhotoIds.length > 0) {
+        photoState = await waitForPhotos(queuedPhotoIds, {
+          timeoutMs: Math.min(60000, 15000 + 5000 * queuedPhotoIds.length),
+          onProgress: ({ waiting }) =>
+            setSavingProgress(60 + (40 * (queuedPhotoIds.length - waiting) / queuedPhotoIds.length)),
+        });
+      }
 
       const goToPin = () => {
         if (returnToPinId) {
@@ -1119,10 +1013,29 @@ export default function DrawingScreen() {
         return;
       }
 
+      if (photoState.refused > 0) {
+        const n = photoState.refused;
+        Alert.alert(
+          "Photo refusée",
+          `${n} photo${n > 1 ? "s ont été refusées" : " a été refusée"} par le serveur. ${n > 1 ? "Elles restent" : "Elle reste"} sur l'appareil, dans les envois en attente.`,
+          [{ text: "OK", onPress: goToPin }]
+        );
+        return;
+      }
+      if (photoState.waiting > 0 && isOnline()) {
+        const n = photoState.waiting;
+        Alert.alert(
+          "Envoi en cours",
+          `${n} photo${n > 1 ? "s sont enregistrées" : " est enregistrée"} sur l'appareil et ${n > 1 ? "seront envoyées" : "sera envoyée"} dès que la connexion le permet.`,
+          [{ text: "OK", onPress: goToPin }]
+        );
+        return;
+      }
+
       goToPin();
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", err.message || "Could not save drawings.");
+      Alert.alert("Erreur", err.message || "Les photos n'ont pas pu être enregistrées.");
     } finally {
       setIsSaving(false);
       setSavingProgress(0);

@@ -83,6 +83,7 @@ import Timeline from '../components/TimeLine';
 import { supabase } from '../lib/supabase';
 import { authHeaders, backendFetch } from '../lib/api';
 import { cachedSelect, outboxOpsAtom, pendingPhotos, runOrQueue, syncTickAtom, withPendingPins } from '../lib/offline';
+import { fetchProjectLists, isReadOnlyRole } from '../lib/projectLists';
 import { Image as PendingPhotoImage } from 'expo-image';
 import { categoriesAtom, membersAtom, MetaPinAtom, PhotoPlanPositionAtom, pinsAtom, selectedPinAtom, selectedProjectAtom, statusesAtom } from '../store/atoms';
 
@@ -144,9 +145,16 @@ export default function PinMetadataScreen() {
 
     const [pins, setPins] = useAtom(pinsAtom);
     const [selectedPin, setSelectedPin] = useAtom(selectedPinAtom);
-    const [categories] = useAtom(categoriesAtom);
-    const [statuses] = useAtom(statusesAtom);
-    const [selectedMembers] = useAtom(membersAtom);
+    const [projectCategories] = useAtom(categoriesAtom);
+    const [projectStatuses] = useAtom(statusesAtom);
+    const [projectMembers] = useAtom(membersAtom);
+    // Pin ouvert par une notification ou un lien : les listes du projet ne sont
+    // pas forcément chargées (ou sont celles d'un autre projet). Elles sont alors
+    // lues pour le projet du pin et ne servent qu'à cet écran.
+    const [pinLists, setPinLists] = useState(null);
+    const categories = pinLists?.categories ?? projectCategories ?? [];
+    const statuses = pinLists?.statuses ?? projectStatuses ?? [];
+    const selectedMembers = pinLists?.members ?? projectMembers ?? [];
     const [selectedProject] = useAtom(selectedProjectAtom);
 
     const [showPlanSelector, setShowPlanSelector] = useState(false);
@@ -250,18 +258,20 @@ export default function PinMetadataScreen() {
     }, []);
 
     useEffect(() => {
+        let cancelled = false;
         const loadRole = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    console.log('👤 user.id:', user?.id);
-    console.log('👥 selectedMembers:', JSON.stringify(selectedMembers?.map(m => ({ id: m.id, auth_id: m.auth_id, name: m.name }))));
-    const member = selectedMembers?.find(m => m.auth_id === user?.id);
-    console.log('🎯 member found:', JSON.stringify(member));
-    setCurrentRole(member?.role);
-    currentMemberRef.current = member;
-    console.log('✅ currentMemberRef.current set to:', currentMemberRef.current?.id);
-};
+            // getSession lit la session enregistrée sur l'appareil : contrairement à
+            // getUser, cela fonctionne sans réseau.
+            const { data } = await supabase.auth.getSession();
+            const authId = data?.session?.user?.id;
+            const member = selectedMembers?.find((m) => m.auth_id === authId) ?? null;
+            if (cancelled) return;
+            setCurrentRole(member?.role ?? null);
+            currentMemberRef.current = member;
+        };
         loadRole();
-    }, [selectedMembers]);
+        return () => { cancelled = true; };
+    }, [pinLists, projectMembers]);
 
     useEffect(() => {
         if (metapin.id === pinId) {
@@ -270,7 +280,7 @@ export default function PinMetadataScreen() {
         }
     }, [metapin]);
 
-    const isReadOnly = currentRole === 'guest' || currentRole === 'observateur';
+    const isReadOnly = isReadOnlyRole(currentRole);
     const canEditEverythingElse = !isReadOnly;
 
     const isAllowedPatch = (patch) => {
@@ -321,8 +331,9 @@ export default function PinMetadataScreen() {
             setProjectNumber(data.projects?.project_number || '');
             setPinNumber(data.pin_number || '');
             setSelectedPin(data);
-            setCategory(categories.find((c) => c.id === data.category_id) || categories[0]);
-            setStatus(statuses.find((s) => s.id === data.status_id) || statuses[0]);
+            // À défaut de liste chargée, le statut et la catégorie joints au pin.
+            setCategory(categories.find((c) => c.id === data.category_id) || data.categories || categories[0] || null);
+            setStatus(statuses.find((s) => s.id === data.status_id) || data.Status || statuses[0] || null);
             setPhotos(data.photoUris || parsedPhotoUris || []);
             setAssignee(data.assigned_to || null);
             setDue_date(data.due_date || null);
@@ -336,10 +347,30 @@ export default function PinMetadataScreen() {
             const flatTags = (data.pin_tags ?? []).map((pt) => pt.tags).filter(Boolean);
             const pinWithTags = { ...data, tags: flatTags };
             setSelectedPin(pinWithTags);
+            // Un pin ouvert directement n'est pas dans la liste en mémoire : sans
+            // lui, l'écran n'a ni projet ni plan pour enregistrer ou ajouter une photo.
             setPins((prev) => {
-                const updated = prev.map((p) => p.id === data.id ? pinWithTags : p);
-                return updated;
+                const list = prev ?? [];
+                if (list.some((p) => p.id === data.id)) return list.map((p) => p.id === data.id ? pinWithTags : p);
+                return data.deleted_at ? list : [...list, pinWithTags]; // un pin supprimé ne revient pas dans la liste
             });
+
+            // Listes lues pour un pin d'un autre projet : elles ne valent plus ici.
+            if (pinLists && pinLists.projectId !== data.project_id) setPinLists(null);
+            const sameProject = (rows) => rows.length > 0 && rows.every((r) => r.project_id === data.project_id);
+            if (data.project_id && !(sameProject(statuses) && sameProject(categories) && selectedMembers.length > 0)) {
+                try {
+                    const lists = await fetchProjectLists(data.project_id, data.projects?.organization_id);
+                    if (currentPinIdRef.current === id && (lists.statuses || lists.categories || lists.members)) {
+                        setPinLists({ ...lists, projectId: data.project_id });
+                        const listed = (rows, value) => (rows ?? []).find((r) => r.id === value);
+                        setStatus((prev) => listed(lists.statuses, data.status_id) || prev);
+                        setCategory((prev) => listed(lists.categories, data.category_id) || prev);
+                    }
+                } catch (e) {
+                    console.warn('Listes du projet indisponibles :', e?.message);
+                }
+            }
 
             if (data.plans?.png_url) {
                 const { data: urlData } = supabase
@@ -366,8 +397,8 @@ export default function PinMetadataScreen() {
             nameRef.current = '';
             setNote('');
             noteRef.current = '';
-            setCategory(categories[0]);
-            setStatus(statuses[0]);
+            setCategory(categories[0] || null);
+            setStatus(statuses[0] || null);
             setXcoordinate(null);
             setYcoordinate(null);
         }
@@ -403,7 +434,10 @@ export default function PinMetadataScreen() {
         });
     };
 
-    const immediateSave = async (fieldPatch, { silent = false } = {}) => {
+    // `pinId` : pin visé par une nouvelle tentative. Sans lui, « Réessayer »
+    // enregistrait sur le pin affiché à ce moment-là, qui n'est plus forcément
+    // celui de la modification refusée.
+    const immediateSave = async (fieldPatch, { silent = false, pinId: retryPinId } = {}) => {
         const enrichedPatch = buildPatch(fieldPatch);
         // Le contrôle porte sur les champs demandés : updated_at / updated_by sont
         // ajoutés automatiquement et bloquaient à tort le changement de statut des invités.
@@ -411,7 +445,7 @@ export default function PinMetadataScreen() {
             if (!silent) Alert.alert('Accès limité', 'Vous ne pouvez pas modifier ce champ.');
             return false;
         }
-        const targetPinId = currentPinId;
+        const targetPinId = retryPinId ?? currentPinId;
         try {
             if (!targetPinId) {
                 const newTask = {
@@ -443,8 +477,12 @@ export default function PinMetadataScreen() {
 
             await persistPatch(targetPinId, enrichedPatch);
 
-            if ('name' in fieldPatch) lastSavedTextRef.current.name = fieldPatch.name ?? '';
-            if ('note' in fieldPatch) lastSavedTextRef.current.note = fieldPatch.note ?? '';
+            // Le texte « déjà enregistré » suit le pin affiché : une nouvelle
+            // tentative pour un autre pin ne doit pas le modifier.
+            if (targetPinId === currentPinIdRef.current) {
+                if ('name' in fieldPatch) lastSavedTextRef.current.name = fieldPatch.name ?? '';
+                if ('note' in fieldPatch) lastSavedTextRef.current.note = fieldPatch.note ?? '';
+            }
             setPins((prevPins) => prevPins.map(p => p.id === targetPinId ? { ...p, ...enrichedPatch } : p));
             return true;
         } catch (err) {
@@ -459,7 +497,7 @@ export default function PinMetadataScreen() {
                         // Réaffiche l'état réellement enregistré.
                         onPress: () => { if (targetPinId && targetPinId === currentPinIdRef.current) getPinFromId(targetPinId); },
                     },
-                    { text: 'Réessayer', onPress: () => { saveFieldsRef.current?.(fieldPatch, { silent }); } },
+                    { text: 'Réessayer', onPress: () => { saveFieldsRef.current?.(fieldPatch, { silent, pinId: targetPinId ?? undefined }); } },
                 ]
             );
             return false;
@@ -769,8 +807,12 @@ export default function PinMetadataScreen() {
     const handleSendComment = async () => {
         if (!commentText.trim()) return;
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            const currentMember = selectedMembers?.find(m => m.auth_id === user?.id);
+            // getSession fonctionne sans réseau, contrairement à getUser.
+            let currentMember = currentMemberRef.current;
+            if (!currentMember) {
+                const { data: sessionData } = await supabase.auth.getSession();
+                currentMember = selectedMembers?.find(m => m.auth_id === sessionData?.session?.user?.id);
+            }
             if (!currentMember) { Alert.alert('Erreur', 'Utilisateur non trouvé'); return; }
             const newComment = {
                 pin_id: pin.id,
@@ -999,9 +1041,11 @@ export default function PinMetadataScreen() {
         return dueDate.getTime() < today.getTime();
     };
 
-    const currentStatus = statuses.find((s) => s.id === status?.id) || statuses[0];
-    const currentStatusColor = currentStatus.color || '#ccc';
-    const currentCategory = categories.find((c) => c.id === category?.id) || categories[0];
+    // Les listes peuvent être vides (pin ouvert par une notification, hors ligne) :
+    // on retombe sur le statut / la catégorie du pin, puis sur un libellé neutre.
+    const currentStatus = statuses.find((s) => s.id === status?.id) || status || statuses[0] || null;
+    const currentStatusColor = currentStatus?.color || '#ccc';
+    const currentCategory = categories.find((c) => c.id === category?.id) || category || categories[0] || null;
     const initialDate = due_date ? new Date(due_date) : new Date();
     const isPast = isDatePast();
 
@@ -1132,7 +1176,7 @@ export default function PinMetadataScreen() {
 
     const StatusSheet = () => {
         const getFilteredStatuses = () => {
-            if (currentRole === 'guest') {
+            if (['guest', 'Invités'].includes(currentRole)) {
                 return statuses.filter(s =>
                     s.id === status?.id ||
                     s.name.toLowerCase() === 'a valider' ||
@@ -1306,10 +1350,10 @@ export default function PinMetadataScreen() {
                     >
                         <View style={styles.statusRow}>
                             <View style={[styles.statusIconCircle, { backgroundColor: currentStatusColor }]}>
-                                {getCategoryIconComponent(currentCategory.icon, 'white', 20)}
+                                {getCategoryIconComponent(currentCategory?.icon, 'white', 20)}
                             </View>
                             <TouchableOpacity style={[styles.statusButton, { backgroundColor: currentStatusColor }]} onPress={handleOpenStatusSheet}>
-                                <Text style={styles.statusButtonText}>{currentStatus.name}</Text>
+                                <Text style={styles.statusButtonText}>{currentStatus?.name ?? 'Statut'}</Text>
                                 <ChevronDown size={20} color="white" />
                             </TouchableOpacity>
                         </View>
@@ -1370,9 +1414,9 @@ export default function PinMetadataScreen() {
                             style={[styles.categoryButton, !canEditEverythingElse && styles.readOnlyButton]}
                         >
                             <View style={[styles.iconWrapper, { borderColor: currentStatusColor, borderWidth: 1 }]}>
-                                {getCategoryIconComponent(currentCategory.icon, currentStatusColor, 16)}
+                                {getCategoryIconComponent(currentCategory?.icon, currentStatusColor, 16)}
                             </View>
-                            <Text style={styles.categoryButtonText}>{currentCategory.name}</Text>
+                            <Text style={styles.categoryButtonText}>{currentCategory?.name ?? 'Catégorie'}</Text>
                             <ChevronDown size={16} color="#333" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
 
@@ -1439,6 +1483,7 @@ export default function PinMetadataScreen() {
                                 <TouchableOpacity
                                     style={styles.pinLocationCard}
                                     onPress={() => {
+                                        if (!plan) return; // plan pas encore chargé (pin ouvert hors ligne)
                                         const pdfInfo = { width: plan.width, height: plan.height, tilesPath: plan.tiles_path };
                                         router.push({
                                             pathname: '/PinPlacementScreen',
