@@ -13,6 +13,7 @@ import {
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -27,7 +28,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { fetchRoleForOrg } from '../lib/fetchRoleForOrg';
-import { cachedSelect } from '../lib/offline';
+import { cachedSelect, isOnline } from '../lib/offline';
 import { supabase } from '../lib/supabase';
 import {
   categoriesAtom,
@@ -58,6 +59,9 @@ export default function SelectProjectScreen() {
   const [loadingProjects, setLoadingProjects] = useState(true);
 
   const [orgs, setOrgs]               = useState([]);
+  // Liste demandée sans réseau et jamais enregistrée sur l'appareil.
+  const [orgsUnavailable, setOrgsUnavailable]         = useState(false);
+  const [projectsUnavailable, setProjectsUnavailable] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
   const [orgModalVisible, setOrgModalVisible] = useState(false);
 
@@ -78,13 +82,21 @@ export default function SelectProjectScreen() {
       .select('organization_id, organizations(id, name)')
       .eq('member_id', user.id));
 
-    if (error) console.error('Error loading orgs:', error);
-    else setOrgs(data.map((row) => row.organizations));
+    if (error) {
+      console.error('Error loading orgs:', error);
+      setOrgsUnavailable(Boolean(error.offline));
+      // Au moins l'organisation active reste affichée.
+      if (selectedOrg) setOrgs((prev) => (prev.length ? prev : [selectedOrg]));
+    } else {
+      setOrgsUnavailable(false);
+      setOrgs(data.map((row) => row.organizations).filter(Boolean));
+    }
     setLoadingOrgs(false);
   };
 
   const fetchProjects = async (orgId) => {
     setLoadingProjects(true);
+    setProjectsUnavailable(false);
     try {
       const { data: memberProjects, error: memberError } = await cachedSelect(`my-project-ids-${user.id}`, () => supabase
         .from('members_projects')
@@ -112,6 +124,7 @@ export default function SelectProjectScreen() {
       setProjects(data ?? []);
     } catch (err) {
       console.error('Error loading projects:', err);
+      setProjectsUnavailable(Boolean(err?.offline) || !isOnline());
       setProjects([]);
     } finally {
       setLoadingProjects(false);
@@ -125,8 +138,20 @@ export default function SelectProjectScreen() {
   setOrgModalVisible(false);
   if (org.id === activeOrgId) return;
 
-  await AsyncStorage.setItem(`last_organization_id_${user.id}`, org.id.toString());
   const role = await fetchRoleForOrg(user.id, org.id);
+  // Hors ligne, le rôle n'est connu que si l'organisation a déjà été préparée
+  // sur cet appareil : sans lui, on ne change pas d'organisation.
+  if (!role && !isOnline()) {
+    // Après la fermeture de la fenêtre : iOS ignore une alerte ouverte pendant
+    // qu'une fenêtre est encore en train de se fermer.
+    setTimeout(() => Alert.alert(
+      'Organisation indisponible hors ligne',
+      "Cette organisation n'a pas encore été enregistrée sur l'appareil. Ouvrez l'application une fois avec du réseau pour pouvoir y accéder hors ligne."
+    ), 500);
+    return;
+  }
+
+  await AsyncStorage.setItem(`last_organization_id_${user.id}`, org.id.toString());
 
   setPlans([]);
   setPins([]);
@@ -302,9 +327,11 @@ export default function SelectProjectScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <FolderOpen size={48} color="#D1D5DB" />
-              <Text style={styles.emptyTitle}>Aucun projet</Text>
+              <Text style={styles.emptyTitle}>{projectsUnavailable ? 'Projets indisponibles hors ligne' : 'Aucun projet'}</Text>
               <Text style={styles.emptySubtitle}>
-                {isAdmin
+                {projectsUnavailable
+                  ? "La liste des projets de cette organisation n'a pas encore été enregistrée sur l'appareil. Elle le sera à la prochaine ouverture avec du réseau."
+                  : isAdmin
                   ? 'Appuyez sur + pour créer votre premier projet'
                   : 'Aucun projet ne vous a été assigné pour le moment'}
               </Text>
@@ -326,6 +353,11 @@ export default function SelectProjectScreen() {
               <View style={[styles.modalSheet, { paddingBottom: Math.max(insets.bottom, 24) }]}>
                 <View style={styles.modalHandle} />
                 <Text style={styles.modalTitle}>Changer d'organisation</Text>
+                {orgsUnavailable && (
+                  <Text style={styles.emptySubtitle}>
+                    Liste des organisations indisponible hors ligne : elle sera enregistrée à la prochaine ouverture avec du réseau.
+                  </Text>
+                )}
 
                 {loadingOrgs ? (
                   <ActivityIndicator size="small" color="#111827" style={{ marginVertical: 24 }} />
