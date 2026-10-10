@@ -7,7 +7,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, FlatList, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
-import { cachedSelect, syncTickAtom, withPendingPins } from '../../lib/offline';
+import { cachedSelect, isOnline, syncTickAtom, withPendingPins } from '../../lib/offline';
+import { onNetworkChange } from '../../lib/offline/network';
+import { prefetchForOffline } from '../../lib/offline/prefetch';
 import { categoriesAtom, loggedInUserAtom, membersAtom, pinsAtom, plansAtom, selectedProjectAtom, statusesAtom } from '../../store/atoms';
 
 import { fetchGroups, getUnreadCount } from '../../services/discussionsService';
@@ -129,6 +131,17 @@ export default function AcceuilScreen() {
     navigation.setOptions({ headerShown: false });
   }, []);
 
+  // Prépare le mode hors ligne : copies locales des organisations, des projets
+  // et des données de chaque projet, pour pouvoir en changer sans réseau.
+  useEffect(() => {
+    if (!user?.id) return;
+    prefetchForOffline(user);
+    return onNetworkChange((online) => { if (online) prefetchForOffline(user); });
+  }, [user?.id]);
+
+  const selectedProjectRef = useRef(selectedProject);
+  selectedProjectRef.current = selectedProject;
+
   useEffect(() => {
     if (!user?.id || !user?.organization_id) return;
 
@@ -139,11 +152,16 @@ const { data: memberProjects, error } = await cachedSelect(`home-projects-${user
   .select('projects(*)')
   .eq('member_id', user.id));
 
+// Seulement les projets de l'organisation active. Un projet déjà choisi dans
+// cette organisation (par exemple par le sélecteur, qui vient de changer
+// d'organisation) est gardé : sans cela, cet écran remettait l'ancien projet.
 const data = memberProjects
   ?.map(mp => mp.projects)
-  .filter(Boolean)
+  .filter((p) => p && p.organization_id === user.organization_id)
   .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       if (error || !data || data.length === 0) return;
+      const current = selectedProjectRef.current;
+      if (current && data.some((p) => p.id === current.id)) return;
 
       try {
         const lastProjectId = await AsyncStorage.getItem('last_project_id');

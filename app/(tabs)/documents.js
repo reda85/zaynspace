@@ -491,7 +491,8 @@ export default function DocumentManager() {
         onSubmit={handleUpload}
       />
 
-      <SortSheet />
+      {/* Appelée comme une fonction : voir PinMetadataScreen (fenêtres iOS rouvertes en boucle). */}
+      {SortSheet()}
 
 
     </View>

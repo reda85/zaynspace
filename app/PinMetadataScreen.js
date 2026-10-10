@@ -1586,11 +1586,16 @@ export default function PinMetadataScreen() {
                     />
                 )}
 
-                <AssigneeSheet />
-                <StatusSheet />
-                <CategorySheet />
-                <ActionsSheet />
-                <PlanSelectorSheet />
+                {/* Appelées comme des fonctions, pas comme des composants : ces feuilles
+                    sont définies dans l'écran, donc recréées à chaque rendu. Écrites
+                    <StatusSheet />, React les démontait et remontait à chaque rendu ;
+                    sur iOS, chaque remontage ferme puis rouvre la fenêtre native, ce
+                    qui donnait des fenêtres qui s'ouvrent et se ferment en boucle. */}
+                {AssigneeSheet()}
+                {StatusSheet()}
+                {CategorySheet()}
+                {ActionsSheet()}
+                {PlanSelectorSheet()}
 
                 {/* ── Badge "En écoute" — visible tant que la dictée (nom, note ou commentaire) est active ── */}
                 {isListening && (
