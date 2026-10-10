@@ -217,6 +217,8 @@ export default function DrawingScreen() {
 
   // ── Keyboard height tracking ──
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const keyboardOpenRef = useRef(false);
+  keyboardOpenRef.current = keyboardHeight > 0;
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -243,6 +245,13 @@ export default function DrawingScreen() {
   const [fontSize, setFontSize] = useState(16);
   const [textInput, setTextInput] = useState("");
   const [addingText, setAddingText] = useState(false);
+  const addingTextRef = useRef(false);
+  addingTextRef.current = addingText;
+  // Commencer à dessiner ferme le clavier (la description est multiligne : la
+  // touche Entrée ne le fermait pas).
+  const dismissKeyboardForDrawing = useCallback(() => {
+    if (keyboardOpenRef.current && !addingTextRef.current) Keyboard.dismiss();
+  }, []);
   const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
   const [descriptions, setDescriptions] = useState(photos.map(() => ""));
   const [isSaving, setIsSaving] = useState(false);
@@ -662,6 +671,7 @@ export default function DrawingScreen() {
     .maxPointers(1)
     .onBegin(({ x, y }) => {
       "worklet";
+      runOnJS(dismissKeyboardForDrawing)();
       const currentTool = toolValue.value;
       const currentColor = colorValue.value;
 
@@ -794,9 +804,14 @@ export default function DrawingScreen() {
     Keyboard.dismiss();
   };
 
+  // La zone de dessin garde sa taille quand le clavier apparaît. Avant, elle
+  // rétrécissait : la photo était recadrée (écrasée, déplacée) alors que les
+  // traits déjà faits gardaient leur position, et l'enregistrement mélangeait
+  // les deux tailles. Le clavier recouvre maintenant le bas de la photo.
   const onCanvasLayout = (event) => {
     const { width, height } = event.nativeEvent.layout;
-    setCanvasSize({ width, height });
+    if (keyboardOpenRef.current) return; // Android peut redimensionner la fenêtre avec le clavier
+    setCanvasSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
   };
 
   const handleSave = async () => {
@@ -1089,13 +1104,13 @@ export default function DrawingScreen() {
         </View>
       </View>
 
-      {/* ── Canvas — bottom shrinks when keyboard opens ── */}
+      {/* ── Canvas — taille fixe : le clavier passe par-dessus ── */}
       <View
         style={[
           styles.canvasContainer,
           {
             top: thumbnailSectionHeight,
-            bottom: canvasBottom + keyboardHeight,
+            bottom: canvasBottom,
           },
         ]}
         onLayout={onCanvasLayout}
