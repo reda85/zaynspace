@@ -290,20 +290,26 @@ export default function PinMetadataScreen() {
 
     const router = useRouter();
 
+    // Retour au plan : on revient à l'écran du plan déjà ouvert, sans toucher au
+    // reste de la navigation. Avant, dismissAll + replace remplaçait les onglets
+    // eux-mêmes par l'écran du plan : tous les onglets (accueil, tâches…) étaient
+    // détruits puis recréés, avec leurs chargements — c'est sur ce chemin que
+    // l'application se fermait hors ligne.
     const handleClose = () => {
-        if (params.from === 'Pdf') {
-            router.dismissAll();
-            router.replace({
+        if (params.from === 'Pdf' && params.myplanid) {
+            router.dismissTo({
                 pathname: '/plans/MainScreen',
                 params: {
                     myuri: params.myuri,
                     myname: params.myname,
                     myplanid: params.myplanid,
-                    refresh: Date.now(),
                 },
             });
-        } else {
+        } else if (router.canGoBack()) {
             router.back();
+        } else {
+            // Ouvert directement (notification au démarrage) : rien derrière.
+            router.replace('/(tabs)/acceuil');
         }
     };
 
