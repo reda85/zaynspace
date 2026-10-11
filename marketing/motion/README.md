@@ -5,9 +5,19 @@ Instagram Reels, YouTube Shorts et LinkedIn.
 
 Elle montre le mobile et le web dans la même histoire : une réserve posée sur le
 plan depuis le chantier (pin, photo annotée, dictée vocale, mode hors ligne),
-qui arrive en temps réel sur le web (suivi jusqu'à la levée, équipe et invités,
-rapport PDF en un clic). Charte de zaynspace.com : bleu nuit `#0f172a`,
-émeraude `#10b981`, titres Lexend, texte Outfit, logo blanc sur carré bleu nuit.
+qui arrive en temps réel sur le web (panneau du pin, invitation d'un
+sous-traitant, sélection de tâches et export du rapport PDF).
+
+Les écrans reprennent l'interface réelle des deux applications :
+- mobile (`app/`, `components/`) : Outfit, fond `#F5F7FA`, pins colorés par
+  statut avec l'icône lucide de la catégorie, bouton noir « map-pin-plus »,
+  Confirmer / Annuler, écran d'annotation noir, fiche du pin, pastille
+  « Hors ligne · N en attente » ;
+- web (dépôt `zyn`) : Geist, palette pierre `#050505` / `#e5e5e2` / `#f5f5f4`,
+  coins 4 px, liste des pins, panneau du pin, tableau des tâches, membres.
+
+Les titres suivent la charte de la page d'accueil de zaynspace.com : bleu nuit
+`#0f172a`, émeraude `#10b981`, Lexend.
 
 ## Musique
 
