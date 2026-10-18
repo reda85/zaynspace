@@ -2,7 +2,6 @@
 import { Tabs } from 'expo-router';
 import { Camera, CheckSquare, Folder, Home, Map, MessageSquare, Settings } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C, F } from '../../constants/theme';
 
 // Libellé d'onglet avec le trait de couleur sous l'onglet actif.
@@ -20,11 +19,14 @@ const tabLabel = (label) => function Label({ focused }) {
 };
 
 const tabIcon = (Icon) => function TabIcon({ color }) {
-  return <Icon color={color} size={22} strokeWidth={1.8} />;
+  return <Icon color={color} size={21} strokeWidth={1.8} />;
 };
 
+function TabBarBackground() {
+  return <View style={styles.background} />;
+}
+
 export default function Layout() {
-  const insets = useSafeAreaInsets();
   return (
     <Tabs
       initialRouteName="acceuil"
@@ -33,17 +35,9 @@ export default function Layout() {
         headerShown: false,
         tabBarActiveTintColor: C.encre,
         tabBarInactiveTintColor: C.mineClair,
-        tabBarStyle: {
-          // Fond gris comme avant la refonte, sans trait au-dessus.
-          backgroundColor: C.papier,
-          borderTopWidth: 0,
-          // Assez haut pour l'icône, le libellé et le trait de l'onglet actif.
-          height: 64 + insets.bottom,
-          paddingTop: 6,
-          paddingBottom: Math.max(insets.bottom, 8),
-          elevation: 0,
-          shadowOpacity: 0,
-        },
+        // Pas de tabBarStyle (hauteur, marges) : sur iOS, il rend les onglets
+        // inactifs (déjà corrigé ainsi en août). La couleur passe par le fond.
+        tabBarBackground: TabBarBackground,
       }}
     >
       <Tabs.Screen
@@ -92,6 +86,10 @@ const styles = StyleSheet.create({
   labelWrap: { alignItems: 'center' },
   label: { fontFamily: F.medium, fontSize: 10.5, color: C.mineClair },
   labelActive: { fontFamily: F.semibold, color: C.encre },
-  bar: { marginTop: 3, width: 16, height: 3, borderRadius: 2, backgroundColor: 'transparent' },
+  bar: { marginTop: 2, width: 16, height: 2.5, borderRadius: 2, backgroundColor: 'transparent' },
+  background: {
+    position: 'absolute', top: -2, left: 0, right: 0, bottom: 0, // couvre le trait natif
+    backgroundColor: C.papier,
+  },
   barActive: { backgroundColor: C.tirage },
 });
