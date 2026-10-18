@@ -260,16 +260,16 @@ export default function SelectProjectScreen() {
           }}
           activeOpacity={0.7}
         >
-          <Building2 size={16} color="#111827" />
+          <Building2 size={16} color="#1C1C1A" />
           <Text style={styles.orgPickerText} numberOfLines={1}>
             {activeOrgName}
           </Text>
-          <ChevronDown size={16} color="#6B7280" />
+          <ChevronDown size={16} color="#5B5B56" />
         </TouchableOpacity>
       ),
       headerTitleAlign: 'center',
       headerShadowVisible: false,
-      headerStyle: { backgroundColor: '#F5F7FA' },
+      headerStyle: { backgroundColor: '#F8F8F6' },
       headerLeft: () => (
         <TouchableOpacity onPress={() => router.back()} >
           <View style={styles.closeButton}>
@@ -292,7 +292,7 @@ export default function SelectProjectScreen() {
     <SafeAreaView style={styles.container}>
       {loadingProjects ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#111827" />
+          <ActivityIndicator size="large" color="#1C1C1A" />
           <Text style={styles.loadingText}>Chargement des projets...</Text>
         </View>
       ) : (
@@ -309,7 +309,7 @@ export default function SelectProjectScreen() {
               >
                 <View style={styles.projectLeft}>
                   <View style={styles.iconContainer}>
-                    <FolderOpen size={20} color="#6B7280" />
+                    <FolderOpen size={20} color="#5B5B56" />
                   </View>
                   <View style={styles.projectText}>
                     <Text style={styles.projectTitle}>{item.name}</Text>
@@ -320,13 +320,13 @@ export default function SelectProjectScreen() {
                     ) : null}
                   </View>
                 </View>
-                <ChevronRight size={20} color="#9CA3AF" />
+                <ChevronRight size={20} color="#8A8A84" />
               </TouchableOpacity>
             </View>
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <FolderOpen size={48} color="#D1D5DB" />
+              <FolderOpen size={48} color="#D3D3CE" />
               <Text style={styles.emptyTitle}>{projectsUnavailable ? 'Projets indisponibles hors ligne' : 'Aucun projet'}</Text>
               <Text style={styles.emptySubtitle}>
                 {projectsUnavailable
@@ -360,7 +360,7 @@ export default function SelectProjectScreen() {
                 )}
 
                 {loadingOrgs ? (
-                  <ActivityIndicator size="small" color="#111827" style={{ marginVertical: 24 }} />
+                  <ActivityIndicator size="small" color="#1C1C1A" style={{ marginVertical: 24 }} />
                 ) : (
                   orgs.map((org) => {
                     const isActive = org.id === activeOrgId;
@@ -373,13 +373,13 @@ export default function SelectProjectScreen() {
                       >
                         <View style={styles.orgItemLeft}>
                           <View style={[styles.orgIcon, isActive && styles.orgIconActive]}>
-                            <Building2 size={18} color={isActive ? '#fff' : '#6B7280'} />
+                            <Building2 size={18} color={isActive ? '#fff' : '#5B5B56'} />
                           </View>
                           <Text style={[styles.orgItemText, isActive && styles.orgItemTextActive]}>
                             {org.name}
                           </Text>
                         </View>
-                        {isActive && <Check size={18} color="#111827" />}
+                        {isActive && <Check size={18} color="#1C1C1A" />}
                       </TouchableOpacity>
                     );
                   })
@@ -411,7 +411,7 @@ export default function SelectProjectScreen() {
                     <View style={styles.createModalHeader}>
                       <Text style={styles.modalTitle}>Nouveau projet</Text>
                       <TouchableOpacity onPress={closeCreateModal} hitSlop={8}>
-                        <X size={20} color="#6B7280" />
+                        <X size={20} color="#5B5B56" />
                       </TouchableOpacity>
                     </View>
 
@@ -421,7 +421,7 @@ export default function SelectProjectScreen() {
                         ref={nameInputRef}
                         style={[styles.textInput, createError && newProjectName.trim() === '' && styles.textInputError]}
                         placeholder="Ex: Résidence Al Amal"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#8A8A84"
                         value={newProjectName}
                         onChangeText={(t) => {
                           setNewProjectName(t);
@@ -437,7 +437,7 @@ export default function SelectProjectScreen() {
                       <TextInput
                         style={[styles.textInput, styles.textArea]}
                         placeholder="Décrivez brièvement le projet..."
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#8A8A84"
                         value={newProjectDescription}
                         onChangeText={setNewProjectDescription}
                         multiline
@@ -478,7 +478,7 @@ export default function SelectProjectScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+  container: { flex: 1, backgroundColor: '#F8F8F6' },
 
   orgPicker: {
     flexDirection: 'row',
@@ -489,13 +489,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4E4E0',
     maxWidth: 220,
   },
   orgPickerText: {
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: 'Geist_700Bold',
     fontSize: 15,
-    color: '#111827',
+    color: '#1C1C1A',
     flexShrink: 1,
   },
 
@@ -514,7 +514,7 @@ const styles = StyleSheet.create({
   },
 
   addButton: {
-    backgroundColor: '#111827',
+    backgroundColor: '#1C1C1A',
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   },
 
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  loadingText: { fontFamily: 'Outfit_500Medium', fontSize: 16, color: '#6B7280' },
+  loadingText: { fontFamily: 'Geist_500Medium', fontSize: 16, color: '#5B5B56' },
 
   listContent: { padding: 16, gap: 12 },
 
@@ -536,7 +536,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4E4E0',
     overflow: 'hidden',
   },
   projectItem: {
@@ -550,17 +550,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3F3F0',
     alignItems: 'center',
     justifyContent: 'center',
   },
   projectText: { flex: 1, gap: 4 },
-  projectTitle: { fontFamily: 'Outfit_600SemiBold', fontSize: 16, color: '#111827' },
-  projectSubtitle: { fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#6B7280', lineHeight: 20 },
+  projectTitle: { fontFamily: 'Geist_600SemiBold', fontSize: 16, color: '#1C1C1A' },
+  projectSubtitle: { fontFamily: 'Geist_400Regular', fontSize: 14, color: '#5B5B56', lineHeight: 20 },
 
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
-  emptyTitle: { fontFamily: 'Outfit_600SemiBold', fontSize: 18, color: '#111827', marginTop: 8 },
-  emptySubtitle: { fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#6B7280', textAlign: 'center' },
+  emptyTitle: { fontFamily: 'Geist_600SemiBold', fontSize: 18, color: '#1C1C1A', marginTop: 8 },
+  emptySubtitle: { fontFamily: 'Geist_400Regular', fontSize: 14, color: '#5B5B56', textAlign: 'center' },
 
   modalOverlay: {
     flex: 1,
@@ -579,11 +579,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E4E4E0',
     alignSelf: 'center',
     marginBottom: 12,
   },
-  modalTitle: { fontFamily: 'Outfit_700Bold', fontSize: 18, color: '#111827', marginBottom: 8 },
+  modalTitle: { fontFamily: 'Geist_700Bold', fontSize: 18, color: '#1C1C1A', marginBottom: 8 },
 
   orgItem: {
     flexDirection: 'row',
@@ -593,19 +593,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 10,
   },
-  orgItemActive: { backgroundColor: '#F3F4F6' },
+  orgItemActive: { backgroundColor: '#F3F3F0' },
   orgItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   orgIcon: {
     width: 36,
     height: 36,
     borderRadius: 8,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3F3F0',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  orgIconActive: { backgroundColor: '#111827' },
-  orgItemText: { fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#374151' },
-  orgItemTextActive: { fontFamily: 'Outfit_600SemiBold', color: '#111827' },
+  orgIconActive: { backgroundColor: '#1C1C1A' },
+  orgItemText: { fontFamily: 'Geist_500Medium', fontSize: 15, color: '#33332F' },
+  orgItemTextActive: { fontFamily: 'Geist_600SemiBold', color: '#1C1C1A' },
 
   createModalHeader: {
     flexDirection: 'row',
@@ -615,34 +615,34 @@ const styles = StyleSheet.create({
   },
   fieldGroup: { gap: 6, marginTop: 8 },
   fieldLabel: {
-    fontFamily: 'Outfit_500Medium',
+    fontFamily: 'Geist_500Medium',
     fontSize: 13,
-    color: '#374151',
+    color: '#33332F',
     letterSpacing: 0.2,
   },
   textInput: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8F8F6',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4E4E0',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     fontSize: 15,
-    color: '#111827',
+    color: '#1C1C1A',
   },
   textInputError: {
-    borderColor: '#EF4444',
-    backgroundColor: '#FEF2F2',
+    borderColor: '#A8322A',
+    backgroundColor: '#F9ECEA',
   },
   textArea: {
     minHeight: 80,
     paddingTop: 12,
   },
   errorText: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     fontSize: 13,
-    color: '#EF4444',
+    color: '#A8322A',
     marginTop: 2,
   },
   createButton: {
@@ -650,14 +650,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#111827',
+    backgroundColor: '#1C1C1A',
     borderRadius: 12,
     paddingVertical: 14,
     marginTop: 8,
   },
   createButtonDisabled: { opacity: 0.6 },
   createButtonText: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: 'Geist_600SemiBold',
     fontSize: 16,
     color: '#fff',
   },

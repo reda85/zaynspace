@@ -173,9 +173,9 @@ const styles = StyleSheet.create({
   cardBorderBottom: { borderBottomWidth: 1, borderBottomColor: Colors.border },
 
   body: { flex: 1, gap: 3 },
-  name: { color: Colors.text, fontSize: 15, fontFamily: 'Outfit_600SemiBold' },
-  desc: { color: Colors.textMuted, fontSize: 12, fontFamily: 'Outfit_400Regular' },
-  meta: { color: Colors.textDim, fontSize: 12, fontFamily: 'Outfit_400Regular', marginTop: 2 },
+  name: { color: Colors.text, fontSize: 15, fontFamily: 'Geist_600SemiBold' },
+  desc: { color: Colors.textMuted, fontSize: 12, fontFamily: 'Geist_400Regular' },
+  meta: { color: Colors.textDim, fontSize: 12, fontFamily: 'Geist_400Regular', marginTop: 2 },
 
   right: { alignItems: 'flex-end', gap: 8 },
   versionBadge: {
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3,
     borderWidth: 1, borderColor: Colors.primaryBorder,
   },
-  versionText: { color: Colors.primary, fontSize: 11, fontFamily: 'Outfit_600SemiBold' },
+  versionText: { color: Colors.primary, fontSize: 11, fontFamily: 'Geist_600SemiBold' },
 
   // Context menu — same style as your sort/filter bottom sheet items
   contextMenu: {
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12, shadowRadius: 12, elevation: 8,
   },
   menuItem: { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 10 },
-  menuItemText: { color: Colors.text, fontSize: 14, fontFamily: 'Outfit_400Regular' },
+  menuItemText: { color: Colors.text, fontSize: 14, fontFamily: 'Geist_400Regular' },
   menuDivider: { height: 1, backgroundColor: Colors.border },
 
   folderIconWrap: {
@@ -203,5 +203,5 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryMid,
     alignItems: 'center', justifyContent: 'center',
   },
-  folderName: { flex: 1, color: Colors.text, fontSize: 15, fontFamily: 'Outfit_600SemiBold' },
+  folderName: { flex: 1, color: Colors.text, fontSize: 15, fontFamily: 'Geist_600SemiBold' },
 });

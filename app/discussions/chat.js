@@ -59,8 +59,8 @@ export default function ChatScreen() {
     navigation.setOptions({
       title: groupName ?? 'Discussion',
       headerTitleAlign: 'center',
-      headerTitleStyle: { fontFamily: 'Outfit_700Bold', fontSize: 20, color: 'black' },
-      headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 },
+      headerTitleStyle: { fontFamily: 'Geist_700Bold', fontSize: 20, color: 'black' },
+      headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 },
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 10 }}>
           <View style={styles.headerBtn}>
@@ -240,8 +240,8 @@ export default function ChatScreen() {
             {/* Document attachments */}
             {attachments.filter(a => a.file_type !== 'image').map(a => (
               <View key={a.id} style={styles.docRow}>
-                <Feather name="file-text" size={16} color={isOwn ? '#DDD6FE' : '#6D28D9'} />
-                <Text style={[styles.docName, isOwn && { color: '#EDE9FE' }]} numberOfLines={1}>{a.file_name}</Text>
+                <Feather name="file-text" size={16} color={isOwn ? '#CDD8EA' : '#2C4F91'} />
+                <Text style={[styles.docName, isOwn && { color: '#EDF1F8' }]} numberOfLines={1}>{a.file_name}</Text>
               </View>
             ))}
 
@@ -278,8 +278,8 @@ export default function ChatScreen() {
       style={[styles.linkedRow, isOwn && styles.linkedRowOwn]}
       activeOpacity={0.7}
     >
-      <Link size={13} color={isOwn ? '#DDD6FE' : '#6D28D9'} />
-      <Text style={[styles.linkedText, isOwn && { color: '#EDE9FE' }]} numberOfLines={1}>
+      <Link size={13} color={isOwn ? '#CDD8EA' : '#2C4F91'} />
+      <Text style={[styles.linkedText, isOwn && { color: '#EDF1F8' }]} numberOfLines={1}>
         {l.label ?? l.item_id}
       </Text>
     </TouchableOpacity>
@@ -295,7 +295,7 @@ export default function ChatScreen() {
           {/* Delete (own messages only) */}
           {isOwn && (
             <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteTap}>
-              <Trash2 size={12} color="#9CA3AF" />
+              <Trash2 size={12} color="#8A8A84" />
             </TouchableOpacity>
           )}
         </View>
@@ -307,7 +307,7 @@ export default function ChatScreen() {
   return (
     <View style={styles.container}>
       {loading ? (
-        <ActivityIndicator size="large" color="#6D28D9" style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color="#2C4F91" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           ref={listRef}
@@ -318,7 +318,7 @@ export default function ChatScreen() {
           onEndReached={loadOlder}
           onEndReachedThreshold={0.1}
           ListHeaderComponent={loadingOlder
-            ? <ActivityIndicator size="small" color="#6D28D9" style={{ marginVertical: 8 }} />
+            ? <ActivityIndicator size="small" color="#2C4F91" style={{ marginVertical: 8 }} />
             : null}
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
           keyboardShouldPersistTaps="handled"
@@ -332,19 +332,19 @@ export default function ChatScreen() {
             <View key={i} style={styles.pendingChip}>
               {f.preview
                 ? <Image source={{ uri: f.preview }} style={styles.pendingThumb} />
-                : <Feather name="file" size={16} color="#6D28D9" />}
+                : <Feather name="file" size={16} color="#2C4F91" />}
               <Text style={styles.pendingName} numberOfLines={1}>{f.name}</Text>
               <TouchableOpacity onPress={() => removePendingFile(i)}>
-                <X size={14} color="#6B7280" />
+                <X size={14} color="#5B5B56" />
               </TouchableOpacity>
             </View>
           ))}
           {pendingLinked.map((l, i) => (
             <View key={`l${i}`} style={styles.pendingChip}>
-              <Link size={14} color="#6D28D9" />
+              <Link size={14} color="#2C4F91" />
               <Text style={styles.pendingName} numberOfLines={1}>{l.label ?? l.item_id}</Text>
               <TouchableOpacity onPress={() => removePendingLinked(i)}>
-                <X size={14} color="#6B7280" />
+                <X size={14} color="#5B5B56" />
               </TouchableOpacity>
             </View>
           ))}
@@ -358,13 +358,13 @@ export default function ChatScreen() {
       >
         <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 10) }]}>
           <TouchableOpacity style={styles.iconBtn} onPress={pickImage}>
-            <LucideImage size={20} color="#6D28D9" />
+            <LucideImage size={20} color="#2C4F91" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={pickDocument}>
-            <Paperclip size={20} color="#6D28D9" />
+            <Paperclip size={20} color="#2C4F91" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.iconBtn} onPress={() => setShowLinkModal(true)}>
-            <Link size={20} color="#6D28D9" />
+            <Link size={20} color="#2C4F91" />
           </TouchableOpacity>
 
           <TextInput
@@ -372,7 +372,7 @@ export default function ChatScreen() {
             value={input}
             onChangeText={setInput}
             placeholder="Message…"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#8A8A84"
             multiline
             maxLength={2000}
           />
@@ -405,7 +405,7 @@ const COLORS = ['#7C3AED','#DB2777','#0891B2','#059669','#D97706','#DC2626','#4F
 const avatarColor = (id) => COLORS[id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+  container: { flex: 1, backgroundColor: '#F8F8F6' },
   list:      { padding: 16, paddingBottom: 8 },
 
   headerBtn: {
@@ -419,34 +419,34 @@ const styles = StyleSheet.create({
   rowOwn: { flexDirection: 'row-reverse' },
 
   avatarSmall: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  avatarSmallText: { color: '#FFF', fontSize: 12, fontFamily: 'Outfit_700Bold' },
+  avatarSmallText: { color: '#FFF', fontSize: 12, fontFamily: 'Geist_700Bold' },
 
   bubbleWrapper: { maxWidth: '75%' },
-  senderName: { fontSize: 11, fontFamily: 'Outfit_500Medium', color: '#6B7280', marginBottom: 3, marginLeft: 12 },
+  senderName: { fontSize: 11, fontFamily: 'Geist_500Medium', color: '#5B5B56', marginBottom: 3, marginLeft: 12 },
 
   bubble:        { padding: 12, borderRadius: 16, marginBottom: 2 },
-  bubbleOwn:     { backgroundColor: '#6D28D9', borderBottomRightRadius: 4 },
+  bubbleOwn:     { backgroundColor: '#2C4F91', borderBottomRightRadius: 4 },
   bubbleOther:   { backgroundColor: '#FFF', borderBottomLeftRadius: 4,
                    shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 1 }, shadowRadius: 3, elevation: 1 },
-  bubbleDeleted: { backgroundColor: '#F3F4F6', paddingVertical: 8 },
+  bubbleDeleted: { backgroundColor: '#F3F3F0', paddingVertical: 8 },
 
-  msgText:    { fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#111827', lineHeight: 20 },
+  msgText:    { fontSize: 15, fontFamily: 'Geist_400Regular', color: '#1C1C1A', lineHeight: 20 },
   msgTextOwn: { color: '#FFF' },
-  deletedText:{ fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#9CA3AF', fontStyle: 'italic' },
+  deletedText:{ fontSize: 13, fontFamily: 'Geist_400Regular', color: '#8A8A84', fontStyle: 'italic' },
 
-  time:    { fontSize: 10, fontFamily: 'Outfit_400Regular', color: '#9CA3AF', marginTop: 6, alignSelf: 'flex-end' },
-  timeOwn: { color: '#C4B5FD' },
+  time:    { fontSize: 10, fontFamily: 'Geist_400Regular', color: '#8A8A84', marginTop: 6, alignSelf: 'flex-end' },
+  timeOwn: { color: '#CDD8EA' },
 
   attachImage: { width: 200, height: 200, borderRadius: 10, marginTop: 6 },
 
   docRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6,
              backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 8, padding: 8 },
-  docName: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#374151' },
+  docName: { flex: 1, fontSize: 13, fontFamily: 'Geist_400Regular', color: '#33332F' },
 
   linkedRow:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6,
                   backgroundColor: 'rgba(109,40,217,0.1)', borderRadius: 8, padding: 8 },
   linkedRowOwn: { backgroundColor: 'rgba(255,255,255,0.15)' },
-  linkedText:   { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#6D28D9' },
+  linkedText:   { flex: 1, fontSize: 13, fontFamily: 'Geist_400Regular', color: '#2C4F91' },
 
   deleteTap: { alignSelf: 'flex-end', padding: 4, marginTop: 2 },
 
@@ -454,34 +454,34 @@ const styles = StyleSheet.create({
   pendingBar: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 8,
     padding: 10, backgroundColor: '#FFF',
-    borderTopWidth: 1, borderTopColor: '#F3F4F6',
+    borderTopWidth: 1, borderTopColor: '#F3F3F0',
   },
   pendingChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: '#F3E8FF', borderRadius: 20,
+    backgroundColor: '#EDF1F8', borderRadius: 20,
     paddingHorizontal: 10, paddingVertical: 6, maxWidth: 180,
   },
   pendingThumb: { width: 24, height: 24, borderRadius: 4 },
-  pendingName:  { flex: 1, fontSize: 12, fontFamily: 'Outfit_400Regular', color: '#6D28D9' },
+  pendingName:  { flex: 1, fontSize: 12, fontFamily: 'Geist_400Regular', color: '#2C4F91' },
 
   // Input
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end',
     padding: 10,
-    backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F3F4F6',
+    backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F3F3F0',
     gap: 6,
   },
   iconBtn: { padding: 8 },
   input: {
-    flex: 1, backgroundColor: '#F9FAFB',
-    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 20,
+    flex: 1, backgroundColor: '#F8F8F6',
+    borderWidth: 1, borderColor: '#E4E4E0', borderRadius: 20,
     paddingHorizontal: 14, paddingVertical: 8,
-    fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#111827',
+    fontSize: 15, fontFamily: 'Geist_400Regular', color: '#1C1C1A',
     maxHeight: 100,
   },
   sendBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#6D28D9', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#2C4F91', alignItems: 'center', justifyContent: 'center',
   },
-  sendBtnDisabled: { backgroundColor: '#D1D5DB' },
+  sendBtnDisabled: { backgroundColor: '#D3D3CE' },
 });

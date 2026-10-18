@@ -51,8 +51,8 @@ export default function PlanFilter({ active, onToggle, selectedPlans, setSelecte
                         renderActiveText={false}
                         renderInActiveText={false}
                         circleBorderWidth={0}
-                        backgroundActive="#2563eb"
-                        backgroundInactive="#d1d5db"
+                        backgroundActive="#2C4F91"
+                        backgroundInactive="#D3D3CE"
                         circleActiveColor="#fff"
                         circleInActiveColor="#fff"
                     />
@@ -72,7 +72,7 @@ export default function PlanFilter({ active, onToggle, selectedPlans, setSelecte
                                             onPress={() => togglePlan(plan)}
                                             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                                         >
-                                            <Feather name="x" size={11} color="#6D28D9" />
+                                            <Feather name="x" size={11} color="#2C4F91" />
                                         </TouchableOpacity>
                                     </View>
                                 ))}
@@ -83,13 +83,13 @@ export default function PlanFilter({ active, onToggle, selectedPlans, setSelecte
                             style={styles.pickerButton}
                             onPress={() => setShowBottomSheet(true)}
                         >
-                            <Feather name="file-text" size={14} color="#6D28D9" />
+                            <Feather name="file-text" size={14} color="#2C4F91" />
                             <Text style={styles.pickerButtonText}>
                                 {selectedPlans.length > 0
                                     ? `${selectedPlans.length} filtre(s) sélectionné(s)`
                                     : 'Choisir un plan...'}
                             </Text>
-                            <Feather name="chevron-right" size={14} color="#6D28D9" style={{ marginLeft: 'auto' }} />
+                            <Feather name="chevron-right" size={14} color="#2C4F91" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
                     </View>
                 )}
@@ -114,17 +114,17 @@ export default function PlanFilter({ active, onToggle, selectedPlans, setSelecte
 
                         {/* Search bar */}
                         <View style={styles.searchRow}>
-                            <Feather name="search" size={15} color="#9CA3AF" style={{ marginRight: 8 }} />
+                            <Feather name="search" size={15} color="#8A8A84" style={{ marginRight: 8 }} />
                             <TextInput
                                 style={styles.searchInput}
                                 placeholder="Rechercher un plan..."
-                                placeholderTextColor="#9CA3AF"
+                                placeholderTextColor="#8A8A84"
                                 value={search}
                                 onChangeText={safeSetSearch}
                             />
                             {search.length > 0 && (
                                 <TouchableOpacity onPress={() => safeSetSearch('')}>
-                                    <Feather name="x-circle" size={15} color="#9CA3AF" />
+                                    <Feather name="x-circle" size={15} color="#8A8A84" />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -152,7 +152,7 @@ export default function PlanFilter({ active, onToggle, selectedPlans, setSelecte
                                         <Feather
                                             name="slash"
                                             size={15}
-                                            color={selectedPlans.includes(NO_PLAN_KEY) ? '#6D28D9' : '#9CA3AF'}
+                                            color={selectedPlans.includes(NO_PLAN_KEY) ? '#2C4F91' : '#8A8A84'}
                                             style={{ marginRight: 10 }}
                                         />
                                         <Text style={[
@@ -162,7 +162,7 @@ export default function PlanFilter({ active, onToggle, selectedPlans, setSelecte
                                             Sans plan
                                         </Text>
                                         {selectedPlans.includes(NO_PLAN_KEY) && (
-                                            <Feather name="check" size={16} color="#6D28D9" style={{ marginLeft: 'auto' }} />
+                                            <Feather name="check" size={16} color="#2C4F91" style={{ marginLeft: 'auto' }} />
                                         )}
                                     </TouchableOpacity>
                                 )}
@@ -178,7 +178,7 @@ export default function PlanFilter({ active, onToggle, selectedPlans, setSelecte
                                             <Feather
                                                 name="file-text"
                                                 size={15}
-                                                color={isSelected ? '#6D28D9' : '#9CA3AF'}
+                                                color={isSelected ? '#2C4F91' : '#8A8A84'}
                                                 style={{ marginRight: 10 }}
                                             />
                                             <Text
@@ -191,7 +191,7 @@ export default function PlanFilter({ active, onToggle, selectedPlans, setSelecte
                                                 <Feather
                                                     name="check"
                                                     size={16}
-                                                    color="#6D28D9"
+                                                    color="#2C4F91"
                                                     style={{ marginLeft: 'auto' }}
                                                 />
                                             )}
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     innerContainer: {
         backgroundColor: '#f5f5f4',
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#D3D3CE',
         padding: 8,
         borderRadius: 8,
         gap: 8,
@@ -235,11 +235,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     label: {
-        color: '#374151',
+        color: '#33332F',
         fontSize: 12,
         fontWeight: '600',
         textTransform: 'capitalize',
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: 'Geist_600SemiBold',
     },
 
     // ── Expanded area (chips + picker button) ───────────────────────────────
@@ -254,9 +254,9 @@ const styles = StyleSheet.create({
     chip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
         borderWidth: 1,
-        borderColor: '#C4B5FD',
+        borderColor: '#CDD8EA',
         borderRadius: 20,
         paddingHorizontal: 8,
         paddingVertical: 4,
@@ -265,16 +265,16 @@ const styles = StyleSheet.create({
     },
     chipText: {
         fontSize: 11,
-        fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        fontFamily: 'Geist_600SemiBold',
+        color: '#2C4F91',
         flexShrink: 1,
     },
     pickerButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
         borderWidth: 1,
-        borderColor: '#C4B5FD',
+        borderColor: '#CDD8EA',
         borderRadius: 8,
         paddingHorizontal: 10,
         paddingVertical: 8,
@@ -282,8 +282,8 @@ const styles = StyleSheet.create({
     },
     pickerButtonText: {
         fontSize: 12,
-        fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        fontFamily: 'Geist_600SemiBold',
+        color: '#2C4F91',
     },
 
     // ── Bottom sheet ─────────────────────────────────────────────────────────
@@ -308,15 +308,15 @@ const styles = StyleSheet.create({
     },
     sheetTitle: {
         fontSize: 18,
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: 'Geist_700Bold',
         color: '#111',
     },
     searchRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8F8F6',
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         borderRadius: 10,
         paddingHorizontal: 12,
         paddingVertical: 9,
@@ -325,8 +325,8 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         fontSize: 14,
-        fontFamily: 'Outfit_400Regular',
-        color: '#111827',
+        fontFamily: 'Geist_400Regular',
+        color: '#1C1C1A',
     },
     planRow: {
         flexDirection: 'row',
@@ -338,22 +338,22 @@ const styles = StyleSheet.create({
     },
     noPlanRow: {
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         borderStyle: 'dashed',
         marginBottom: 8,
     },
     planRowActive: {
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
     },
     planName: {
         flex: 1,
         fontSize: 14,
-        fontFamily: 'Outfit_400Regular',
-        color: '#374151',
+        fontFamily: 'Geist_400Regular',
+        color: '#33332F',
     },
     planNameActive: {
-        fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        fontFamily: 'Geist_600SemiBold',
+        color: '#2C4F91',
     },
     emptyBox: {
         paddingVertical: 24,
@@ -361,19 +361,19 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 13,
-        fontFamily: 'Outfit_400Regular',
-        color: '#9CA3AF',
+        fontFamily: 'Geist_400Regular',
+        color: '#8A8A84',
     },
     doneButton: {
         marginTop: 12,
-        backgroundColor: '#6D28D9',
+        backgroundColor: '#2C4F91',
         borderRadius: 10,
         paddingVertical: 14,
         alignItems: 'center',
     },
     doneButtonText: {
         fontSize: 15,
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: 'Geist_700Bold',
         color: '#fff',
     },
 });

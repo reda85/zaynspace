@@ -263,17 +263,17 @@ const styles = StyleSheet.create({
     maxHeight: '85%',
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  sheetTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: '#111' },
-  docNameSub: { fontSize: 13, color: Colors.textMuted, fontFamily: 'Outfit_400Regular', marginBottom: 8 },
+  sheetTitle: { fontSize: 18, fontFamily: 'Geist_700Bold', color: '#111' },
+  docNameSub: { fontSize: 13, color: Colors.textMuted, fontFamily: 'Geist_400Regular', marginBottom: 8 },
 
   form: { marginTop: 16, marginBottom: 8 },
 
-  inputLabel: { fontSize: 14, fontFamily: 'Outfit_600SemiBold', color: Colors.textSub, marginBottom: 8, marginTop: 16 },
+  inputLabel: { fontSize: 14, fontFamily: 'Geist_600SemiBold', color: Colors.textSub, marginBottom: 8, marginTop: 16 },
   textInput: {
     backgroundColor: Colors.surfaceInput,
     borderWidth: 1, borderColor: Colors.border,
     borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12,
-    fontSize: 15, fontFamily: 'Outfit_400Regular', color: Colors.text,
+    fontSize: 15, fontFamily: 'Geist_400Regular', color: Colors.text,
   },
   textArea: { minHeight: 80, textAlignVertical: 'top' },
 
@@ -284,8 +284,8 @@ const styles = StyleSheet.create({
     borderRadius: 8, padding: 16,
     alignItems: 'center', gap: 6,
   },
-  pickBtnLabel: { color: Colors.text, fontSize: 13, fontFamily: 'Outfit_600SemiBold' },
-  pickBtnSub: { color: Colors.textDim, fontSize: 11, fontFamily: 'Outfit_400Regular', textAlign: 'center' },
+  pickBtnLabel: { color: Colors.text, fontSize: 13, fontFamily: 'Geist_600SemiBold' },
+  pickBtnSub: { color: Colors.textDim, fontSize: 11, fontFamily: 'Geist_400Regular', textAlign: 'center' },
 
   selectedFile: {
     flexDirection: 'row', alignItems: 'center',
@@ -293,24 +293,24 @@ const styles = StyleSheet.create({
     borderRadius: 8, padding: 12, gap: 10,
     borderWidth: 1, borderColor: Colors.primaryBorder,
   },
-  selectedFileName: { color: Colors.text, fontSize: 14, fontFamily: 'Outfit_600SemiBold' },
-  selectedFileMime: { color: Colors.textMuted, fontSize: 12, fontFamily: 'Outfit_400Regular', marginTop: 2 },
+  selectedFileName: { color: Colors.text, fontSize: 14, fontFamily: 'Geist_600SemiBold' },
+  selectedFileMime: { color: Colors.textMuted, fontSize: 12, fontFamily: 'Geist_400Regular', marginTop: 2 },
   clearFileBtn: {
     width: 28, height: 28, borderRadius: 14,
     backgroundColor: Colors.bg, alignItems: 'center', justifyContent: 'center',
   },
 
   infoBox: { flexDirection: 'row', backgroundColor: Colors.primaryLight, padding: 12, borderRadius: 8, marginTop: 16, gap: 8 },
-  infoText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: Colors.primary, lineHeight: 18 },
+  infoText: { flex: 1, fontSize: 13, fontFamily: 'Geist_400Regular', color: Colors.primary, lineHeight: 18 },
 
   errorBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.errorLight, padding: 12, borderRadius: 8, marginTop: 12, gap: 8 },
-  errorText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: Colors.error },
+  errorText: { flex: 1, fontSize: 13, fontFamily: 'Geist_400Regular', color: Colors.error },
 
   buttons: { flexDirection: 'row', gap: 12, marginTop: 16 },
   btn: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  cancelBtn: { backgroundColor: '#F3F4F6' },
-  cancelBtnText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: Colors.textSub },
+  cancelBtn: { backgroundColor: '#F3F3F0' },
+  cancelBtnText: { fontSize: 15, fontFamily: 'Geist_600SemiBold', color: Colors.textSub },
   submitBtn: { backgroundColor: Colors.primary },
-  submitBtnDisabled: { backgroundColor: '#D1D5DB' },
-  submitBtnText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#fff' },
+  submitBtnDisabled: { backgroundColor: '#D3D3CE' },
+  submitBtnText: { fontSize: 15, fontFamily: 'Geist_600SemiBold', color: '#fff' },
 });

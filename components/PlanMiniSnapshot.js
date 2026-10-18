@@ -17,7 +17,7 @@ const PREVIEW_HEIGHT = 130;
  *  - y        : number  — relative y coordinate (0–1)
  *  - pinColor : string  — css color for the pin marker
  */
-export default function PlanMiniSnapshot({ pngUrl, x, y, pinColor = '#2563eb' }) {
+export default function PlanMiniSnapshot({ pngUrl, x, y, pinColor = '#2C4F91' }) {
     const [imageError, setImageError] = useState(false);
 
     if (!pngUrl || x == null || y == null) {
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
         height: PREVIEW_HEIGHT,
         borderRadius: 8,
         overflow: 'hidden',
-        backgroundColor: '#e5e7eb',
+        backgroundColor: '#E4E4E0',
     },
     image: {
         width: '100%',
@@ -138,12 +138,12 @@ const styles = StyleSheet.create({
     labelText: {
         color: '#fff',
         fontSize: 11,
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: 'Geist_400Regular',
     },
     fallbackText: {
-        color: '#9ca3af',
+        color: '#8A8A84',
         fontSize: 13,
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: 'Geist_400Regular',
         textAlign: 'center',
         marginTop: 45,
     },

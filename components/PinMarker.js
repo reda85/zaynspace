@@ -11,10 +11,10 @@ const PinMarker = memo(({ pin, pdfSize, pinAnimatedStyle, onPinPress }) => {
   
   // Couleur selon le statut
   const getPinColor = () => {
-    if (pin.status_id === 'completed') return '#10b981';
+    if (pin.status_id === 'completed') return '#2F6B4A';
     if (pin.status_id === 'in_progress') return '#f59e0b';
-    if (pin.status_id === 'blocked') return '#ef4444';
-    return '#3b82f6'; // default
+    if (pin.status_id === 'blocked') return '#A8322A';
+    return '#2C4F91'; // default
   };
   
   return (
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -8,
     right: -8,
-    backgroundColor: '#ef4444',
+    backgroundColor: '#A8322A',
     borderRadius: 10,
     minWidth: 20,
     height: 20,

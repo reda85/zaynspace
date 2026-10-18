@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { useAtom } from 'jotai';
-import { ListFilter } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { ChevronLeft, Layers, ListFilter } from 'lucide-react-native';
+import React, { useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AssignedToFilter from '../components/FilterPanel/AssignedToFilter';
@@ -9,12 +9,15 @@ import DateFilter from '../components/FilterPanel/DateFilter';
 import OverdueFilter from '../components/FilterPanel/OverdueFilter';
 import StatusFilter from '../components/FilterPanel/StatusFilter';
 import { usePinFilters } from '../hooks/usePinFilters';
-import { selectedProjectAtom } from '../store/atoms';
+import { C, F } from '../constants/theme';
+import { selectedProjectAtom, statusesAtom } from '../store/atoms';
 import ArchivedFilter from './FilterPanel/ArchivedFilter';
 import CategoryFilter from './FilterPanel/CategoryFilter';
 import TagFilter from './FilterPanel/TagFilter';
 
-export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0, fabOffset = 0 }) {
+// Barre flottante en haut du plan : retour, nom du plan et nombre de pins
+// affichés, bouton des filtres, puis les filtres actifs en étiquettes.
+export default function PdfViewerFilterOverlay({ pins, onFilter, planName, onBack }) {
   const {
     filteredPins,
     searchTerm,
@@ -47,7 +50,25 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0
 
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [selectedProject] = useAtom(selectedProjectAtom);
+  const [statuses] = useAtom(statusesAtom);
   const insets = useSafeAreaInsets();
+
+  const chips = useMemo(() => {
+    const out = [];
+    for (const id of activeStatuses) {
+      const st = statuses?.find((x) => x.id === id);
+      if (st) out.push(st.name);
+    }
+    if (overdue) out.push('En retard');
+    if (categoryActive) out.push(...(categoryTags.length ? categoryTags : ['Aucune catégorie']));
+    if (dateActive) out.push('Date');
+    if (tagActive) out.push(tagIds.length > 1 ? `${tagIds.length} tags` : 'Tag');
+    if (assignedToActive) out.push(selectedAssignees.length > 1 ? `${selectedAssignees.length} intervenants` : 'Intervenant');
+    if (showArchived) out.push('Archivés inclus');
+    if (searchTerm) out.push(`« ${searchTerm} »`);
+    return out;
+  }, [activeStatuses, statuses, overdue, categoryActive, categoryTags, dateActive, tagActive, tagIds,
+      assignedToActive, selectedAssignees, showArchived, searchTerm]);
 
   React.useEffect(() => {
     onFilter?.(filteredPins);
@@ -55,18 +76,53 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0
 
   return (
     <>
-      {/* FAB */}
-      <TouchableOpacity
-        onPress={() => setShowFilterPanel(true)}
-        style={[styles.fab, { bottom: 40 + insets.bottom + fabOffset }]}
-      >
-        <ListFilter size={20} color="black" />
-        {hasActiveFilter && (
-          <View style={styles.filterBadge}>
-            <Text style={styles.filterBadgeText}>{filteredPins.length}</Text>
+      <View style={[styles.topBar, { top: insets.top + 8 }]} pointerEvents="box-none">
+        <View style={styles.topRow}>
+          {onBack ? (
+            <TouchableOpacity onPress={onBack} style={styles.square} accessibilityLabel="Retour aux plans">
+              <ChevronLeft size={22} color={C.encre} strokeWidth={2} />
+            </TouchableOpacity>
+          ) : null}
+          <View style={styles.planCard}>
+            <Layers size={18} color={C.mine} strokeWidth={1.8} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.planName} numberOfLines={1}>{planName || 'Plan'}</Text>
+              <Text style={styles.planMeta} numberOfLines={1}>
+                {filteredPins.length} pin{filteredPins.length > 1 ? 's' : ''} affiché{filteredPins.length > 1 ? 's' : ''}
+              </Text>
+            </View>
           </View>
+          <TouchableOpacity
+            onPress={() => setShowFilterPanel(true)}
+            style={styles.square}
+            accessibilityLabel="Filtrer les pins"
+          >
+            <ListFilter size={20} color={C.encre} strokeWidth={1.8} />
+            {hasActiveFilter && (
+              <View style={styles.filterBadge}>
+                <Text style={styles.filterBadgeText}>{chips.length || 1}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+        {chips.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.chips}
+          >
+            {chips.map((label, i) => (
+              <TouchableOpacity
+                key={`${label}-${i}`}
+                onPress={() => setShowFilterPanel(true)}
+                style={[styles.chip, i === 0 && styles.chipDark]}
+              >
+                <Text style={[styles.chipText, i === 0 && { color: C.blanc }]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         )}
-      </TouchableOpacity>
+      </View>
 
       {/* Filter panel modal */}
       <Modal
@@ -142,24 +198,33 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, bottomInset = 0
 }
 
 const styles = StyleSheet.create({
-  fab: {
-    position: 'absolute',
-    right: 20,
-    backgroundColor: 'lightgrey',
-    padding: 16,
-    borderRadius: 28,
-    elevation: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 1000,
-    
+  topBar: { position: 'absolute', left: 16, right: 16, zIndex: 1000, elevation: 10, gap: 8 },
+  topRow: { flexDirection: 'row', gap: 8 },
+  square: {
+    width: 48, height: 48, borderRadius: 14, backgroundColor: C.blanc,
+    borderWidth: 1, borderColor: C.filet, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#1C1C1A', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3,
   },
+  planCard: {
+    flex: 1, minWidth: 0, height: 48, borderRadius: 14, backgroundColor: C.blanc,
+    borderWidth: 1, borderColor: C.filet, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14,
+    shadowColor: '#1C1C1A', shadowOpacity: 0.12, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3,
+  },
+  planName: { fontFamily: F.semibold, fontSize: 15, color: C.encre },
+  planMeta: { fontFamily: F.regular, fontSize: 12, color: C.mineClair },
+  chips: { gap: 6 },
+  chip: {
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14,
+    backgroundColor: C.blanc, borderWidth: 1, borderColor: C.filet,
+  },
+  chipDark: { backgroundColor: C.encre, borderColor: C.encre },
+  chipText: { fontFamily: F.medium, fontSize: 12, color: C.mine },
   filterBadge: {
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: 'green',
-    borderRadius: 12,
+    backgroundColor: C.tirage,
+    borderRadius: 9,
     minWidth: 18,
     height: 18,
     paddingHorizontal: 4,
@@ -167,8 +232,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   filterBadgeText: {
-    color: 'white',
-    fontSize: 12,
+    color: C.blanc,
+    fontSize: 10,
+    fontFamily: F.semibold,
   },
   modalOverlay: {
     flex: 1,
@@ -194,13 +260,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontFamily: 'Outfit_700Bold',
-    color: '#111827',
+    fontFamily: 'Geist_700Bold',
+    color: '#1C1C1A',
   },
   subtitle: {
     fontSize: 12,
-    color: '#6B7280',
-    fontFamily: 'Outfit_400Regular',
+    color: '#5B5B56',
+    fontFamily: 'Geist_400Regular',
     marginTop: 2,
   },
   headerRight: {
@@ -208,9 +274,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   clearText: {
-    color: 'darkmagenta',
+    color: C.tirage,
     fontSize: 14,
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     marginRight: 12,
   },
 });

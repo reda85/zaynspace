@@ -628,7 +628,7 @@ const styles = StyleSheet.create({
   resetText: {
     color: '#fff',
     fontSize: 13,
-    fontFamily: 'Outfit_500Medium',
+    fontFamily: 'Geist_500Medium',
   },
 
   imageContainer: {
@@ -682,7 +682,7 @@ const styles = StyleSheet.create({
   avatarText: {
     color: 'white',
     fontSize: 16,
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: 'Geist_700Bold',
   },
   userTextCol: {
     flex: 1,
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 17,
-    fontFamily: 'Outfit_700Bold',
+    fontFamily: 'Geist_700Bold',
     color: '#fff',
   },
   dateRow: {
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: 12,
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     color: 'rgba(255,255,255,0.5)',
   },
 
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   editActionBtnSave: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#2C4F91',
   },
 
   // ── Description — read mode ───────────────────────────────────────────────
@@ -738,7 +738,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 15,
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     color: '#fff',
     lineHeight: 22,
   },
@@ -748,13 +748,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#2563eb',
+    borderColor: '#2C4F91',
     padding: 12,
     minHeight: 80,
   },
   descriptionInput: {
     fontSize: 15,
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     color: '#fff',
     lineHeight: 22,
     minHeight: 60,
@@ -769,7 +769,7 @@ const styles = StyleSheet.create({
   },
   emptyDescriptionText: {
     fontSize: 14,
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     color: 'rgba(255,255,255,0.4)',
   },
 
@@ -801,18 +801,18 @@ const styles = StyleSheet.create({
     marginLeft: -5,
     marginTop: -5,
     borderRadius: 5,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#2C4F91',
     borderWidth: 2,
     borderColor: '#fff',
   },
   planCardTitle: {
     fontSize: 14,
-    fontFamily: 'Outfit_500Medium',
+    fontFamily: 'Geist_500Medium',
     color: '#fff',
   },
   planCardSubtitle: {
     fontSize: 12,
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     color: 'rgba(255,255,255,0.5)',
     marginTop: 2,
   },
@@ -830,7 +830,7 @@ const styles = StyleSheet.create({
   },
   placeOnPlanText: {
     fontSize: 14,
-    fontFamily: 'Outfit_500Medium',
+    fontFamily: 'Geist_500Medium',
     color: 'rgba(255,255,255,0.7)',
   },
 
@@ -856,7 +856,7 @@ const styles = StyleSheet.create({
   },
   pickerTitle: {
     fontSize: 16,
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: 'Geist_600SemiBold',
     color: '#fff',
   },
   pickerItem: {
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
   },
   pickerItemText: {
     fontSize: 15,
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     color: '#fff',
     flexShrink: 1,
   },
@@ -877,7 +877,7 @@ const styles = StyleSheet.create({
   },
   pickerEmptyText: {
     fontSize: 14,
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     color: 'rgba(255,255,255,0.5)',
     textAlign: 'center',
     paddingVertical: 24,

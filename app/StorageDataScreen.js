@@ -95,10 +95,10 @@ export default function StorageDataScreen() {
       headerTitleAlign: 'center',
       headerShadowVisible: false,
       headerTitleStyle: {
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: 'Geist_700Bold',
         fontSize: 24,
         color: 'black',
-        backgroundColor: '#F5F7FA',
+        backgroundColor: '#F8F8F6',
       },
       headerLeft: () => (
         <TouchableOpacity onPress={() => router.back()} >
@@ -114,7 +114,7 @@ export default function StorageDataScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, styles.centered]}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color="#2C4F91" />
       </SafeAreaView>
     );
   }
@@ -128,7 +128,7 @@ export default function StorageDataScreen() {
       <View style={styles.card}>
         <View style={styles.menuItem}>
           <View style={styles.menuLeft}>
-            <Image size={20} color="#6B7280" />
+            <Image size={20} color="#5B5B56" />
             <View style={styles.menuText}>
               <Text style={styles.menuTitle}>Sauvegarde automatique des données</Text>
               <Text style={styles.menuSubtitle}>
@@ -139,8 +139,8 @@ export default function StorageDataScreen() {
           <Switch
             value={autoSaveImages}
             onValueChange={(v) => handleToggle(KEYS.autoSaveImages, v, setAutoSaveImages)}
-            trackColor={{ false: '#E5E7EB', true: '#60A5FA' }}
-            thumbColor={autoSaveImages ? '#3B82F6' : '#F3F4F6'}
+            trackColor={{ false: '#E4E4E0', true: '#CDD8EA' }}
+            thumbColor={autoSaveImages ? '#2C4F91' : '#F3F3F0'}
           />
         </View>
       </View>
@@ -153,7 +153,7 @@ export default function StorageDataScreen() {
         {/* Compress images */}
         <View style={styles.menuItem}>
           <View style={styles.menuLeft}>
-            <Shrink size={20} color="#6B7280" />
+            <Shrink size={20} color="#5B5B56" />
             <View style={styles.menuText}>
               <Text style={styles.menuTitle}>Compresser les images</Text>
               <Text style={styles.menuSubtitle}>
@@ -164,8 +164,8 @@ export default function StorageDataScreen() {
           <Switch
             value={dataOption1}
             onValueChange={(v) => handleToggle(KEYS.compressImages, v, setDataOption1)}
-            trackColor={{ false: '#E5E7EB', true: '#60A5FA' }}
-            thumbColor={dataOption1 ? '#3B82F6' : '#F3F4F6'}
+            trackColor={{ false: '#E4E4E0', true: '#CDD8EA' }}
+            thumbColor={dataOption1 ? '#2C4F91' : '#F3F3F0'}
           />
         </View>
 
@@ -175,7 +175,7 @@ export default function StorageDataScreen() {
         {/* Optimize storage */}
         <View style={styles.menuItem}>
           <View style={styles.menuLeft}>
-            <BoxIcon size={20} color="#6B7280" />
+            <BoxIcon size={20} color="#5B5B56" />
             <View style={styles.menuText}>
               <Text style={styles.menuTitle}>Optimiser le stockage</Text>
               <Text style={styles.menuSubtitle}>
@@ -186,8 +186,8 @@ export default function StorageDataScreen() {
           <Switch
             value={dataOption2}
             onValueChange={(v) => handleToggle(KEYS.optimizeStorage, v, setDataOption2)}
-            trackColor={{ false: '#E5E7EB', true: '#60A5FA' }}
-            thumbColor={dataOption2 ? '#3B82F6' : '#F3F4F6'}
+            trackColor={{ false: '#E4E4E0', true: '#CDD8EA' }}
+            thumbColor={dataOption2 ? '#2C4F91' : '#F3F3F0'}
           />
         </View>
 
@@ -196,7 +196,7 @@ export default function StorageDataScreen() {
         {/* Offline data */}
         <TouchableOpacity style={styles.menuItem} onPress={onClearOffline} activeOpacity={0.7}>
           <View style={styles.menuLeft}>
-            <BoxIcon size={20} color="#6B7280" />
+            <BoxIcon size={20} color="#5B5B56" />
             <View style={styles.menuText}>
               <Text style={styles.menuTitle}>Données hors ligne</Text>
               <Text style={styles.menuSubtitle}>
@@ -215,7 +215,7 @@ export default function StorageDataScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F8F8F6',
     paddingHorizontal: 16,
   },
   centered: {
@@ -240,9 +240,9 @@ const styles = StyleSheet.create({
 
   /* Section Title */
   sectionTitle: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: 'Geist_600SemiBold',
     fontSize: 14,
-    color: '#6B7280',
+    color: '#5B5B56',
     marginTop: 24,
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4E4E0',
     padding: 16,
   },
 
@@ -278,23 +278,23 @@ const styles = StyleSheet.create({
   },
 
   menuTitle: {
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: 'Geist_600SemiBold',
     fontSize: 16,
-    color: '#111827',
+    color: '#1C1C1A',
     marginBottom: 4,
   },
 
   menuSubtitle: {
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
     fontSize: 14,
-    color: '#6B7280',
+    color: '#5B5B56',
     lineHeight: 20,
   },
 
   /* Divider */
   divider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E4E4E0',
     marginVertical: 16,
   },
 });

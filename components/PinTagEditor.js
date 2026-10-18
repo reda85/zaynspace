@@ -194,14 +194,14 @@ useEffect(() => {
                 <View style={styles.chipsRow}>
                     {pinTags.map((tag) => (
                         <View key={tag.id} style={styles.chip}>
-                            <Feather name="tag" size={10} color="#6D28D9" style={{ marginRight: 3 }} />
+                            <Feather name="tag" size={10} color="#2C4F91" style={{ marginRight: 3 }} />
                             <Text style={styles.chipText} numberOfLines={1}>{tag.name}</Text>
                             <TouchableOpacity
                                 onPress={() => handleRemoveChip(tag)}
                                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                                 disabled={saving}
                             >
-                                <Feather name="x" size={10} color="#6D28D9" />
+                                <Feather name="x" size={10} color="#2C4F91" />
                             </TouchableOpacity>
                         </View>
                     ))}
@@ -238,17 +238,17 @@ useEffect(() => {
 
                         {/* Search */}
                         <View style={styles.searchRow}>
-                            <Feather name="search" size={15} color="#9CA3AF" style={{ marginRight: 8 }} />
+                            <Feather name="search" size={15} color="#8A8A84" style={{ marginRight: 8 }} />
                             <TextInput
                                 style={styles.searchInput}
                                 placeholder="Rechercher ou créer un tag..."
-                                placeholderTextColor="#9CA3AF"
+                                placeholderTextColor="#8A8A84"
                                 value={search}
                                 onChangeText={setSearch}
                             />
                             {search.length > 0 && (
                                 <TouchableOpacity onPress={() => setSearch('')}>
-                                    <Feather name="x-circle" size={15} color="#9CA3AF" />
+                                    <Feather name="x-circle" size={15} color="#8A8A84" />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -256,7 +256,7 @@ useEffect(() => {
                         {/* List */}
                         {loadingTags ? (
                             <View style={styles.emptyBox}>
-                                <ActivityIndicator color="#6D28D9" />
+                                <ActivityIndicator color="#2C4F91" />
                             </View>
                         ) : filteredTags.length === 0 ? (
                             <View style={styles.emptyBox}>
@@ -297,11 +297,11 @@ useEffect(() => {
                                         disabled={creatingTag}
                                     >
                                         {creatingTag ? (
-                                            <ActivityIndicator size="small" color="#6D28D9" />
+                                            <ActivityIndicator size="small" color="#2C4F91" />
                                         ) : (
                                             <>
                                                 <View style={[styles.tagBadge, styles.tagBadgeCreate]}>
-                                                    <Feather name="plus" size={13} color="#6D28D9" />
+                                                    <Feather name="plus" size={13} color="#2C4F91" />
                                                 </View>
                                                 <Text style={styles.createTagInlineText}>
                                                     Créer "{search.trim()}"
@@ -324,7 +324,7 @@ useEffect(() => {
                                                 <Feather
                                                     name="tag"
                                                     size={13}
-                                                    color={selected ? '#6D28D9' : '#9CA3AF'}
+                                                    color={selected ? '#2C4F91' : '#8A8A84'}
                                                 />
                                             </View>
                                             <Text style={[styles.tagName, selected && styles.tagNameActive]}>
@@ -334,7 +334,7 @@ useEffect(() => {
                                                 <Feather
                                                     name="check"
                                                     size={16}
-                                                    color="#6D28D9"
+                                                    color="#2C4F91"
                                                     style={{ marginLeft: 'auto' }}
                                                 />
                                             )}
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     },
     addTagButtonText: {
         color: '#333',
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: 'Geist_400Regular',
         fontSize: 14,
     },
 
@@ -399,9 +399,9 @@ const styles = StyleSheet.create({
     chip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
         borderWidth: 1,
-        borderColor: '#C4B5FD',
+        borderColor: '#CDD8EA',
         borderRadius: 20,
         paddingHorizontal: 8,
         paddingVertical: 4,
@@ -410,8 +410,8 @@ const styles = StyleSheet.create({
     },
     chipText: {
         fontSize: 11,
-        fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        fontFamily: 'Geist_600SemiBold',
+        color: '#2C4F91',
         flexShrink: 1,
     },
 
@@ -438,15 +438,15 @@ const styles = StyleSheet.create({
     },
     sheetTitle: {
         fontSize: 18,
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: 'Geist_600SemiBold',
         color: '#111',
     },
     searchRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8F8F6',
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         borderRadius: 10,
         paddingHorizontal: 12,
         paddingVertical: 9,
@@ -456,8 +456,8 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         fontSize: 14,
-        fontFamily: 'Outfit_400Regular',
-        color: '#111827',
+        fontFamily: 'Geist_400Regular',
+        color: '#1C1C1A',
     },
 
     // ── Tag rows ─────────────────────────────────────────────────────────────
@@ -468,32 +468,32 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     tagRowActive: {
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
     },
     tagBadge: {
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#F3F3F0',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
     },
     tagBadgeActive: {
-        backgroundColor: '#DDD6FE',
+        backgroundColor: '#CDD8EA',
     },
     tagBadgeCreate: {
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
     },
     tagName: {
         flex: 1,
         fontSize: 16,
-        fontFamily: 'Outfit_400Regular',
+        fontFamily: 'Geist_400Regular',
         color: '#333',
     },
     tagNameActive: {
-        fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        fontFamily: 'Geist_600SemiBold',
+        color: '#2C4F91',
     },
 
     // ── Create tag — inline ──────────────────────────────────────────────────
@@ -503,14 +503,14 @@ const styles = StyleSheet.create({
         paddingVertical: 15,
         paddingHorizontal: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        borderBottomColor: '#F3F3F0',
         marginBottom: 4,
     },
     createTagInlineText: {
         flex: 1,
         fontSize: 16,
-        fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        fontFamily: 'Geist_600SemiBold',
+        color: '#2C4F91',
     },
 
     // ── Create tag — centered (no results) ───────────────────────────────────
@@ -521,15 +521,15 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 13,
-        fontFamily: 'Outfit_400Regular',
-        color: '#9CA3AF',
+        fontFamily: 'Geist_400Regular',
+        color: '#8A8A84',
         textAlign: 'center',
     },
     createTagButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: '#6D28D9',
+        backgroundColor: '#2C4F91',
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 20,
@@ -539,21 +539,21 @@ const styles = StyleSheet.create({
     createTagButtonText: {
         color: '#fff',
         fontSize: 13,
-        fontFamily: 'Outfit_600SemiBold',
+        fontFamily: 'Geist_600SemiBold',
     },
 
     // ── Done button ──────────────────────────────────────────────────────────
     doneButton: {
         marginTop: 12,
         marginHorizontal: 20,
-        backgroundColor: '#6D28D9',
+        backgroundColor: '#2C4F91',
         borderRadius: 10,
         paddingVertical: 14,
         alignItems: 'center',
     },
     doneButtonText: {
         fontSize: 15,
-        fontFamily: 'Outfit_700Bold',
+        fontFamily: 'Geist_700Bold',
         color: '#fff',
     },
 });

@@ -53,7 +53,7 @@ const GhostPin = memo(({ position, visible, isValid = true }) => {
       {/* Icône du pin */}
       <MapPinPlusIcon 
         size={24} 
-        color={isValid ? '#10b981' : '#ef4444'} 
+        color={isValid ? '#2F6B4A' : '#A8322A'} 
       />
       
       {/* Indicateur de validité */}
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#ef4444',
+    backgroundColor: '#A8322A',
     alignItems: 'center',
     justifyContent: 'center',
   },

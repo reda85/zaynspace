@@ -85,7 +85,7 @@ export default function LinkedPinItem({ itemId, onPress, isOwn }) {
     const category = categories.find(c => c.id === pin?.category_id);
     const IconComponent = categoriesIcons[category?.icon] || CheckIcon;
     const status = statuses.find(s => s.id === pin?.status_id);
-    const statusColor = status?.color || '#6D28D9';
+    const statusColor = status?.color || '#2C4F91';
  
     if (loading) {
         return (
@@ -96,9 +96,9 @@ export default function LinkedPinItem({ itemId, onPress, isOwn }) {
                 flexDirection: 'row',
                 borderRadius: 12,
                 borderLeftWidth: 3,
-                borderLeftColor: '#6D28D9',
+                borderLeftColor: '#2C4F91',
             }}>
-                <ActivityIndicator size="small" color="#6D28D9" />
+                <ActivityIndicator size="small" color="#2C4F91" />
                 <Text style={{ marginLeft: 10, color: 'black', fontSize: 14 }}>Chargement...</Text>
             </View>
         );
@@ -113,19 +113,19 @@ export default function LinkedPinItem({ itemId, onPress, isOwn }) {
                 flexDirection: 'row',
                 borderRadius: 12,
                 borderLeftWidth: 3,
-                borderLeftColor: '#6D28D9',
+                borderLeftColor: '#2C4F91',
             }}>
                 <View style={{ 
                     width: 28, 
                     height: 28, 
                     borderRadius: 14, 
-                    backgroundColor: '#9CA3AF',
+                    backgroundColor: '#8A8A84',
                     alignItems: 'center',
                     justifyContent: 'center',
                 }} >
                     <CheckIcon size={16} color="white" />
                 </View>
-                <Text style={{ marginLeft: 10, color: isOwn ? '#EDE9FE' : 'black', fontSize: 14 }}>
+                <Text style={{ marginLeft: 10, color: isOwn ? '#EDF1F8' : 'black', fontSize: 14 }}>
                     Tâche introuvable
                 </Text>
             </View>
@@ -144,7 +144,7 @@ export default function LinkedPinItem({ itemId, onPress, isOwn }) {
                 flexDirection: 'row',
                 borderRadius: 12,
                 borderLeftWidth: 3,
-                borderLeftColor: '#6D28D9',
+                borderLeftColor: '#2C4F91',
             }}
         >
             <View style={{ 
@@ -157,7 +157,7 @@ export default function LinkedPinItem({ itemId, onPress, isOwn }) {
             }}>
                 <IconComponent size={16} color="white" />
             </View>
-            <Text style={{ marginLeft: 10, color: isOwn ? '#EDE9FE' : 'black', fontSize: 14 }}>
+            <Text style={{ marginLeft: 10, color: isOwn ? '#EDF1F8' : 'black', fontSize: 14 }}>
                 #{pin.pin_number} • {pin.name}
             </Text>
         </TouchableOpacity>

@@ -12,8 +12,8 @@ export default function OverdueFilter({ active, onToggle }) {
           renderActiveText={false}
     renderInActiveText={false}
           circleBorderWidth={0}
-          backgroundActive="#dc2626" // red-600
-          backgroundInactive="#d1d5db" // gray-300
+          backgroundActive="#A8322A" // red-600
+          backgroundInactive="#D3D3CE" // gray-300
           circleActiveColor="#fff"
           circleInActiveColor="#fff"
         />
@@ -32,16 +32,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#f5f5f4', // stone-100
     borderWidth: 1,
-    borderColor: '#d1d5db', // gray-300
+    borderColor: '#D3D3CE', // gray-300
     padding: 8,
     borderRadius: 8,
     alignItems: 'center',
   },
   label: {
-    color: '#374151', // gray-700
+    color: '#33332F', // gray-700
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'capitalize',
-    fontFamily: 'Outfit_600SemiBold',
+    fontFamily: 'Geist_600SemiBold',
   },
 });

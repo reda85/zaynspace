@@ -160,6 +160,7 @@ export default function PdfViewerWithTiles({
   plan_id,
   myuri,
   myname,
+  onBack,
 }) {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
@@ -604,11 +605,6 @@ export default function PdfViewerWithTiles({
   return (
     <GestureHandlerRootView style={styles.container}>
 
-      <PdfViewerFilterOverlay
-        pins={normalizedPins}
-        onFilter={setFilteredPins}
-        fabOffset={0}
-      />
 
       {/*
         KEY FIX: GestureDetector wraps BOTH the PDF tiles AND the pins.
@@ -664,6 +660,13 @@ export default function PdfViewerWithTiles({
 
         </View>
       </GestureDetector>
+
+      <PdfViewerFilterOverlay
+        pins={normalizedPins}
+        onFilter={setFilteredPins}
+        planName={myname || pdfName}
+        onBack={onBack}
+      />
 
       {enablePinDrop && (
         <View style={[styles.buttonWrapper, { paddingBottom: insets.bottom }]} pointerEvents="box-none">
@@ -755,7 +758,7 @@ export default function PdfViewerWithTiles({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#222' },
+  container: { flex: 1, backgroundColor: '#EEEEEB' },
   gestureContainer: { flex: 1, overflow: 'hidden' },
   pdfContainer: { position: 'absolute', backgroundColor: 'white' },
   pinScreenWrapper: {
@@ -819,15 +822,15 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 15,
     fontWeight: '500',
-    fontFamily: 'Outfit_400Regular',
+    fontFamily: 'Geist_400Regular',
   },
-  checkButton: { backgroundColor: '#10b981' },
-  closeButton: { backgroundColor: '#ef4444' },
+  checkButton: { backgroundColor: '#2F6B4A' },
+  closeButton: { backgroundColor: '#A8322A' },
   closeModalButton: {
     position: 'absolute',
     right: 12,
     top: 12,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#F3F3F0',
     borderRadius: 9999,
     padding: 6,
     justifyContent: 'center',
@@ -883,25 +886,25 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '500',
     fontSize: 14,
-    fontFamily: 'Outfit_400Regular'
+    fontFamily: 'Geist_400Regular'
   },
   idText: {
-    color: '#6B7280',
+    color: '#5B5B56',
     fontSize: 12,
     marginBottom: 8,
-    fontFamily: 'Outfit_400Regular'
+    fontFamily: 'Geist_400Regular'
   },
   pinName: {
     fontSize: 20,
     color: '#000',
     marginBottom: 8,
-    fontFamily: 'Outfit_400Regular'
+    fontFamily: 'Geist_400Regular'
   },
   pinNote: {
     fontSize: 14,
-    color: '#374151',
+    color: '#33332F',
     lineHeight: 24,
     marginBottom: 16,
-    fontFamily: 'Outfit_400Regular'
+    fontFamily: 'Geist_400Regular'
   },
 });

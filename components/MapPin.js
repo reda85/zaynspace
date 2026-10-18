@@ -87,7 +87,7 @@ export default function MapPin({ pin, onPinPress }) {
   const icon = categoriesIcons[iconName] ?? <CheckIcon color="white" />;
 
   const statusColor = isArchived
-    ? '#4b5563'
+    ? '#5B5B56'
     : statuses.find(s => s.id === pin?.status_id)?.color || 'gray';
 
   return (
@@ -116,7 +116,7 @@ export default function MapPin({ pin, onPinPress }) {
           {/* Archive badge — top-right corner */}
           {isArchived && (
             <View style={styles.archiveBadge}>
-              <ArchiveIcon color="#d1d5db" size={8} />
+              <ArchiveIcon color="#D3D3CE" size={8} />
             </View>
           )}
         </View>
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: '#1c1c1e',
     borderWidth: 1,
-    borderColor: '#4b5563',
+    borderColor: '#5B5B56',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -283,15 +283,15 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
   },
   headerMid: { flex: 1 },
-  headerName: { color: Colors.text, fontSize: 16, fontFamily: 'Outfit_700Bold' },
-  headerMeta: { color: Colors.textMuted, fontSize: 12, fontFamily: 'Outfit_400Regular', marginTop: 2 },
+  headerName: { color: Colors.text, fontSize: 16, fontFamily: 'Geist_700Bold' },
+  headerMeta: { color: Colors.textMuted, fontSize: 12, fontFamily: 'Geist_400Regular', marginTop: 2 },
   versionBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: Colors.primaryMid,
     borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8,
     borderWidth: 1, borderColor: Colors.primaryBorder,
   },
-  versionBtnText: { color: Colors.primary, fontSize: 13, fontFamily: 'Outfit_600SemiBold' },
+  versionBtnText: { color: Colors.primary, fontSize: 13, fontFamily: 'Geist_600SemiBold' },
 
   // Tabs — sortItem style
   tabRow: {
@@ -308,23 +308,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryMid,
     borderWidth: 1, borderColor: Colors.primaryBorder,
   },
-  tabText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Outfit_400Regular' },
-  tabTextActive: { color: Colors.primary, fontFamily: 'Outfit_600SemiBold' },
+  tabText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Geist_400Regular' },
+  tabTextActive: { color: Colors.primary, fontFamily: 'Geist_600SemiBold' },
 
   // Preview states
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  loadingText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Outfit_400Regular' },
+  loadingText: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Geist_400Regular' },
   imageContainer: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
   previewImage: { width: SCREEN_W - 32, height: SCREEN_H * 0.65 },
   officeContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 32 },
-  officeTitle: { color: Colors.text, fontSize: 18, fontFamily: 'Outfit_700Bold', textAlign: 'center' },
-  officeSubtitle: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Outfit_400Regular', textAlign: 'center' },
+  officeTitle: { color: Colors.text, fontSize: 18, fontFamily: 'Geist_700Bold', textAlign: 'center' },
+  officeSubtitle: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Geist_400Regular', textAlign: 'center' },
   openBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: Colors.primary, borderRadius: 8,
     paddingHorizontal: 20, paddingVertical: 12, marginTop: 8,
   },
-  openBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Outfit_600SemiBold' },
+  openBtnText: { color: '#fff', fontSize: 15, fontFamily: 'Geist_600SemiBold' },
 
   // Versions
   versionsList: { padding: 16, paddingBottom: 40 },
@@ -348,16 +348,16 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight,
   },
   versionCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  versionNumber: { color: Colors.text, fontSize: 15, fontFamily: 'Outfit_700Bold' },
+  versionNumber: { color: Colors.text, fontSize: 15, fontFamily: 'Geist_700Bold' },
   currentTag: {
     backgroundColor: Colors.primaryMid, borderRadius: 6,
     paddingHorizontal: 8, paddingVertical: 2,
     borderWidth: 1, borderColor: Colors.primaryBorder,
   },
-  currentTagText: { color: Colors.primary, fontSize: 10, fontFamily: 'Outfit_600SemiBold' },
-  versionDate: { color: Colors.textDim, fontSize: 12, fontFamily: 'Outfit_400Regular', marginLeft: 'auto' },
-  versionNotes: { color: Colors.textSub, fontSize: 13, fontFamily: 'Outfit_400Regular', lineHeight: 18, marginBottom: 6 },
-  versionSize: { color: Colors.textDim, fontSize: 12, fontFamily: 'Outfit_400Regular' },
+  currentTagText: { color: Colors.primary, fontSize: 10, fontFamily: 'Geist_600SemiBold' },
+  versionDate: { color: Colors.textDim, fontSize: 12, fontFamily: 'Geist_400Regular', marginLeft: 'auto' },
+  versionNotes: { color: Colors.textSub, fontSize: 13, fontFamily: 'Geist_400Regular', lineHeight: 18, marginBottom: 6 },
+  versionSize: { color: Colors.textDim, fontSize: 12, fontFamily: 'Geist_400Regular' },
 
   versionActions: {
     flexDirection: 'row', gap: 8, marginTop: 10,
@@ -373,6 +373,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight,
   },
   versionActionText: {
-    color: Colors.primary, fontSize: 12, fontFamily: 'Outfit_600SemiBold',
+    color: Colors.primary, fontSize: 12, fontFamily: 'Geist_600SemiBold',
   },
 });

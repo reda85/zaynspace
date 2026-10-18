@@ -1,124 +1,97 @@
 // app/(tabs)/_layout.js
-import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold, useFonts } from '@expo-google-fonts/outfit';
 import { Tabs } from 'expo-router';
-import {
-  Camera as CameraOutline, Camera as CameraSolid,
-  CheckSquare as CheckOutline, CheckSquare as CheckSolid,
-  Folder,
-  Home as HomeOutline, Home as HomeSolid,
-  Map as MapOutline, Map as MapSolid,
-  MessageSquare,
-  Table as TableOutline, Table as TableSolid
-} from 'lucide-react-native';
-import { View } from 'react-native';
+import { Camera, CheckSquare, Folder, Home, Map, MessageSquare, Settings } from 'lucide-react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { C, F } from '../../constants/theme';
+
+// Libellé d'onglet avec le trait de couleur sous l'onglet actif.
+function TabLabel({ label, focused }) {
+  return (
+    <View style={styles.labelWrap}>
+      <Text style={[styles.label, focused && styles.labelActive]} numberOfLines={1}>{label}</Text>
+      <View style={[styles.bar, focused && styles.barActive]} />
+    </View>
+  );
+}
+
+const tabLabel = (label) => function Label({ focused }) {
+  return <TabLabel label={label} focused={focused} />;
+};
+
+const tabIcon = (Icon) => function TabIcon({ color }) {
+  return <Icon color={color} size={22} strokeWidth={1.8} />;
+};
 
 export default function Layout() {
-  const [fontsLoaded] = useFonts({
-    Outfit_400Regular,
-    Outfit_500Medium,
-    Outfit_600SemiBold,
-    Outfit_700Bold,
-  });
-
   const insets = useSafeAreaInsets();
-
-  if (!fontsLoaded) return null;
-
-  const renderTabIcon = (OutlineIcon, SolidIcon) => ({ color, size, focused }) =>
-    focused ? <SolidIcon color={color} size={size} /> : <OutlineIcon color={color} size={size} />;
-
   return (
     <Tabs
       initialRouteName="acceuil"
       screenOptions={{
-        headerShown: true,
-        headerShadowVisible: false,
-        tabBarActiveTintColor: 'black',
-        tabBarInactiveTintColor: 'gray',
-        
-tabBarBackground: () => (
-  <View
-    style={{
-      position: 'absolute',
-      top: -2,        // déborde légèrement au-dessus pour couvrir le trait natif
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: '#F5F7FA',
-    }}
-  />
-),
-        tabBarLabelStyle: {
-          fontFamily: 'Outfit_500Medium',
+        // Chaque onglet dessine son propre en-tête (components/ui/ScreenHeader).
+        headerShown: false,
+        tabBarActiveTintColor: C.encre,
+        tabBarInactiveTintColor: C.mineClair,
+        tabBarStyle: {
+          backgroundColor: C.blanc,
+          borderTopColor: C.filet,
+          borderTopWidth: StyleSheet.hairlineWidth,
+          // Assez haut pour l'icône, le libellé et le trait de l'onglet actif.
+          height: 64 + insets.bottom,
+          paddingTop: 6,
+          paddingBottom: Math.max(insets.bottom, 8),
+          elevation: 0,
+          shadowOpacity: 0,
         },
       }}
     >
       <Tabs.Screen
         name="acceuil"
-        options={{
-          headerShown: false,
-          title: 'Acceuil',
-          tabBarIcon: renderTabIcon(HomeOutline, HomeSolid),
-        }}
+        options={{ title: 'Accueil', tabBarLabel: tabLabel('Accueil'), tabBarIcon: tabIcon(Home) }}
       />
-
       <Tabs.Screen
         name="plans/index"
-        options={{
-          title: 'Plans',
-          headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 },
-          tabBarIcon: renderTabIcon(MapOutline, MapSolid),
-        }}
+        options={{ title: 'Plans', tabBarLabel: tabLabel('Plans'), tabBarIcon: tabIcon(Map) }}
       />
-
       <Tabs.Screen
         name="taches"
-        options={{
-          title: 'Tâches',
-          headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 },
-          tabBarIcon: renderTabIcon(CheckOutline, CheckSolid),
-        }}
+        options={{ title: 'Tâches', tabBarLabel: tabLabel('Tâches'), tabBarIcon: tabIcon(CheckSquare) }}
       />
-
       <Tabs.Screen
         name="medias"
-        options={{
-          title: 'Médias',
-          headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 },
-          tabBarIcon: renderTabIcon(CameraOutline, CameraSolid),
-        }}
+        options={{ title: 'Médias', tabBarLabel: tabLabel('Médias'), tabBarIcon: tabIcon(Camera) }}
       />
-
       <Tabs.Screen
         name="documents"
-        options={{
-          title: 'Documents',
-          headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 },
-          tabBarIcon: renderTabIcon(Folder, Folder),
-        }}
+        options={{ title: 'Documents', tabBarLabel: tabLabel('Documents'), tabBarIcon: tabIcon(Folder) }}
       />
 
-      {/* Hidden from tab bar — accessible via navigation only */}
+      {/* Hors de la barre d'onglets : accessibles depuis l'en-tête de l'accueil */}
       <Tabs.Screen
         name="discussions"
-        options={{
-          title: 'Discussions',
-          headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 },
-          tabBarIcon: renderTabIcon(MessageSquare, MessageSquare),
-          href: null, // hides from tab bar
-        }}
+        options={{ title: 'Discussions', tabBarIcon: tabIcon(MessageSquare), href: null }}
       />
-
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Paramètres',
-          headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 },
-          tabBarIcon: renderTabIcon(TableOutline, TableSolid),
-          href: null, // hides from tab bar
+          headerShown: true,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: C.papier },
+          headerTitleStyle: { fontFamily: F.semibold, fontSize: 17, color: C.encre },
+          tabBarIcon: tabIcon(Settings),
+          href: null,
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  labelWrap: { alignItems: 'center' },
+  label: { fontFamily: F.medium, fontSize: 10.5, color: C.mineClair },
+  labelActive: { fontFamily: F.semibold, color: C.encre },
+  bar: { marginTop: 3, width: 16, height: 3, borderRadius: 2, backgroundColor: 'transparent' },
+  barActive: { backgroundColor: C.tirage },
+});
