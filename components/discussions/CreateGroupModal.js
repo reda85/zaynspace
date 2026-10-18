@@ -90,7 +90,7 @@ export default function CreateGroupModal({ visible, projectId, onClose, onCreate
             <TextInput
               style={styles.input}
               placeholder="Ex : Chantier nord – équipe terrain"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8A8A84"
               value={name}
               onChangeText={setName}
               maxLength={60}
@@ -100,7 +100,7 @@ export default function CreateGroupModal({ visible, projectId, onClose, onCreate
             <TextInput
               style={[styles.input, styles.textarea]}
               placeholder="De quoi va-t-on discuter ?"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8A8A84"
               value={description}
               onChangeText={setDescription}
               multiline
@@ -110,7 +110,7 @@ export default function CreateGroupModal({ visible, projectId, onClose, onCreate
             />
 
             <View style={styles.infoBox}>
-              <Feather name="info" size={14} color="#6D28D9" />
+              <Feather name="info" size={14} color="#2C4F91" />
               <Text style={styles.infoText}>
                 Vous serez administrateur du groupe et pourrez inviter des membres après la création.
               </Text>
@@ -146,24 +146,24 @@ const styles = StyleSheet.create({
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
   sheetTitle:  { fontSize: 18, fontFamily: 'Outfit_700Bold', color: '#111' },
 
-  label: { fontSize: 14, fontFamily: 'Outfit_600SemiBold', color: '#374151', marginBottom: 8, marginTop: 16 },
+  label: { fontSize: 14, fontFamily: 'Outfit_600SemiBold', color: '#33332F', marginBottom: 8, marginTop: 16 },
   input: {
-    backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB',
+    backgroundColor: '#F8F8F6', borderWidth: 1, borderColor: '#E4E4E0',
     borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12,
-    fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#111827',
+    fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#1C1C1A',
   },
   textarea: { minHeight: 90, textAlignVertical: 'top' },
 
   infoBox: {
-    flexDirection: 'row', backgroundColor: '#F3E8FF', padding: 12,
+    flexDirection: 'row', backgroundColor: '#EDF1F8', padding: 12,
     borderRadius: 8, marginTop: 16, gap: 8,
   },
-  infoText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#6D28D9', lineHeight: 18 },
+  infoText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#2C4F91', lineHeight: 18 },
 
   btnRow:     { flexDirection: 'row', gap: 12, marginTop: 24 },
-  cancelBtn:  { flex: 1, backgroundColor: '#F3F4F6', paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-  cancelText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#374151' },
+  cancelBtn:  { flex: 1, backgroundColor: '#F3F3F0', paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
+  cancelText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#33332F' },
   createBtn:  { flex: 1, backgroundColor: 'black', paddingVertical: 14, borderRadius: 8, alignItems: 'center' },
-  createBtnDisabled: { backgroundColor: '#D1D5DB' },
+  createBtnDisabled: { backgroundColor: '#D3D3CE' },
   createText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#FFF' },
 });

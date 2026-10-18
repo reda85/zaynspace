@@ -110,10 +110,10 @@ export default function SettingsScreen() {
   const Row = ({ label, icon: Icon, onPress }) => (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.rowLeft}>
-        <Icon size={18} color="#374151" />
+        <Icon size={18} color="#33332F" />
         <Text style={styles.rowText}>{label}</Text>
       </View>
-      <ChevronRight size={20} color="#9CA3AF" />
+      <ChevronRight size={20} color="#8A8A84" />
     </TouchableOpacity>
   );
 
@@ -134,7 +134,7 @@ export default function SettingsScreen() {
       </View>
     </View>
 
-    <ChevronRight size={20} color="#9CA3AF" />
+    <ChevronRight size={20} color="#8A8A84" />
   </TouchableOpacity>
 </View>
 
@@ -182,7 +182,7 @@ export default function SettingsScreen() {
           style={styles.logoutButton}
           activeOpacity={0.8}
         >
-          <LogOut size={18} color="#DC2626" />
+          <LogOut size={18} color="#A8322A" />
           <Text style={styles.logoutText}>Se déconnecter</Text>
         </TouchableOpacity>
       </View>
@@ -195,7 +195,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F8F8F6',
   },
 
   /* Profile */
@@ -205,14 +205,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#E4E4E0',
   },
 
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#111827',
+    backgroundColor: '#1C1C1A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -230,13 +230,13 @@ const styles = StyleSheet.create({
 
   name: {
     fontSize: 16,
-    color: '#111827',
+    color: '#1C1C1A',
     fontFamily: 'Outfit_700Bold',
   },
 
   email: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#5B5B56',
     marginTop: 2,
     fontFamily: 'Outfit_400Regular',
   },
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginHorizontal: 20,
     fontSize: 13,
-    color: '#6B7280',
+    color: '#5B5B56',
     fontFamily: 'Outfit_600SemiBold',
     textTransform: 'uppercase',
   },
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4E4E0',
     overflow: 'hidden',
   },
 
@@ -277,13 +277,13 @@ const styles = StyleSheet.create({
 
   rowText: {
     fontSize: 15,
-    color: '#111827',
+    color: '#1C1C1A',
     fontFamily: 'Outfit_500Medium',
   },
 
   separator: {
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E4E4E0',
     marginLeft: 48,
   },
 
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
   },
 
   logoutText: {
-    color: '#DC2626',
+    color: '#A8322A',
     fontSize: 16,
     fontFamily: 'Outfit_600SemiBold',
   },
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
   width: 48,
   height: 48,
   borderRadius: 24,
-  backgroundColor: '#111827',
+  backgroundColor: '#1C1C1A',
   alignItems: 'center',
   justifyContent: 'center',
 },
@@ -327,7 +327,7 @@ smallAvatarText: {
 
 subText: {
   fontSize: 14,
-  color: '#6B7280',
+  color: '#5B5B56',
   marginTop: 2,
   fontFamily: 'Outfit_400Regular',
 },

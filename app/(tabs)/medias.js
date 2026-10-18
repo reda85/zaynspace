@@ -14,6 +14,8 @@ import { requestReport } from '../../lib/api';
 import { cachedSelect } from '../../lib/offline';
 import { supabase } from '../../lib/supabase';
 import { selectedProjectAtom } from '../../store/atoms';
+import { HeaderButton, ScreenHeader } from '../../components/ui/ScreenHeader';
+import { C } from '../../constants/theme';
 
 const IMAGE_SIZE = Dimensions.get('window').width / 3 - 16;
 
@@ -32,7 +34,7 @@ function SkeletonBox({ width, height, borderRadius = 8, style }) {
     return (
         <Animated.View
             style={[
-                { width, height, borderRadius, backgroundColor: '#E5E7EB', opacity: anim },
+                { width, height, borderRadius, backgroundColor: '#E4E4E0', opacity: anim },
                 style,
             ]}
         />
@@ -94,26 +96,6 @@ export default function MediaGalleryScreen() {
     setSelectedIds(new Set());
   }, []);
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerTitleAlign: 'center',
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 10 }}>
-          <View style={styles.headerButton}>
-            <Feather name="arrow-left" size={20} color="#000" />
-          </View>
-        </TouchableOpacity>
-      ),
-      headerRight: () => (
-        <TouchableOpacity onPress={toggleMode} style={{ marginRight: 16 }}>
-          <View style={styles.headerButton}>
-            {selectionMode ? <MousePointer size={20} color="black" /> : <Eye size={20} color="black" />}
-          </View>
-        </TouchableOpacity>
-      ),
-      headerTitleStyle: { fontFamily: 'Outfit_700Bold', fontSize: 24, color: 'black' },
-    });
-  }, [navigation, selectionMode, toggleMode]);
 
   // Fetch plans
   useEffect(() => {
@@ -314,8 +296,30 @@ export default function MediaGalleryScreen() {
     </View>
   );
 
+  const plural = (n, one, many) => `${n} ${n > 1 ? many : one}`;
+  const headerSubtitle = loading
+    ? ' '
+    : [plural(media.length, 'photo', 'photos'), selectionMode && selectedIds.size > 0
+        ? plural(selectedIds.size, 'sélectionnée', 'sélectionnées')
+        : null].filter(Boolean).join(', ');
+
   return (
     <View style={styles.container}>
+      <ScreenHeader
+        style={{ marginHorizontal: -12 }}
+        title="Médias"
+        subtitle={headerSubtitle}
+        right={
+          <HeaderButton
+            label={selectionMode ? 'Mode sélection, passer en mode lecture' : 'Mode lecture, passer en mode sélection'}
+            onPress={toggleMode}
+          >
+            {selectionMode
+              ? <MousePointer size={19} color={C.encre} strokeWidth={1.9} />
+              : <Eye size={19} color={C.encre} strokeWidth={1.9} />}
+          </HeaderButton>
+        }
+      />
       {/* Active Filters Badge */}
       {hasActiveFilters && (
         <View style={styles.activeFiltersBadge}>
@@ -327,7 +331,7 @@ export default function MediaGalleryScreen() {
             ].filter(Boolean).join(' • ')}
           </Text>
           <TouchableOpacity onPress={handleClearFilters} style={styles.clearFiltersBtn}>
-            <X size={16} color="#6D28D9" />
+            <X size={16} color="#2C4F91" />
           </TouchableOpacity>
         </View>
       )}
@@ -399,7 +403,7 @@ export default function MediaGalleryScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Filtres</Text>
               <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
-                <X size={24} color="#374151" />
+                <X size={24} color="#33332F" />
               </TouchableOpacity>
             </View>
 
@@ -533,9 +537,8 @@ export default function MediaGalleryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F8F8F6',
     paddingHorizontal: 12,
-    paddingTop: 16
   },
   headerButton: {
     backgroundColor: 'white',
@@ -553,7 +556,7 @@ const styles = StyleSheet.create({
   groupDateText: {
     fontFamily: 'Outfit_700Bold',
     fontSize: 14,
-    color: '#374151',
+    color: '#33332F',
     marginBottom: 8,
     marginTop: 12,
     marginLeft: 4
@@ -589,17 +592,19 @@ selected: {
   emptyText: {
     fontFamily: 'Outfit_600SemiBold',
     fontSize: 16,
-    color: '#9CA3AF',
+    color: '#8A8A84',
   },
 
   // Active Filters Badge
   activeFiltersBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#EDF1F8',
+    borderWidth: 1,
+    borderColor: '#CDD8EA',
     paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 12,
     gap: 8,
   },
@@ -607,7 +612,7 @@ selected: {
     flex: 1,
     fontFamily: 'Outfit_500Medium',
     fontSize: 12,
-    color: '#6D28D9',
+    color: '#2C4F91',
   },
   clearFiltersBtn: {
     padding: 4,
@@ -623,7 +628,9 @@ selected: {
     gap: 12,
   },
   filterFloatingBtn: {
-    backgroundColor: 'lightgrey',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D3D3CE',
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -633,7 +640,7 @@ selected: {
     position: 'relative',
   },
   filterActiveBtn: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#2C4F91',
   },
   filterDot: {
     position: 'absolute',
@@ -645,7 +652,7 @@ selected: {
     backgroundColor: '#FCD34D',
   },
   downloadFloatingBtn: {
-    backgroundColor: 'black',
+    backgroundColor: '#1C1C1A',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
@@ -678,12 +685,12 @@ selected: {
     justifyContent: 'space-between',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#E4E4E0',
   },
   modalTitle: {
     fontFamily: 'Outfit_700Bold',
     fontSize: 20,
-    color: '#111827',
+    color: '#1C1C1A',
   },
   modalBody: {
     padding: 20,
@@ -694,14 +701,14 @@ selected: {
   filterLabel: {
     fontFamily: 'Outfit_600SemiBold',
     fontSize: 16,
-    color: '#374151',
+    color: '#33332F',
     marginBottom: 12,
   },
   plansList: {
     flexDirection: 'row',
   },
   planChip: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3F3F0',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
@@ -713,7 +720,7 @@ selected: {
   planChipText: {
     fontFamily: 'Outfit_500Medium',
     fontSize: 14,
-    color: '#6B7280',
+    color: '#5B5B56',
   },
   planChipTextActive: {
     color: 'white',
@@ -728,13 +735,13 @@ selected: {
   dateInputLabel: {
     fontFamily: 'Outfit_500Medium',
     fontSize: 13,
-    color: '#6B7280',
+    color: '#5B5B56',
     marginBottom: 6,
   },
   dateInput: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8F8F6',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4E4E0',
     borderRadius: 8,
     paddingVertical: 12,
     paddingHorizontal: 12,
@@ -742,7 +749,7 @@ selected: {
   dateInputText: {
     fontFamily: 'Outfit_500Medium',
     fontSize: 14,
-    color: '#374151',
+    color: '#33332F',
   },
   clearDatesBtn: {
     marginTop: 12,
@@ -751,18 +758,18 @@ selected: {
   clearDatesBtnText: {
     fontFamily: 'Outfit_500Medium',
     fontSize: 13,
-    color: '#6D28D9',
+    color: '#2C4F91',
   },
   modalFooter: {
     flexDirection: 'row',
     padding: 20,
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#E4E4E0',
   },
   clearAllBtn: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3F3F0',
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
@@ -770,7 +777,7 @@ selected: {
   clearAllBtnText: {
     fontFamily: 'Outfit_600SemiBold',
     fontSize: 15,
-    color: '#6B7280',
+    color: '#5B5B56',
   },
   applyBtn: {
     flex: 1,

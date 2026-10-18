@@ -114,7 +114,7 @@ export default function AccountScreen() {
 
         <View style={styles.infoRow}>
           
-            <User size={16} color="#6B7280" />
+            <User size={16} color="#5B5B56" />
             <View style={styles.infoText}>
             <Text style={styles.infoLabel}>Nom</Text>
             <Text style={styles.infoValue}>{name}</Text>
@@ -127,7 +127,7 @@ export default function AccountScreen() {
       <View style={styles.card}>
         
         <View style={styles.infoRow}>
-          <Mail size={18} color="#6B7280" />
+          <Mail size={18} color="#5B5B56" />
           <View style={styles.infoText}>
             <Text style={styles.infoLabel}>Email</Text>
             <Text style={styles.infoValue}>{email}</Text>
@@ -137,7 +137,7 @@ export default function AccountScreen() {
         <View style={styles.separator} />
 
         <View style={styles.infoRow}>
-          <ShieldCheck size={18} color="#6B7280" />
+          <ShieldCheck size={18} color="#5B5B56" />
           <View style={styles.infoText}>
             <Text style={styles.infoLabel}>Statut</Text>
             <Text style={styles.infoValue}>{memberStatus}</Text>
@@ -152,7 +152,7 @@ export default function AccountScreen() {
           onPress={onDeleteAccount}
           activeOpacity={0.85}
         >
-          <Trash2 size={18} color="#DC2626" />
+          <Trash2 size={18} color="#A8322A" />
           <Text style={styles.deleteText}>Supprimer mon compte</Text>
         </TouchableOpacity>
       </View>
@@ -165,7 +165,7 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F8F8F6',
     paddingHorizontal: 16,
   },
 
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4E4E0',
     padding: 16,
     marginTop: 16,
   },
@@ -203,14 +203,14 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E4E4E0',
   },
 
   cameraBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#111827',
+    backgroundColor: '#1C1C1A',
     borderRadius: 14,
     padding: 6,
   },
@@ -229,18 +229,18 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: 'Outfit_500Medium',
     fontSize: 14,
-    color: '#6B7280',
+    color: '#5B5B56',
   },
 
   input: {
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E4E4E0',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontFamily: 'Outfit_500Medium',
     fontSize: 16,
-    color: '#111827',
+    color: '#1C1C1A',
   },
 
   infoRow: {
@@ -256,18 +256,18 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontFamily: 'Outfit_500Medium',
     fontSize: 13,
-    color: '#6B7280',
+    color: '#5B5B56',
   },
 
   infoValue: {
     fontFamily: 'Outfit_600SemiBold',
     fontSize: 15,
-    color: '#111827',
+    color: '#1C1C1A',
   },
 
   separator: {
     height: 1,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E4E4E0',
     marginVertical: 14,
   },
 
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   },
 
   deleteText: {
-    color: '#DC2626',
+    color: '#A8322A',
     fontSize: 16,
     fontFamily: 'Outfit_600SemiBold',
   },

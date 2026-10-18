@@ -218,7 +218,7 @@ export default function ImagePinPlacementScreen() {
         : (pin?.x != null && pin?.y != null);
     const currentCategory = categories.find(c => c.id === pin?.category_id) || categories[0];
     const currentStatus = statuses.find(s => s.id === pin?.status_id) || statuses[0];
-    const currentStatusColor = currentStatus?.color || '#2563eb';
+    const currentStatusColor = currentStatus?.color || '#2C4F91';
 
     // Calculate zoom levels and tiles
     const maxLevel = useMemo(() => {
@@ -642,7 +642,7 @@ export default function ImagePinPlacementScreen() {
                 >
                     {isLoadingImage ? (
                         <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="large" color="#2563eb" />
+                            <ActivityIndicator size="large" color="#2C4F91" />
                             <Text style={styles.loadingText}>Chargement de l'image...</Text>
                         </View>
                     ) : (
@@ -703,7 +703,7 @@ export default function ImagePinPlacementScreen() {
                     <View style={styles.bottomMenuContent}>
                         {!canPlacePin ? (
                             <View style={styles.instructionSection}>
-                                <View style={[styles.iconCircleLarge, { backgroundColor: '#6B7280' }]}>
+                                <View style={[styles.iconCircleLarge, { backgroundColor: '#5B5B56' }]}>
                                     <MapPin size={24} color="#fff" />
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 16 }}>
@@ -715,7 +715,7 @@ export default function ImagePinPlacementScreen() {
                             <>
                                 <View style={styles.buttonRow}>
                                     <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={handleCancelPlacement} disabled={isSaving}>
-                                        <CloseIcon size={18} color="#374151" />
+                                        <CloseIcon size={18} color="#33332F" />
                                         <Text style={styles.buttonSecondaryText}>Annuler</Text>
                                     </TouchableOpacity>
                                     <TouchableOpacity style={[styles.button, styles.buttonPrimary]} onPress={handleConfirmPlacement} disabled={isSaving}>
@@ -826,36 +826,36 @@ const TileImage = React.memo(({ uri, left, top, width, height }) => (
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#222' },
-    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#e5e7eb', backgroundColor: '#fff' },
-    iconCircle: { backgroundColor: '#f3f4f6', borderRadius: 9999, padding: 8, justifyContent: 'center', alignItems: 'center' },
-    removeButton: { backgroundColor: '#fee2e2', paddingHorizontal: 12 },
-    removeButtonText: { fontSize: 14, fontFamily: 'Outfit_600SemiBold', color: '#dc2626' },
+    header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E4E4E0', backgroundColor: '#fff' },
+    iconCircle: { backgroundColor: '#F3F3F0', borderRadius: 9999, padding: 8, justifyContent: 'center', alignItems: 'center' },
+    removeButton: { backgroundColor: '#F9ECEA', paddingHorizontal: 12 },
+    removeButtonText: { fontSize: 14, fontFamily: 'Outfit_600SemiBold', color: '#A8322A' },
     headerTitle: { fontSize: 18, fontFamily: 'Outfit_600SemiBold', color: '#111' },
-    headerSubtitle: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 2 },
+    headerSubtitle: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginTop: 2 },
     gestureContainer: { flex: 1, overflow: 'hidden' },
     imageContainer: { position: 'absolute', backgroundColor: 'white' },
     pinContainer: { position: 'absolute', zIndex: 10, alignItems: 'center', justifyContent: 'center', width: 36, height: 36, marginLeft: -18, marginTop: -18 },
     pinCircle: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 8 },
-    bottomMenu: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingHorizontal: 16, paddingTop: 12 },
+    bottomMenu: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E4E4E0', paddingHorizontal: 16, paddingTop: 12 },
     bottomMenuContent: { minHeight: 100 },
     buttonRow: { flexDirection: 'row', gap: 12 },
     button: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, gap: 6 },
-    buttonPrimary: { backgroundColor: '#2563eb' },
+    buttonPrimary: { backgroundColor: '#2C4F91' },
     buttonPrimaryText: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#fff' },
-    buttonSecondary: { backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb' },
-    buttonSecondaryText: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#374151' },
-    instructionSection: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#f9fafb', borderRadius: 12 },
+    buttonSecondary: { backgroundColor: '#F3F3F0', borderWidth: 1, borderColor: '#E4E4E0' },
+    buttonSecondaryText: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#33332F' },
+    instructionSection: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: '#F8F8F6', borderRadius: 12 },
     iconCircleLarge: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
     instructionTitle: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#111' },
-    instructionText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 4 },
-    removeFromPlanButton: { marginTop: 8, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#fee2e2', borderRadius: 6, alignSelf: 'flex-start' },
-    removeFromPlanText: { fontSize: 13, fontFamily: 'Outfit_600SemiBold', color: '#dc2626' },
-    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f9fafb', padding: 20 },
-    errorText: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#ef4444', marginBottom: 8 },
-    errorSubtext: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginBottom: 8, textAlign: 'center' },
-    errorDebug: { fontSize: 12, fontFamily: 'Courier', color: '#9CA3AF', marginTop: 8, textAlign: 'center', paddingHorizontal: 20 },
-    backButton: { marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#2563eb', borderRadius: 8 },
+    instructionText: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginTop: 4 },
+    removeFromPlanButton: { marginTop: 8, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#F9ECEA', borderRadius: 6, alignSelf: 'flex-start' },
+    removeFromPlanText: { fontSize: 13, fontFamily: 'Outfit_600SemiBold', color: '#A8322A' },
+    errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F8F6', padding: 20 },
+    errorText: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#A8322A', marginBottom: 8 },
+    errorSubtext: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginBottom: 8, textAlign: 'center' },
+    errorDebug: { fontSize: 12, fontFamily: 'Courier', color: '#8A8A84', marginTop: 8, textAlign: 'center', paddingHorizontal: 20 },
+    backButton: { marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#2C4F91', borderRadius: 8 },
     backButtonText: { color: '#fff', fontSize: 16, fontFamily: 'Outfit_600SemiBold' },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f9fafb' },
-    loadingText: { fontSize: 16, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 12 },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F8F6' },
+    loadingText: { fontSize: 16, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginTop: 12 },
 });

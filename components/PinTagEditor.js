@@ -173,40 +173,25 @@ useEffect(() => {
 
     return (
         <View style={styles.wrapper}>
-            {/* ── Add tag button ── */}
-            <TouchableOpacity
-                style={styles.addTagButton}
-                onPress={() => setShowSheet(true)}
-            >
-                <View style={styles.iconWrapper}>
-                    <Feather name="tag" size={16} color="#333" />
-                </View>
-                <Text style={styles.addTagButtonText}>
-                    {pinTags.length > 0 ? `${pinTags.length} tag(s)` : 'Ajouter tags'}
-                </Text>
-                {pinTags.length > 0 && (
-                    <Feather name="chevron-down" size={16} color="#333" style={{ marginLeft: 'auto' }} />
-                )}
-            </TouchableOpacity>
-
-            {/* ── Chips row ── */}
-            {pinTags.length > 0 && (
-                <View style={styles.chipsRow}>
-                    {pinTags.map((tag) => (
-                        <View key={tag.id} style={styles.chip}>
-                            <Feather name="tag" size={10} color="#6D28D9" style={{ marginRight: 3 }} />
-                            <Text style={styles.chipText} numberOfLines={1}>{tag.name}</Text>
-                            <TouchableOpacity
-                                onPress={() => handleRemoveChip(tag)}
-                                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                                disabled={saving}
-                            >
-                                <Feather name="x" size={10} color="#6D28D9" />
-                            </TouchableOpacity>
-                        </View>
-                    ))}
-                </View>
-            )}
+            {/* Tags du pin (pastilles grises) puis le bouton d'ajout, sur une ligne */}
+            <View style={styles.chipsRow}>
+                {pinTags.map((tag) => (
+                    <View key={tag.id} style={styles.chip}>
+                        <Text style={styles.chipText} numberOfLines={1}>{tag.name}</Text>
+                        <TouchableOpacity
+                            onPress={() => handleRemoveChip(tag)}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            disabled={saving}
+                            accessibilityLabel={`Retirer le tag ${tag.name}`}
+                        >
+                            <Feather name="x" size={11} color="#5B5B56" />
+                        </TouchableOpacity>
+                    </View>
+                ))}
+                <TouchableOpacity style={styles.addTagButton} onPress={() => setShowSheet(true)}>
+                    <Text style={styles.addTagButtonText}>{pinTags.length > 0 ? '+ Tag' : '+ Ajouter des tags'}</Text>
+                </TouchableOpacity>
+            </View>
 
             {/* ── Bottom sheet ── */}
             <Modal
@@ -238,17 +223,17 @@ useEffect(() => {
 
                         {/* Search */}
                         <View style={styles.searchRow}>
-                            <Feather name="search" size={15} color="#9CA3AF" style={{ marginRight: 8 }} />
+                            <Feather name="search" size={15} color="#8A8A84" style={{ marginRight: 8 }} />
                             <TextInput
                                 style={styles.searchInput}
                                 placeholder="Rechercher ou créer un tag..."
-                                placeholderTextColor="#9CA3AF"
+                                placeholderTextColor="#8A8A84"
                                 value={search}
                                 onChangeText={setSearch}
                             />
                             {search.length > 0 && (
                                 <TouchableOpacity onPress={() => setSearch('')}>
-                                    <Feather name="x-circle" size={15} color="#9CA3AF" />
+                                    <Feather name="x-circle" size={15} color="#8A8A84" />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -256,7 +241,7 @@ useEffect(() => {
                         {/* List */}
                         {loadingTags ? (
                             <View style={styles.emptyBox}>
-                                <ActivityIndicator color="#6D28D9" />
+                                <ActivityIndicator color="#2C4F91" />
                             </View>
                         ) : filteredTags.length === 0 ? (
                             <View style={styles.emptyBox}>
@@ -297,11 +282,11 @@ useEffect(() => {
                                         disabled={creatingTag}
                                     >
                                         {creatingTag ? (
-                                            <ActivityIndicator size="small" color="#6D28D9" />
+                                            <ActivityIndicator size="small" color="#2C4F91" />
                                         ) : (
                                             <>
                                                 <View style={[styles.tagBadge, styles.tagBadgeCreate]}>
-                                                    <Feather name="plus" size={13} color="#6D28D9" />
+                                                    <Feather name="plus" size={13} color="#2C4F91" />
                                                 </View>
                                                 <Text style={styles.createTagInlineText}>
                                                     Créer "{search.trim()}"
@@ -324,7 +309,7 @@ useEffect(() => {
                                                 <Feather
                                                     name="tag"
                                                     size={13}
-                                                    color={selected ? '#6D28D9' : '#9CA3AF'}
+                                                    color={selected ? '#2C4F91' : '#8A8A84'}
                                                 />
                                             </View>
                                             <Text style={[styles.tagName, selected && styles.tagNameActive]}>
@@ -334,7 +319,7 @@ useEffect(() => {
                                                 <Feather
                                                     name="check"
                                                     size={16}
-                                                    color="#6D28D9"
+                                                    color="#2C4F91"
                                                     style={{ marginLeft: 'auto' }}
                                                 />
                                             )}
@@ -364,54 +349,43 @@ const styles = StyleSheet.create({
         gap: 8,
     },
 
-    // ── Add tag button ───────────────────────────────────────────────────────
+    // ── Bouton d'ajout et pastilles ─────────────────────────────────────────
     addTagButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        height: 28,
+        paddingHorizontal: 10,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#ddd',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 9999,
-        alignSelf: 'flex-start',
-    },
-    iconWrapper: {
-        backgroundColor: 'white',
-        borderRadius: 9999,
-        padding: 6,
+        borderStyle: 'dashed',
+        borderColor: '#D3D3CE',
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
     },
     addTagButtonText: {
-        color: '#333',
-        fontFamily: 'Outfit_400Regular',
-        fontSize: 14,
+        color: '#5B5B56',
+        fontFamily: 'Outfit_500Medium',
+        fontSize: 12,
     },
-
-    // ── Chips ────────────────────────────────────────────────────────────────
     chipsRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+        alignItems: 'center',
         gap: 6,
     },
     chip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EDE9FE',
-        borderWidth: 1,
-        borderColor: '#C4B5FD',
-        borderRadius: 20,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        gap: 3,
-        maxWidth: 160,
+        backgroundColor: '#EEEEEB',
+        borderRadius: 14,
+        height: 28,
+        paddingLeft: 10,
+        paddingRight: 8,
+        gap: 6,
+        maxWidth: 180,
     },
     chipText: {
-        fontSize: 11,
-        fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        fontSize: 12,
+        fontFamily: 'Outfit_500Medium',
+        color: '#1C1C1A',
         flexShrink: 1,
     },
 
@@ -444,9 +418,9 @@ const styles = StyleSheet.create({
     searchRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8F8F6',
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         borderRadius: 10,
         paddingHorizontal: 12,
         paddingVertical: 9,
@@ -457,7 +431,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 14,
         fontFamily: 'Outfit_400Regular',
-        color: '#111827',
+        color: '#1C1C1A',
     },
 
     // ── Tag rows ─────────────────────────────────────────────────────────────
@@ -468,22 +442,22 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     tagRowActive: {
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
     },
     tagBadge: {
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#F3F3F0',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
     },
     tagBadgeActive: {
-        backgroundColor: '#DDD6FE',
+        backgroundColor: '#CDD8EA',
     },
     tagBadgeCreate: {
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
     },
     tagName: {
         flex: 1,
@@ -493,7 +467,7 @@ const styles = StyleSheet.create({
     },
     tagNameActive: {
         fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        color: '#2C4F91',
     },
 
     // ── Create tag — inline ──────────────────────────────────────────────────
@@ -503,14 +477,14 @@ const styles = StyleSheet.create({
         paddingVertical: 15,
         paddingHorizontal: 20,
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        borderBottomColor: '#F3F3F0',
         marginBottom: 4,
     },
     createTagInlineText: {
         flex: 1,
         fontSize: 16,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        color: '#2C4F91',
     },
 
     // ── Create tag — centered (no results) ───────────────────────────────────
@@ -522,14 +496,14 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 13,
         fontFamily: 'Outfit_400Regular',
-        color: '#9CA3AF',
+        color: '#8A8A84',
         textAlign: 'center',
     },
     createTagButton: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: '#6D28D9',
+        backgroundColor: '#2C4F91',
         paddingHorizontal: 16,
         paddingVertical: 10,
         borderRadius: 20,
@@ -546,7 +520,7 @@ const styles = StyleSheet.create({
     doneButton: {
         marginTop: 12,
         marginHorizontal: 20,
-        backgroundColor: '#6D28D9',
+        backgroundColor: '#2C4F91',
         borderRadius: 10,
         paddingVertical: 14,
         alignItems: 'center',

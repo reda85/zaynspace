@@ -1,4 +1,5 @@
 // app/_layout.tsx
+import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold, useFonts } from '@expo-google-fonts/outfit'
 import { Stack } from 'expo-router'
 import { Text, TouchableOpacity, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -14,19 +15,19 @@ import { OfflineScreen } from '../components/OfflineScreen'
 // attente d'envoi sont sur l'appareil et ne sont pas perdues.
 export function ErrorBoundary({ error, retry }) {
   return (
-    <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#F5F7FA' }}>
-      <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8, color: '#111827' }}>
+    <View style={{ flex: 1, justifyContent: 'center', padding: 24, backgroundColor: '#F8F8F6' }}>
+      <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8, color: '#1C1C1A' }}>
         Une erreur est survenue
       </Text>
-      <Text style={{ color: '#4B5563', marginBottom: 16 }}>
+      <Text style={{ color: '#5B5B56', marginBottom: 16 }}>
         Vos modifications en attente sont conservées sur l'appareil. Relancez l'écran ; si l'erreur revient, envoyez-nous le message ci-dessous.
       </Text>
-      <Text selectable style={{ fontFamily: 'Courier', fontSize: 12, color: '#991B1B', marginBottom: 24 }}>
+      <Text selectable style={{ fontFamily: 'Courier', fontSize: 12, color: '#A8322A', marginBottom: 24 }}>
         {String(error?.message ?? error)}
       </Text>
       <TouchableOpacity
         onPress={() => { retry(); }}
-        style={{ backgroundColor: '#111827', borderRadius: 10, paddingVertical: 14, alignItems: 'center' }}
+        style={{ backgroundColor: '#1C1C1A', borderRadius: 10, paddingVertical: 14, alignItems: 'center' }}
       >
         <Text style={{ color: 'white', fontWeight: '600' }}>Réessayer</Text>
       </TouchableOpacity>
@@ -35,6 +36,15 @@ export function ErrorBoundary({ error, retry }) {
 }
 
 export default function RootLayout() {
+  // Polices de l'application, chargées une fois pour toute l'application.
+  const [fontsLoaded] = useFonts({
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+  })
+  if (!fontsLoaded) return null
+
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
@@ -51,11 +61,11 @@ export default function RootLayout() {
             <Stack.Screen name="DrawingScreen" options={{ headerShown: false }} />
             <Stack.Screen name="CameraScreen" options={{ headerShown: false }} />
             <Stack.Screen name="ImageSnippetScreen" options={{ headerShown: false }} />
-            <Stack.Screen name="AccountScreen" options={{ headerShown: true, headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 } }} />
-            <Stack.Screen name="select-project" options={{ headerShown: true, headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 } }} />
+            <Stack.Screen name="AccountScreen" options={{ headerShown: true, headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 } }} />
+            <Stack.Screen name="select-project" options={{ headerShown: true, headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 } }} />
             <Stack.Screen name="PinPlacementScreen" options={{ headerShown: false }} />
-            <Stack.Screen name="StorageDataScreen" options={{ headerShown: true, headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 } }} />
-            <Stack.Screen name="discussions/chat" options={{ headerShown: true, headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 } }} />
+            <Stack.Screen name="StorageDataScreen" options={{ headerShown: true, headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 } }} />
+            <Stack.Screen name="discussions/chat" options={{ headerShown: true, headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 } }} />
           </Stack>
         </AuthGate>
         <OfflineScreen />

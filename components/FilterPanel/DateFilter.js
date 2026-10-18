@@ -27,8 +27,8 @@ export default function DateFilter({ active, onToggle, tags, setTags }) {
                         renderActiveText={false}
                         renderInActiveText={false}
                         circleBorderWidth={0}
-                        backgroundActive="#2563eb"
-                        backgroundInactive="#d1d5db"
+                        backgroundActive="#2C4F91"
+                        backgroundInactive="#D3D3CE"
                         circleActiveColor="#fff"
                         circleInActiveColor="#fff"
                     />
@@ -49,7 +49,7 @@ export default function DateFilter({ active, onToggle, tags, setTags }) {
                                     <Feather
                                         name={option.icon}
                                         size={13}
-                                        color={isSelected ? '#fff' : '#6B7280'}
+                                        color={isSelected ? '#fff' : '#5B5B56'}
                                     />
                                     <Text style={[styles.pillText, isSelected && styles.pillTextSelected]}>
                                         {option.label}
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     innerContainer: {
         backgroundColor: '#f5f5f4',
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#D3D3CE',
         padding: 8,
         borderRadius: 8,
         gap: 8,
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     label: {
-        color: '#374151',
+        color: '#33332F',
         fontSize: 12,
         fontWeight: '600',
         textTransform: 'capitalize',
@@ -108,16 +108,16 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         backgroundColor: '#fff',
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#D3D3CE',
     },
     pillSelected: {
-        backgroundColor: '#2563eb',
-        borderColor: '#2563eb',
+        backgroundColor: '#2C4F91',
+        borderColor: '#2C4F91',
     },
     pillText: {
         fontSize: 12,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#374151',
+        color: '#33332F',
     },
     pillTextSelected: {
         color: '#fff',

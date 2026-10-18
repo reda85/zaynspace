@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
   },
   actionButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: '#2C4F91',
     padding: 12,
     borderRadius: 5,
     alignItems: 'center',

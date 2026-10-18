@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   editActionBtnSave: {
-    backgroundColor: '#2563eb',
+    backgroundColor: '#2C4F91',
   },
 
   // ── Description — read mode ───────────────────────────────────────────────
@@ -748,7 +748,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#2563eb',
+    borderColor: '#2C4F91',
     padding: 12,
     minHeight: 80,
   },
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
     marginLeft: -5,
     marginTop: -5,
     borderRadius: 5,
-    backgroundColor: '#2563eb',
+    backgroundColor: '#2C4F91',
     borderWidth: 2,
     borderColor: '#fff',
   },

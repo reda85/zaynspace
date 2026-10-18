@@ -31,6 +31,7 @@ import {
   syncTickAtom,
 } from '../../../lib/offline';
 import { remoteTileUrl } from '../../../lib/tileUrl';
+import { HeaderTextButton, ScreenHeader } from '../../../components/ui/ScreenHeader';
 import { loadPinsFromSupabase } from '../../../services/supabaseService';
 import {
   categoriesAtom,
@@ -57,7 +58,7 @@ function SkeletonBox({ width, height, borderRadius = 8, style }) {
   return (
     <Animated.View
       style={[
-        { width, height, borderRadius, backgroundColor: '#E5E7EB', opacity: anim },
+        { width, height, borderRadius, backgroundColor: '#E4E4E0', opacity: anim },
         style,
       ]}
     />
@@ -210,19 +211,6 @@ export default function ProjectPlans() {
   const realtimeChannelRef = useRef(null);
   const pollingIntervalRef = useRef(null);
 
-  // ── Navigation header ───────────────────────────────────────────────────────
-  useEffect(() => {
-    navigation.setOptions({
-      title: 'Plans',
-      headerTitleAlign: 'center',
-      headerTitleStyle: { fontFamily: 'Outfit_700Bold', fontSize: 24, color: '#1A1A1A' },
-      headerRight: () => (
-        <TouchableOpacity onPress={() => setEditMode((prev) => !prev)}>
-          <Text style={styles.headerBtn}>{editMode ? 'Terminé' : 'Modifier'}</Text>
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation, editMode]);
 
   // ── Animate progress bar ────────────────────────────────────────────────────
   useEffect(() => {
@@ -528,8 +516,23 @@ export default function ProjectPlans() {
     ? plans.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
     : plans;
 
+  const totalPins = Object.values(pinCounts).reduce((n, c) => n + (Number(c) || 0), 0);
+  const plural = (n, one, many) => `${n} ${n > 1 ? many : one}`;
+
   return (
     <View style={styles.container}>
+      <ScreenHeader
+        style={{ marginHorizontal: -16 }}
+        title="Plans"
+        subtitle={loading ? ' ' : `${plural(plans.length, 'plan', 'plans')}, ${plural(totalPins, 'pin', 'pins')}`}
+        right={
+          <HeaderTextButton
+            label={editMode ? 'Terminé' : 'Modifier'}
+            active={editMode}
+            onPress={() => setEditMode((prev) => !prev)}
+          />
+        }
+      />
       <View style={styles.searchBar}>
         <Feather name="search" size={20} color="#999" style={{ marginRight: 8 }} />
         <TextInput
@@ -543,7 +546,7 @@ export default function ProjectPlans() {
 
       {!loading && plans.length > 0 && plans.some((p) => !offlinePlans[p.id]?.complete) && (
         <TouchableOpacity style={styles.offlineAll} onPress={saveAllForOffline} disabled={Object.keys(downloads).length > 0}>
-          <Feather name="download-cloud" size={15} color="#111827" />
+          <Feather name="download-cloud" size={15} color="#1C1C1A" />
           <Text style={styles.offlineAllText}>
             {Object.keys(downloads).length > 0 ? 'Enregistrement des plans…' : 'Rendre tous les plans disponibles hors ligne'}
           </Text>
@@ -565,12 +568,12 @@ export default function ProjectPlans() {
             <View style={styles.cardHeader}>
               <View style={styles.planNameContainer}>
                 <View style={styles.pinIconCircle}>
-                  <MapPinned size={20} color="#374151" />
+                  <MapPinned size={20} color="#33332F" />
                 </View>
                 <Text style={styles.planName} numberOfLines={2} ellipsizeMode="tail">{item.name}</Text>
               </View>
               <View style={styles.pinCountContainer}>
-                <Feather name="map-pin" size={16} color="#6B7280" />
+                <Feather name="map-pin" size={16} color="#5B5B56" />
                 <Text style={styles.pinCountText}>{pinCounts[item.id] || 0}</Text>
               </View>
               <TouchableOpacity
@@ -584,9 +587,9 @@ export default function ProjectPlans() {
                     {Math.round((downloads[item.id].done / Math.max(1, downloads[item.id].total)) * 100)}%
                   </Text>
                 ) : offlinePlans[item.id]?.complete ? (
-                  <Feather name="check-circle" size={18} color="#059669" />
+                  <Feather name="check-circle" size={18} color="#2F6B4A" />
                 ) : (
-                  <Feather name="download-cloud" size={18} color="#6B7280" />
+                  <Feather name="download-cloud" size={18} color="#5B5B56" />
                 )}
               </TouchableOpacity>
             </View>
@@ -594,11 +597,11 @@ export default function ProjectPlans() {
             {editMode && (
               <View style={styles.actions}>
                 <TouchableOpacity style={styles.actionBtnRename} onPress={() => openRenameModal(item)}>
-                  <Feather name="edit-2" size={15} color="#111827" />
+                  <Feather name="edit-2" size={15} color="#1C1C1A" />
                   <Text style={styles.actionTextRename}>Renommer</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.actionBtnDelete} onPress={() => deletePlan(item)}>
-                  <Feather name="trash" size={15} color="#DC2626" />
+                  <Feather name="trash" size={15} color="#A8322A" />
                   <Text style={styles.actionTextDelete}>Supprimer</Text>
                 </TouchableOpacity>
               </View>
@@ -629,7 +632,7 @@ export default function ProjectPlans() {
                 disabled={uploadState.uploading}
                 style={styles.closeBtn}
               >
-                <Feather name="x" size={20} color="#6B7280" />
+                <Feather name="x" size={20} color="#5B5B56" />
               </TouchableOpacity>
             </View>
 
@@ -640,7 +643,7 @@ export default function ProjectPlans() {
               {uploadState.file && (
                 <View style={styles.fileInfo}>
                   <View style={styles.fileIconBox}>
-                    <Feather name="file-text" size={22} color="#374151" />
+                    <Feather name="file-text" size={22} color="#33332F" />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.fileName} numberOfLines={1}>{uploadState.file.name}</Text>
@@ -648,7 +651,7 @@ export default function ProjectPlans() {
                   </View>
                   {!uploadState.uploading && !uploadState.processing && !uploadState.success && (
                     <TouchableOpacity onPress={resetUpload}>
-                      <Feather name="x" size={18} color="#9CA3AF" />
+                      <Feather name="x" size={18} color="#8A8A84" />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -658,7 +661,7 @@ export default function ProjectPlans() {
               {uploadState.uploading && (
                 <View style={styles.progressBlock}>
                   <View style={styles.progressRow}>
-                    <ActivityIndicator size="small" color="#6D28D9" />
+                    <ActivityIndicator size="small" color="#2C4F91" />
                     <Text style={styles.progressLabel}>Upload en cours...</Text>
                   </View>
                   <View style={styles.progressTrack}>
@@ -671,7 +674,7 @@ export default function ProjectPlans() {
               {uploadState.processing && (
                 <View style={styles.progressBlock}>
                   <View style={styles.progressRow}>
-                    <ActivityIndicator size="small" color="#6D28D9" />
+                    <ActivityIndicator size="small" color="#2C4F91" />
                     <Text style={styles.progressLabel}>Génération des tiles...</Text>
                     <Text style={styles.progressPct}>{uploadState.progress}%</Text>
                   </View>
@@ -684,7 +687,7 @@ export default function ProjectPlans() {
                   </View>
                   {uploadState.estimatedTime ? (
                     <View style={styles.estimatedRow}>
-                      <Feather name="clock" size={12} color="#9CA3AF" />
+                      <Feather name="clock" size={12} color="#8A8A84" />
                       <Text style={styles.estimatedText}>Temps estimé: {uploadState.estimatedTime}</Text>
                     </View>
                   ) : null}
@@ -710,7 +713,7 @@ export default function ProjectPlans() {
               {/* Error */}
               {uploadState.error && (
                 <View style={styles.errorBox}>
-                  <Feather name="alert-circle" size={20} color="#DC2626" />
+                  <Feather name="alert-circle" size={20} color="#A8322A" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.errorTitle}>Erreur</Text>
                     <Text style={styles.errorBody}>{uploadState.error}</Text>
@@ -797,32 +800,32 @@ export default function ProjectPlans() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA', paddingHorizontal: 16, paddingTop: 12 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 8, paddingHorizontal: 12, marginBottom: 10, height: 44 },
-  searchInput: { flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 16, height: '100%', color: '#111827' },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 10, padding: 16, marginVertical: 6, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 8, elevation: 5, marginHorizontal: 8 },
+  container: { flex: 1, backgroundColor: '#F8F8F6', paddingHorizontal: 16 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, borderWidth: 1, borderColor: '#E4E4E0', paddingHorizontal: 12, marginBottom: 10, height: 44 },
+  searchInput: { flex: 1, fontFamily: 'Outfit_400Regular', fontSize: 16, height: '100%', color: '#1C1C1A' },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 14, borderWidth: 1, borderColor: '#E4E4E0', padding: 14, marginVertical: 5 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   planNameContainer: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 8 },
 
   // MapPin icon inside a light grey circle
-  pinIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  pinIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F3F3F0', alignItems: 'center', justifyContent: 'center' },
 
-  planName: { fontSize: 15, color: '#111827', fontFamily: 'Outfit_500Medium', flex: 1 },
+  planName: { fontSize: 15, color: '#1C1C1A', fontFamily: 'Outfit_500Medium', flex: 1 },
   pinCountContainer: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  pinCountText: { fontFamily: 'Outfit_400Regular', color: '#4B5563', fontSize: 14 },
+  pinCountText: { fontFamily: 'Outfit_400Regular', color: '#5B5B56', fontSize: 14 },
   offlineBtn: { marginLeft: 12, minWidth: 34, alignItems: 'center' },
-  offlineProgress: { fontFamily: 'Outfit_500Medium', color: '#111827', fontSize: 12 },
+  offlineProgress: { fontFamily: 'Outfit_500Medium', color: '#1C1C1A', fontSize: 12 },
   offlineAll: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8, paddingHorizontal: 4, marginBottom: 4 },
-  offlineAllText: { fontFamily: 'Outfit_500Medium', color: '#111827', fontSize: 13 },
+  offlineAllText: { fontFamily: 'Outfit_500Medium', color: '#1C1C1A', fontSize: 13 },
   actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
 
   // Renommer — grey border / white background / black text
-  actionBtnRename: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D1D5DB' },
-  actionTextRename: { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#111827' },
+  actionBtnRename: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D3D3CE' },
+  actionTextRename: { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#1C1C1A' },
 
   // Supprimer — red text on light red/pink background with matching border
-  actionBtnDelete: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FECACA' },
-  actionTextDelete: { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#DC2626' },
+  actionBtnDelete: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: '#F9ECEA', borderWidth: 1, borderColor: '#ECC9C3' },
+  actionTextDelete: { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#A8322A' },
 
   headerBtn: { color: '#000000', fontFamily: 'Outfit_700Bold', fontSize: 16, marginRight: 16 },
 
@@ -833,44 +836,44 @@ const styles = StyleSheet.create({
   // Upload modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   uploadModal: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  uploadModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  uploadModalTitle: { fontFamily: 'Outfit_700Bold', fontSize: 17, color: '#111827' },
-  uploadModalSubtitle: { fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#6B7280', marginTop: 2 },
+  uploadModalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 20, borderBottomWidth: 1, borderBottomColor: '#F3F3F0' },
+  uploadModalTitle: { fontFamily: 'Outfit_700Bold', fontSize: 17, color: '#1C1C1A' },
+  uploadModalSubtitle: { fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#5B5B56', marginTop: 2 },
   closeBtn: { padding: 4 },
   uploadModalBody: { padding: 20, gap: 16 },
-  fileInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F9FAFB', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#E5E7EB' },
-  fileIconBox: { backgroundColor: '#E5E7EB', borderRadius: 8, padding: 10 },
-  fileName: { fontFamily: 'Outfit_500Medium', fontSize: 14, color: '#111827' },
-  fileSize: { fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#6B7280', marginTop: 2 },
+  fileInfo: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F8F8F6', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#E4E4E0' },
+  fileIconBox: { backgroundColor: '#E4E4E0', borderRadius: 8, padding: 10 },
+  fileName: { fontFamily: 'Outfit_500Medium', fontSize: 14, color: '#1C1C1A' },
+  fileSize: { fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#5B5B56', marginTop: 2 },
   progressBlock: { gap: 8 },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  progressLabel: { fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#6B7280', flex: 1 },
-  progressPct: { fontFamily: 'Outfit_700Bold', fontSize: 13, color: '#111827' },
-  progressTrack: { height: 8, backgroundColor: '#F3F4F6', borderRadius: 99, overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#6D28D9', borderRadius: 99 },
+  progressLabel: { fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#5B5B56', flex: 1 },
+  progressPct: { fontFamily: 'Outfit_700Bold', fontSize: 13, color: '#1C1C1A' },
+  progressTrack: { height: 8, backgroundColor: '#F3F3F0', borderRadius: 99, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: '#2C4F91', borderRadius: 99 },
   estimatedRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  estimatedText: { fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#9CA3AF' },
-  backgroundNote: { backgroundColor: '#F3F4F6', borderRadius: 8, padding: 10 },
-  backgroundNoteText: { fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#4B5563', textAlign: 'center' },
+  estimatedText: { fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#8A8A84' },
+  backgroundNote: { backgroundColor: '#F3F3F0', borderRadius: 8, padding: 10 },
+  backgroundNoteText: { fontFamily: 'Outfit_400Regular', fontSize: 12, color: '#5B5B56', textAlign: 'center' },
   successBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#F0FDF4', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#BBF7D0' },
   successTitle: { fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#166534' },
   successBody: { fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#16A34A', marginTop: 2 },
-  errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#FEF2F2', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#FECACA' },
+  errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#F9ECEA', borderRadius: 10, padding: 14, borderWidth: 1, borderColor: '#ECC9C3' },
   errorTitle: { fontFamily: 'Outfit_700Bold', fontSize: 14, color: '#991B1B' },
-  errorBody: { fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#DC2626', marginTop: 2 },
-  uploadModalFooter: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  errorBody: { fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#A8322A', marginTop: 2 },
+  uploadModalFooter: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F3F3F0' },
   footerCancelBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8 },
-  footerCancelText: { fontFamily: 'Outfit_500Medium', fontSize: 14, color: '#6B7280' },
-  footerUploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#6D28D9', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
+  footerCancelText: { fontFamily: 'Outfit_500Medium', fontSize: 14, color: '#5B5B56' },
+  footerUploadBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#2C4F91', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 8 },
   footerUploadText: { fontFamily: 'Outfit_500Medium', fontSize: 14, color: '#FFF' },
 
   // Rename modal
   modalContainer: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 20, margin: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 10 },
-  modalTitle: { fontFamily: 'Outfit_700Bold', fontSize: 17, color: '#1A1A1A', marginBottom: 14 },
-  modalInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#111827', marginBottom: 16 },
+  modalTitle: { fontFamily: 'Outfit_700Bold', fontSize: 17, color: '#1C1C1A', marginBottom: 14 },
+  modalInput: { borderWidth: 1, borderColor: '#E4E4E0', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontFamily: 'Outfit_400Regular', fontSize: 15, color: '#1C1C1A', marginBottom: 16 },
   modalActions: { flexDirection: 'row', gap: 10 },
-  modalBtnCancel: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: '#F3F4F6', alignItems: 'center' },
-  modalBtnCancelText: { fontFamily: 'Outfit_500Medium', color: '#6B7280', fontSize: 15 },
+  modalBtnCancel: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: '#F3F3F0', alignItems: 'center' },
+  modalBtnCancelText: { fontFamily: 'Outfit_500Medium', color: '#5B5B56', fontSize: 15 },
   modalBtnConfirm: { flex: 1, paddingVertical: 12, borderRadius: 8, backgroundColor: 'black', alignItems: 'center' },
   modalBtnConfirmText: { fontFamily: 'Outfit_500Medium', color: '#FFFFFF', fontSize: 15 },
 });

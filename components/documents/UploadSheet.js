@@ -308,9 +308,9 @@ const styles = StyleSheet.create({
 
   buttons: { flexDirection: 'row', gap: 12, marginTop: 16 },
   btn: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  cancelBtn: { backgroundColor: '#F3F4F6' },
+  cancelBtn: { backgroundColor: '#F3F3F0' },
   cancelBtnText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: Colors.textSub },
   submitBtn: { backgroundColor: Colors.primary },
-  submitBtnDisabled: { backgroundColor: '#D1D5DB' },
+  submitBtnDisabled: { backgroundColor: '#D3D3CE' },
   submitBtnText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#fff' },
 });

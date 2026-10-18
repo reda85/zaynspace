@@ -90,7 +90,7 @@ export default function SignIn() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F8F8F6',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   brandName: {
     fontFamily: 'Lexend_800ExtraBold',
     fontSize: 28,
-    color: '#1A1A1A',
+    color: '#1C1C1A',
     letterSpacing: -0.5,
   },
   card: {
@@ -126,13 +126,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Outfit_700Bold',
     fontSize: 22,
     textAlign: 'center',
-    color: '#1A1A1A',
+    color: '#1C1C1A',
   },
   subtitle: {
     fontFamily: 'Outfit_400Regular',
     fontSize: 14,
     textAlign: 'center',
-    color: '#6B7280',
+    color: '#5B5B56',
     marginBottom: 24,
     marginTop: 4,
   },
@@ -142,17 +142,17 @@ const styles = StyleSheet.create({
   label: {
     fontFamily: 'Outfit_400Regular',
     fontSize: 14,
-    color: '#374151',
+    color: '#33332F',
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3F3F0',
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 14,
     fontFamily: 'Outfit_400Regular',
     fontSize: 15,
-    color: '#111827',
+    color: '#1C1C1A',
   },
   button: {
     marginTop: 20,
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
-    shadowColor: '#6D28D9',
+    shadowColor: '#2C4F91',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,

@@ -9,7 +9,6 @@ import { addPinToSupabase, deletePinFromSupabase, loadPinsFromSupabase, updatePi
 import { useIsFocused } from '@react-navigation/native';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { useAtom, useAtomValue } from 'jotai';
-import { ChevronLeft } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import uuid from 'react-native-uuid';
 
@@ -50,23 +49,9 @@ export default function MainScreen() {
             setImageName(myname);
             setPlanId(myplanid);
 
-            navigation.setOptions({
-                title: myname,
-                headerTitleAlign: 'center',
-                headerTitleStyle: {
-                    fontFamily: 'Outfit_700Bold',
-                    fontSize: 20,
-                    color: 'black',
-                },
-                headerLeft: () => (
-                    <TouchableOpacity
-                        onPress={() => router.navigate('/plans')}
-                        style={{ paddingRight: 10, paddingVertical: 5 }}
-                    >
-                        <ChevronLeft color="black" size={24} />
-                    </TouchableOpacity>
-                ),
-            });
+            // Le plan occupe tout l'écran ; la barre flottante (retour, nom, filtres)
+            // est dessinée par PdfViewerFilterOverlay.
+            navigation.setOptions({ headerShown: false });
         }
     }, [myname, myplanid]);
 
@@ -267,14 +252,14 @@ export default function MainScreen() {
         return (
             <SafeAreaView style={styles.container} edges={'bottom'}>
                 <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#2196F3" />
+                    <ActivityIndicator size="large" color="#2C4F91" />
                 </View>
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container} edges={'bottom'}>
+        <View style={styles.container}>
             <View style={styles.pdfContainer}>
                 <PdfViewerWithTiles
                     planId={myplanid}
@@ -289,16 +274,17 @@ export default function MainScreen() {
                     pdfName={imageName}
                     selectedProject={selectedProject}
                     plan_id={planId}
+                    onBack={() => router.navigate('/plans')}
                 />
             </View>
-        </SafeAreaView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f0f0f0',
+        backgroundColor: '#F8F8F6',
     },
     loadingContainer: {
         flex: 1,

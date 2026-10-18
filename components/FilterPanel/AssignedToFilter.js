@@ -50,8 +50,8 @@ export default function AssignedToFilter({ active, onToggle, selectedMembers, se
                         renderActiveText={false}
                         renderInActiveText={false}
                         circleBorderWidth={0}
-                        backgroundActive="#2563eb"
-                        backgroundInactive="#d1d5db"
+                        backgroundActive="#2C4F91"
+                        backgroundInactive="#D3D3CE"
                         circleActiveColor="#fff"
                         circleInActiveColor="#fff"
                     />
@@ -71,7 +71,7 @@ export default function AssignedToFilter({ active, onToggle, selectedMembers, se
                                             onPress={() => toggleMember(id)}
                                             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                                         >
-                                            <Feather name="x" size={11} color="#6D28D9" />
+                                            <Feather name="x" size={11} color="#2C4F91" />
                                         </TouchableOpacity>
                                     </View>
                                 ))}
@@ -82,13 +82,13 @@ export default function AssignedToFilter({ active, onToggle, selectedMembers, se
                             style={styles.pickerButton}
                             onPress={() => setShowBottomSheet(true)}
                         >
-                            <Feather name="users" size={14} color="#6D28D9" />
+                            <Feather name="users" size={14} color="#2C4F91" />
                             <Text style={styles.pickerButtonText}>
                                 {selectedMembers.length > 0
                                     ? `${selectedMembers.length} membre(s) sélectionné(s)`
                                     : 'Choisir un membre...'}
                             </Text>
-                            <Feather name="chevron-right" size={14} color="#6D28D9" style={{ marginLeft: 'auto' }} />
+                            <Feather name="chevron-right" size={14} color="#2C4F91" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
                     </View>
                 )}
@@ -113,17 +113,17 @@ export default function AssignedToFilter({ active, onToggle, selectedMembers, se
 
                         {/* Search bar */}
                         <View style={styles.searchRow}>
-                            <Feather name="search" size={15} color="#9CA3AF" style={{ marginRight: 8 }} />
+                            <Feather name="search" size={15} color="#8A8A84" style={{ marginRight: 8 }} />
                             <TextInput
                                 style={styles.searchInput}
                                 placeholder="Rechercher un membre..."
-                                placeholderTextColor="#9CA3AF"
+                                placeholderTextColor="#8A8A84"
                                 value={search}
                                 onChangeText={safeSetSearch}
                             />
                             {search.length > 0 && (
                                 <TouchableOpacity onPress={() => safeSetSearch('')}>
-                                    <Feather name="x-circle" size={15} color="#9CA3AF" />
+                                    <Feather name="x-circle" size={15} color="#8A8A84" />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -150,7 +150,7 @@ export default function AssignedToFilter({ active, onToggle, selectedMembers, se
                                     <Feather
                                         name="user-x"
                                         size={15}
-                                        color={selectedMembers.includes(NO_ASSIGNEE_KEY) ? '#6D28D9' : '#9CA3AF'}
+                                        color={selectedMembers.includes(NO_ASSIGNEE_KEY) ? '#2C4F91' : '#8A8A84'}
                                         style={{ marginRight: 10 }}
                                     />
                                     <Text style={[
@@ -160,7 +160,7 @@ export default function AssignedToFilter({ active, onToggle, selectedMembers, se
                                         Non assigné
                                     </Text>
                                     {selectedMembers.includes(NO_ASSIGNEE_KEY) && (
-                                        <Feather name="check" size={16} color="#6D28D9" style={{ marginLeft: 'auto' }} />
+                                        <Feather name="check" size={16} color="#2C4F91" style={{ marginLeft: 'auto' }} />
                                     )}
                                 </TouchableOpacity>
 
@@ -187,7 +187,7 @@ export default function AssignedToFilter({ active, onToggle, selectedMembers, se
                                                 <Feather
                                                     name="check"
                                                     size={16}
-                                                    color="#6D28D9"
+                                                    color="#2C4F91"
                                                     style={{ marginLeft: 'auto' }}
                                                 />
                                             )}
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     innerContainer: {
         backgroundColor: '#f5f5f4',
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#D3D3CE',
         padding: 8,
         borderRadius: 8,
         gap: 8,
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     label: {
-        color: '#374151',
+        color: '#33332F',
         fontSize: 12,
         fontWeight: '600',
         textTransform: 'capitalize',
@@ -246,9 +246,9 @@ const styles = StyleSheet.create({
     chip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
         borderWidth: 1,
-        borderColor: '#C4B5FD',
+        borderColor: '#CDD8EA',
         borderRadius: 20,
         paddingHorizontal: 8,
         paddingVertical: 4,
@@ -258,15 +258,15 @@ const styles = StyleSheet.create({
     chipText: {
         fontSize: 11,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        color: '#2C4F91',
         flexShrink: 1,
     },
     pickerButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
         borderWidth: 1,
-        borderColor: '#C4B5FD',
+        borderColor: '#CDD8EA',
         borderRadius: 8,
         paddingHorizontal: 10,
         paddingVertical: 8,
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     pickerButtonText: {
         fontSize: 12,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        color: '#2C4F91',
     },
 
     overlay: {
@@ -305,9 +305,9 @@ const styles = StyleSheet.create({
     searchRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8F8F6',
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         borderRadius: 10,
         paddingHorizontal: 12,
         paddingVertical: 9,
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 14,
         fontFamily: 'Outfit_400Regular',
-        color: '#111827',
+        color: '#1C1C1A',
     },
     memberRow: {
         flexDirection: 'row',
@@ -329,42 +329,42 @@ const styles = StyleSheet.create({
     },
     noAssigneeRow: {
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         borderStyle: 'dashed',
         marginBottom: 8,
     },
     memberRowActive: {
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
     },
     avatar: {
         width: 28,
         height: 28,
         borderRadius: 14,
-        backgroundColor: '#E5E7EB',
+        backgroundColor: '#E4E4E0',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 10,
     },
     avatarActive: {
-        backgroundColor: '#C4B5FD',
+        backgroundColor: '#CDD8EA',
     },
     avatarText: {
         fontSize: 12,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#6B7280',
+        color: '#5B5B56',
     },
     avatarTextActive: {
-        color: '#6D28D9',
+        color: '#2C4F91',
     },
     memberName: {
         flex: 1,
         fontSize: 14,
         fontFamily: 'Outfit_400Regular',
-        color: '#374151',
+        color: '#33332F',
     },
     memberNameActive: {
         fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        color: '#2C4F91',
     },
     emptyBox: {
         paddingVertical: 24,
@@ -373,11 +373,11 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 13,
         fontFamily: 'Outfit_400Regular',
-        color: '#9CA3AF',
+        color: '#8A8A84',
     },
     doneButton: {
         marginTop: 12,
-        backgroundColor: '#6D28D9',
+        backgroundColor: '#2C4F91',
         borderRadius: 10,
         paddingVertical: 14,
         alignItems: 'center',

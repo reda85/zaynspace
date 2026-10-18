@@ -17,7 +17,7 @@ const CustomCheckbox = ({ checked, onPress }) => (
             height: 22,
             borderRadius: 6,
             borderWidth: 2,
-            borderColor: checked ? 'black' : '#D1D5DB',
+            borderColor: checked ? 'black' : '#D3D3CE',
             backgroundColor: checked ? 'black' : 'white',
             alignItems: 'center',
             justifyContent: 'center',
@@ -80,12 +80,12 @@ const TaskListItem = memo(({
                         <Text style={styles.pinIdText}>#{pinNumber}</Text>
                         {pin.pdf_name ? (
                             <View style={styles.pdfNamePill}>
-                                <MapPinned size={14} color="#6B7280" />
+                                <MapPinned size={14} color="#5B5B56" />
                                 <Text style={styles.pdfNameText} numberOfLines={1} ellipsizeMode="tail">{pdfName}</Text>
                             </View>
                         ) : (
                             <View style={styles.pdfNamePill}>
-                                <MapPinOff size={14} color="#6B7280" />
+                                <MapPinOff size={14} color="#5B5B56" />
                                 <Text style={styles.pdfNameText}>Non localisée</Text>
                             </View>
                         )}
@@ -106,7 +106,7 @@ const TaskListItem = memo(({
                             </View>
                         )}
                         {pin.Status && (
-                            <View style={[styles.statusPill, { backgroundColor: pin.Status?.color || '#E5E7EB' }]}>
+                            <View style={[styles.statusPill, { backgroundColor: pin.Status?.color || '#E4E4E0' }]}>
                                 <Text style={styles.statusText}>{statusName}</Text>
                             </View>
                         )}
@@ -124,7 +124,7 @@ const TaskListItem = memo(({
                     />
                 ) : (
                     <View style={styles.thumbnailPlaceholder}>
-                        <MapPinned size={22} color="#D1D5DB" />
+                        <MapPinned size={22} color="#D3D3CE" />
                     </View>
                 )}
             </View>
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         gap: 8,
         borderBottomWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         paddingVertical: 12,
         paddingHorizontal: 12,
     },
@@ -157,17 +157,17 @@ const styles = StyleSheet.create({
     },
     textColumn: { flex: 1, flexDirection: 'column', justifyContent: 'center', gap: 6 },
     idPlanRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-    pinIdText: { fontSize: 12, color: '#6B7280', fontFamily: 'Outfit_400Regular' },
-    pdfNamePill: { backgroundColor: '#F3F4F6', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
-    pdfNameText: { fontSize: 12, color: '#6B7280', fontFamily: 'Outfit_400Regular', flexShrink: 1 },
-    pinName: { fontSize: 15, color: '#111827', fontFamily: 'Outfit_600SemiBold' },
+    pinIdText: { fontSize: 12, color: '#5B5B56', fontFamily: 'Outfit_400Regular' },
+    pdfNamePill: { backgroundColor: '#F3F3F0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 1 },
+    pdfNameText: { fontSize: 12, color: '#5B5B56', fontFamily: 'Outfit_400Regular', flexShrink: 1 },
+    pinName: { fontSize: 15, color: '#1C1C1A', fontFamily: 'Outfit_600SemiBold' },
     metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
-    assigneePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F4F6', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, gap: 4 },
+    assigneePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F3F3F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, gap: 4 },
     noassigneePill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF0F0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999, gap: 4 },
     assigneeText: { fontSize: 12, color: '#7E22CE', fontFamily: 'Outfit_400Regular' },
     nonassigneeText: { fontSize: 12, color: 'red', fontFamily: 'Outfit_400Regular' },
     statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
     statusText: { fontSize: 12, color: 'white', fontFamily: 'Outfit_400Regular' },
-    thumbnail: { width: 80, height: 80, borderRadius: 10, marginLeft: 8, backgroundColor: '#F3F4F6' },
-    thumbnailPlaceholder: { width: 80, height: 80, borderRadius: 10, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
+    thumbnail: { width: 80, height: 80, borderRadius: 10, marginLeft: 8, backgroundColor: '#F3F3F0' },
+    thumbnailPlaceholder: { width: 80, height: 80, borderRadius: 10, backgroundColor: '#F3F3F0', alignItems: 'center', justifyContent: 'center', marginLeft: 8 },
 });

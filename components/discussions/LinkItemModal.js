@@ -91,7 +91,7 @@ export default function LinkItemModal({ visible, onClose, onLink }) {
                 style={[styles.tab, activeType === key && styles.tabActive]}
                 onPress={() => { setActiveType(key); setQuery(''); load(key, ''); }}
               >
-                <Icon size={15} color={activeType === key ? '#6D28D9' : '#6B7280'} />
+                <Icon size={15} color={activeType === key ? '#2C4F91' : '#5B5B56'} />
                 <Text style={[styles.tabText, activeType === key && styles.tabTextActive]}>{label}</Text>
               </TouchableOpacity>
             ))}
@@ -99,11 +99,11 @@ export default function LinkItemModal({ visible, onClose, onLink }) {
 
           {/* Search */}
           <View style={styles.searchRow}>
-            <Feather name="search" size={16} color="#9CA3AF" />
+            <Feather name="search" size={16} color="#8A8A84" />
             <TextInput
               style={styles.searchInput}
               placeholder="Rechercher…"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#8A8A84"
               value={query}
               onChangeText={handleSearch}
             />
@@ -111,7 +111,7 @@ export default function LinkItemModal({ visible, onClose, onLink }) {
 
           {/* Results */}
           {loading ? (
-            <ActivityIndicator size="small" color="#6D28D9" style={{ marginTop: 20 }} />
+            <ActivityIndicator size="small" color="#2C4F91" style={{ marginTop: 20 }} />
           ) : (
             <FlatList
               data={items}
@@ -120,7 +120,7 @@ export default function LinkItemModal({ visible, onClose, onLink }) {
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.item} onPress={() => handleSelect(item)}>
                   <Text style={styles.itemLabel} numberOfLines={2}>{item.label}</Text>
-                  <Feather name="plus" size={18} color="#6D28D9" />
+                  <Feather name="plus" size={18} color="#2C4F91" />
                 </TouchableOpacity>
               )}
               ItemSeparatorComponent={() => <View style={styles.sep} />}
@@ -148,24 +148,24 @@ const styles = StyleSheet.create({
   tab: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F3F3F0',
   },
-  tabActive:     { backgroundColor: '#EDE9FE' },
-  tabText:       { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#6B7280' },
-  tabTextActive: { color: '#6D28D9', fontFamily: 'Outfit_600SemiBold' },
+  tabActive:     { backgroundColor: '#EDF1F8' },
+  tabText:       { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#5B5B56' },
+  tabTextActive: { color: '#2C4F91', fontFamily: 'Outfit_600SemiBold' },
 
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB',
+    backgroundColor: '#F8F8F6', borderWidth: 1, borderColor: '#E4E4E0',
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 12,
   },
-  searchInput: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#111827' },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#1C1C1A' },
 
   item: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 12, paddingHorizontal: 4,
   },
-  itemLabel: { flex: 1, fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#111827', marginRight: 12 },
-  sep:   { height: 1, backgroundColor: '#F3F4F6' },
-  empty: { textAlign: 'center', color: '#9CA3AF', fontFamily: 'Outfit_400Regular', marginTop: 20 },
+  itemLabel: { flex: 1, fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#1C1C1A', marginRight: 12 },
+  sep:   { height: 1, backgroundColor: '#F3F3F0' },
+  empty: { textAlign: 'center', color: '#8A8A84', fontFamily: 'Outfit_400Regular', marginTop: 20 },
 });

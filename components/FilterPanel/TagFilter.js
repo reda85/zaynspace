@@ -61,8 +61,8 @@ export default function TagFilter({ active, onToggle, selectedTags, setSelectedT
                         renderActiveText={false}
                         renderInActiveText={false}
                         circleBorderWidth={0}
-                        backgroundActive="#2563eb"
-                        backgroundInactive="#d1d5db"
+                        backgroundActive="#2C4F91"
+                        backgroundInactive="#D3D3CE"
                         circleActiveColor="#fff"
                         circleInActiveColor="#fff"
                     />
@@ -75,7 +75,7 @@ export default function TagFilter({ active, onToggle, selectedTags, setSelectedT
                             <View style={styles.chipsRow}>
                                 {selectedTags.map((id) => (
                                     <View key={id} style={styles.chip}>
-                                        <Feather name="tag" size={10} color="#6D28D9" />
+                                        <Feather name="tag" size={10} color="#2C4F91" />
                                         <Text style={styles.chipText} numberOfLines={1}>
                                             {getDisplayName(id)}
                                         </Text>
@@ -83,7 +83,7 @@ export default function TagFilter({ active, onToggle, selectedTags, setSelectedT
                                             onPress={() => toggleTag(id)}
                                             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                                         >
-                                            <Feather name="x" size={11} color="#6D28D9" />
+                                            <Feather name="x" size={11} color="#2C4F91" />
                                         </TouchableOpacity>
                                     </View>
                                 ))}
@@ -94,13 +94,13 @@ export default function TagFilter({ active, onToggle, selectedTags, setSelectedT
                             style={styles.pickerButton}
                             onPress={() => setShowBottomSheet(true)}
                         >
-                            <Feather name="tag" size={14} color="#6D28D9" />
+                            <Feather name="tag" size={14} color="#2C4F91" />
                             <Text style={styles.pickerButtonText}>
                                 {selectedTags.length > 0
                                     ? `${selectedTags.length} tag(s) sélectionné(s)`
                                     : 'Choisir un tag...'}
                             </Text>
-                            <Feather name="chevron-right" size={14} color="#6D28D9" style={{ marginLeft: 'auto' }} />
+                            <Feather name="chevron-right" size={14} color="#2C4F91" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
                     </View>
                 )}
@@ -125,17 +125,17 @@ export default function TagFilter({ active, onToggle, selectedTags, setSelectedT
 
                         {/* Search */}
                         <View style={styles.searchRow}>
-                            <Feather name="search" size={15} color="#9CA3AF" style={{ marginRight: 8 }} />
+                            <Feather name="search" size={15} color="#8A8A84" style={{ marginRight: 8 }} />
                             <TextInput
                                 style={styles.searchInput}
                                 placeholder="Rechercher un tag..."
-                                placeholderTextColor="#9CA3AF"
+                                placeholderTextColor="#8A8A84"
                                 value={search}
                                 onChangeText={safeSetSearch}
                             />
                             {search.length > 0 && (
                                 <TouchableOpacity onPress={() => safeSetSearch('')}>
-                                    <Feather name="x-circle" size={15} color="#9CA3AF" />
+                                    <Feather name="x-circle" size={15} color="#8A8A84" />
                                 </TouchableOpacity>
                             )}
                         </View>
@@ -164,7 +164,7 @@ export default function TagFilter({ active, onToggle, selectedTags, setSelectedT
                                                 <Feather
                                                     name="tag"
                                                     size={13}
-                                                    color={isSelected ? '#6D28D9' : '#9CA3AF'}
+                                                    color={isSelected ? '#2C4F91' : '#8A8A84'}
                                                 />
                                             </View>
                                             <Text style={[styles.tagName, isSelected && styles.tagNameActive]}
@@ -173,7 +173,7 @@ export default function TagFilter({ active, onToggle, selectedTags, setSelectedT
                                                 {tag.name}
                                             </Text>
                                             {isSelected && (
-                                                <Feather name="check" size={16} color="#6D28D9" style={{ marginLeft: 'auto' }} />
+                                                <Feather name="check" size={16} color="#2C4F91" style={{ marginLeft: 'auto' }} />
                                             )}
                                         </TouchableOpacity>
                                     );
@@ -200,14 +200,14 @@ const styles = StyleSheet.create({
     innerContainer: {
         backgroundColor: '#f5f5f4',
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#D3D3CE',
         padding: 8,
         borderRadius: 8,
         gap: 8,
     },
     row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     label: {
-        color: '#374151',
+        color: '#33332F',
         fontSize: 12,
         fontWeight: '600',
         textTransform: 'capitalize',
@@ -218,9 +218,9 @@ const styles = StyleSheet.create({
     chip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
         borderWidth: 1,
-        borderColor: '#C4B5FD',
+        borderColor: '#CDD8EA',
         borderRadius: 20,
         paddingHorizontal: 8,
         paddingVertical: 4,
@@ -230,15 +230,15 @@ const styles = StyleSheet.create({
     chipText: {
         fontSize: 11,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        color: '#2C4F91',
         flexShrink: 1,
     },
     pickerButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EDE9FE',
+        backgroundColor: '#EDF1F8',
         borderWidth: 1,
-        borderColor: '#C4B5FD',
+        borderColor: '#CDD8EA',
         borderRadius: 8,
         paddingHorizontal: 10,
         paddingVertical: 8,
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     pickerButtonText: {
         fontSize: 12,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#6D28D9',
+        color: '#2C4F91',
     },
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
     sheet: {
@@ -268,15 +268,15 @@ const styles = StyleSheet.create({
     searchRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8F8F6',
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         borderRadius: 10,
         paddingHorizontal: 12,
         paddingVertical: 9,
         marginBottom: 12,
     },
-    searchInput: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#111827' },
+    searchInput: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#1C1C1A' },
     tagRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -285,24 +285,24 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         marginBottom: 4,
     },
-    tagRowActive: { backgroundColor: '#EDE9FE' },
+    tagRowActive: { backgroundColor: '#EDF1F8' },
     tagBadge: {
         width: 28,
         height: 28,
         borderRadius: 14,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#F3F3F0',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 10,
     },
-    tagBadgeActive: { backgroundColor: '#DDD6FE' },
-    tagName: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#374151' },
-    tagNameActive: { fontFamily: 'Outfit_600SemiBold', color: '#6D28D9' },
+    tagBadgeActive: { backgroundColor: '#CDD8EA' },
+    tagName: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#33332F' },
+    tagNameActive: { fontFamily: 'Outfit_600SemiBold', color: '#2C4F91' },
     emptyBox: { paddingVertical: 24, alignItems: 'center' },
-    emptyText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#9CA3AF' },
+    emptyText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#8A8A84' },
     doneButton: {
         marginTop: 12,
-        backgroundColor: '#6D28D9',
+        backgroundColor: '#2C4F91',
         borderRadius: 10,
         paddingVertical: 14,
         alignItems: 'center',

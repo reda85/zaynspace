@@ -51,7 +51,7 @@ export default function MembersScreen() {
       title: 'Membres',
       headerTitleAlign: 'center',
       headerTitleStyle: { fontFamily: 'Outfit_700Bold', fontSize: 20, color: 'black' },
-      headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 },
+      headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 },
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 10 }}>
           <View style={styles.headerBtn}><Feather name="arrow-left" size={20} color="#000" /></View>
@@ -150,7 +150,7 @@ export default function MembersScreen() {
         </View>
         {isAdmin && !isCurrentUser && (
           <TouchableOpacity onPress={() => handleRemove(item.user_id, profile.name ?? 'ce membre')}>
-            <UserMinus size={18} color="#EF4444" />
+            <UserMinus size={18} color="#A8322A" />
           </TouchableOpacity>
         )}
       </View>
@@ -180,16 +180,16 @@ export default function MembersScreen() {
         <View style={styles.searchPanel}>
             <Text style={styles.sectionLabel}>Inviter un collaborateur</Text>
             <View style={styles.searchRow}>
-              <Feather name="search" size={16} color="#9CA3AF" />
+              <Feather name="search" size={16} color="#8A8A84" />
               <TextInput
                 style={styles.searchInput}
                 placeholder="Rechercher par nom ou email…"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#8A8A84"
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 autoFocus
               />
-              {searching && <ActivityIndicator size="small" color="#6D28D9" />}
+              {searching && <ActivityIndicator size="small" color="#2C4F91" />}
             </View>
             {searchResults.length > 0 && (
               <FlatList
@@ -206,7 +206,7 @@ export default function MembersScreen() {
       {/* Members list */}
       <Text style={styles.sectionLabel}>{members.length} membre{members.length !== 1 ? 's' : ''}</Text>
       {loading ? (
-        <ActivityIndicator size="large" color="#6D28D9" style={{ marginTop: 30 }} />
+        <ActivityIndicator size="large" color="#2C4F91" style={{ marginTop: 30 }} />
       ) : (
         <FlatList
           data={members}
@@ -224,7 +224,7 @@ const COLORS = ['#7C3AED','#DB2777','#0891B2','#059669','#D97706','#DC2626','#4F
 const avatarColor = (id) => COLORS[(id ?? '').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA', padding: 16 },
+  container: { flex: 1, backgroundColor: '#F8F8F6', padding: 16 },
 
   headerBtn: {
     backgroundColor: 'white', width: 36, height: 36, borderRadius: 18,
@@ -232,12 +232,12 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
   },
   headerBtnPurple: {
-    backgroundColor: '#6D28D9', width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#2C4F91', width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
   },
 
-  sectionLabel: { fontSize: 12, fontFamily: 'Outfit_600SemiBold', color: '#6B7280', textTransform: 'uppercase', marginBottom: 10 },
+  sectionLabel: { fontSize: 12, fontFamily: 'Outfit_600SemiBold', color: '#5B5B56', textTransform: 'uppercase', marginBottom: 10 },
 
   searchPanel: {
     backgroundColor: '#FFF', borderRadius: 16, padding: 14, marginBottom: 16,
@@ -245,10 +245,10 @@ const styles = StyleSheet.create({
   },
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB',
+    backgroundColor: '#F8F8F6', borderWidth: 1, borderColor: '#E4E4E0',
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 10,
   },
-  searchInput: { flex: 1, fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#111827' },
+  searchInput: { flex: 1, fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#1C1C1A' },
 
   memberRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -258,18 +258,18 @@ const styles = StyleSheet.create({
   avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   avatarText: { color: '#FFF', fontSize: 16, fontFamily: 'Outfit_700Bold' },
   memberInfo: { flex: 1 },
-  memberName:  { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#111827' },
-  memberEmail: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: '#6B7280' },
+  memberName:  { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#1C1C1A' },
+  memberEmail: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: '#5B5B56' },
 
   addBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: '#6D28D9', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
+    backgroundColor: '#2C4F91', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
   },
   addBtnText: { color: '#FFF', fontSize: 13, fontFamily: 'Outfit_600SemiBold' },
 
   sep: { height: 6 },
   adminBadge: {
-  backgroundColor: '#EDE9FE',
+  backgroundColor: '#EDF1F8',
   borderRadius: 4,
   paddingHorizontal: 6,
   paddingVertical: 2,
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
 adminBadgeText: {
   fontSize: 10,
   fontFamily: 'Outfit_600SemiBold',
-  color: '#6D28D9',
+  color: '#2C4F91',
   letterSpacing: 0.5,
   textTransform: 'uppercase',
 },

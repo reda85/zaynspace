@@ -128,7 +128,7 @@ export default function VoiceInput({ onDataProcessed }) {
         isProcessing && styles.containerProcessing,
     ];
 
-    const iconColor = isRecording ? '#fff' : isProcessing ? '#fff' : '#2563eb';
+    const iconColor = isRecording ? '#fff' : isProcessing ? '#fff' : '#2C4F91';
     
     return (
         <TouchableOpacity 
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#2563eb', // Bleu par défaut
+        borderColor: '#2C4F91', // Bleu par défaut
         backgroundColor: '#fff',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
@@ -174,8 +174,8 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     containerRecording: {
-        borderColor: '#ef4444', // Rouge pendant l'enregistrement
-        backgroundColor: '#ef4444',
+        borderColor: '#A8322A', // Rouge pendant l'enregistrement
+        backgroundColor: '#A8322A',
     },
     containerProcessing: {
         borderColor: '#6366f1', // Violet pendant l'analyse
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     },
     textDefault: {
         marginLeft: 8,
-        color: '#2563eb',
+        color: '#2C4F91',
         fontWeight: '600',
         fontSize: 15,
     },

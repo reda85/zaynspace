@@ -22,6 +22,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DocumentCard, FolderCard } from '../../components/documents/DocumentCard';
 import { DocumentViewer } from '../../components/documents/DocumentViewer';
 import { Colors, SectionHeader, UploadProgressBar } from '../../components/documents/UIComponents';
+import { HeaderButton, ScreenHeader } from '../../components/ui/ScreenHeader';
+import { C as HC } from '../../constants/theme';
 import { UploadSheet } from '../../components/documents/UploadSheet';
 import { useDocuments, useFolders } from '../../hooks/useDocumentManager';
 import { selectedProjectAtom } from '../../store/atoms';
@@ -69,7 +71,7 @@ function SkeletonBox({ width, height, borderRadius = 8, style }) {
   return (
     <Animated.View
       style={[
-        { width, height, borderRadius, backgroundColor: '#E5E7EB', opacity: anim },
+        { width, height, borderRadius, backgroundColor: '#E4E4E0', opacity: anim },
         style,
       ]}
     />
@@ -129,7 +131,7 @@ const docSkeletonStyles = StyleSheet.create({
   },
   divider: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#F3F4F6',
+    borderTopColor: '#F3F3F0',
   },
   row: {
     flexDirection: 'row',
@@ -191,53 +193,6 @@ export default function DocumentManager() {
     }
   }, [breadcrumbs, goToBreadcrumb, navigation]);
 
-  useEffect(() => {
-    navigation.setOptions({
-      title: headerTitle,
-      headerTitleAlign: 'center',
-      headerLeft: () => (
-        <TouchableOpacity onPress={handleBackPress} style={{ marginLeft: 10 }}>
-          <View style={{
-            backgroundColor: 'white', width: 36, height: 36, borderRadius: 18,
-            alignItems: 'center', justifyContent: 'center',
-            shadowColor: '#000', shadowOpacity: 0.1,
-            shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
-          }}>
-            <Feather name="arrow-left" size={20} color="#000" />
-          </View>
-        </TouchableOpacity>
-      ),
-      headerRight: () => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 16 }}>
-          <TouchableOpacity onPress={handleOpenSortSheet}>
-            <View style={{
-              backgroundColor: 'white', width: 36, height: 36, borderRadius: 18,
-              alignItems: 'center', justifyContent: 'center',
-              shadowColor: '#000', shadowOpacity: 0.1,
-              shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
-            }}>
-              <ArrowDownNarrowWideIcon size={20} color="#000" />
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => { setUploadMode('new'); setShowUpload(true); }}>
-            <View style={{
-              backgroundColor: 'black', width: 36, height: 36, borderRadius: 18,
-              alignItems: 'center', justifyContent: 'center',
-              shadowColor: '#000', shadowOpacity: 0.1,
-              shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
-            }}>
-              <Plus size={20} color="#FFF" />
-            </View>
-          </TouchableOpacity>
-        </View>
-      ),
-      headerTitleStyle: {
-        fontFamily: 'Outfit_700Bold',
-        fontSize: 24,
-        color: 'black',
-      },
-    });
-  }, [navigation, handleOpenSortSheet, handleBackPress, headerTitle]);
 
   const { folders, createFolder, renameFolder, deleteFolder } = useFolders(projectId);
   // Current folder documents
@@ -328,7 +283,7 @@ export default function DocumentManager() {
     return (
       <View style={styles.container}>
         <View style={styles.empty}>
-          <FolderOpen size={64} color="#D1D5DB" />
+          <FolderOpen size={64} color="#D3D3CE" />
           <Text style={styles.emptyTitle}>Aucun projet actif</Text>
           <Text style={styles.emptySub}>Sélectionnez un projet pour voir ses documents.</Text>
         </View>
@@ -336,8 +291,30 @@ export default function DocumentManager() {
     );
   }
 
+  const plural = (n, one, many) => `${n} ${n > 1 ? many : one}`;
+
   return (
     <View style={styles.container}>
+      <ScreenHeader
+        style={{ marginHorizontal: -16 }}
+        title={headerTitle}
+        subtitle={loading ? ' ' : `${plural(subfolders.length, 'dossier', 'dossiers')}, ${plural(filteredDocs.length, 'document', 'documents')}`}
+        left={breadcrumbs.length > 0 ? (
+          <HeaderButton label="Dossier parent" onPress={handleBackPress}>
+            <Feather name="arrow-left" size={20} color={HC.encre} />
+          </HeaderButton>
+        ) : null}
+        right={
+          <>
+            <HeaderButton label="Trier les documents" onPress={handleOpenSortSheet}>
+              <ArrowDownNarrowWideIcon size={19} color={HC.encre} strokeWidth={1.9} />
+            </HeaderButton>
+            <HeaderButton label="Ajouter un document" dark onPress={() => { setUploadMode('new'); setShowUpload(true); }}>
+              <Plus size={20} color={HC.blanc} strokeWidth={2.2} />
+            </HeaderButton>
+          </>
+        }
+      />
       {/* Search bar — identique à TasksScreen */}
       <View style={styles.searchBar}>
         <Feather name="search" size={20} color="#999" style={{ marginRight: 8 }} />
@@ -446,7 +423,7 @@ export default function DocumentManager() {
           {/* Documents group */}
           {filteredDocs.length === 0 ? (
             <View style={styles.empty}>
-              <FileText size={64} color="#D1D5DB" />
+              <FileText size={64} color="#D3D3CE" />
               <Text style={styles.emptyTitle}>{search ? 'Aucun résultat' : 'Aucun document'}</Text>
               <Text style={styles.emptySub}>
                 {search ? `Aucun document ne correspond à "${search}"` : 'Uploadez votre premier document pour ce projet'}
@@ -500,12 +477,12 @@ export default function DocumentManager() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bg, padding: 16 },
+  container: { flex: 1, backgroundColor: Colors.bg, paddingHorizontal: 16, paddingBottom: 16 },
 
   // Search bar — identique à TasksScreen
   searchBar: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#FFF', borderRadius: 8,
+    backgroundColor: '#FFF', borderRadius: 12, borderWidth: 1, borderColor: '#E4E4E0',
     paddingHorizontal: 12, marginBottom: 10,
   },
   searchInput: {
@@ -529,12 +506,12 @@ const styles = StyleSheet.create({
   newFolderLink: { color: 'black', fontSize: 13, fontFamily: 'Outfit_600SemiBold', paddingVertical: 16 },
   // Empty states — identiques à DiscussionsScreen
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, marginTop: 40 },
-  emptyTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#111827', marginTop: 16 },
-  emptySub: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 6, textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#1C1C1A', marginTop: 16 },
+  emptySub: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginTop: 6, textAlign: 'center', lineHeight: 20 },
   emptyBtn: { marginTop: 24, backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   emptyBtnText: { color: '#FFF', fontFamily: 'Outfit_600SemiBold', fontSize: 15 },
 
-  emptyHint: { color: '#6B7280', fontSize: 16, fontFamily: 'Outfit_600SemiBold', textAlign: 'center', paddingVertical: 16 },
+  emptyHint: { color: '#5B5B56', fontSize: 16, fontFamily: 'Outfit_600SemiBold', textAlign: 'center', paddingVertical: 16 },
 
   // Inline folder creation
   inlineInput: {
@@ -567,9 +544,9 @@ const styles = StyleSheet.create({
   sortItem: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 12, paddingHorizontal: 10,
-    borderRadius: 8, backgroundColor: '#f9fafb', marginTop: 5,
+    borderRadius: 8, backgroundColor: '#F8F8F6', marginTop: 5,
   },
-  sortItemActive: { backgroundColor: '#ede9fe', borderWidth: 1, borderColor: '#c4b5fd' },
+  sortItemActive: { backgroundColor: '#EDF1F8', borderWidth: 1, borderColor: '#CDD8EA' },
   sortText: { fontSize: 15, color: '#333', fontFamily: 'Outfit_400Regular', marginLeft: 5 },
 
 

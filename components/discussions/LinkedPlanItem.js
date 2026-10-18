@@ -60,13 +60,13 @@ export default function LinkedPlanItem({ itemId, onPress, isOwn }) {
                     width: 28, 
                     height: 28, 
                     borderRadius: 14, 
-                    backgroundColor: '#9CA3AF',
+                    backgroundColor: '#8A8A84',
                     alignItems: 'center',
                     justifyContent: 'center',
                 }}>
                     <Map size={16} color="white" />
                 </View>
-                <Text style={{ marginLeft: 10, color: isOwn ? '#EDE9FE' : 'black', fontSize: 14 }}>
+                <Text style={{ marginLeft: 10, color: isOwn ? '#EDF1F8' : 'black', fontSize: 14 }}>
                     Plan introuvable
                 </Text>
             </View>
@@ -97,7 +97,7 @@ export default function LinkedPlanItem({ itemId, onPress, isOwn }) {
             }}>
                 <Map size={16} color="white" />
             </View>
-            <Text style={{ marginLeft: 10, color: isOwn ? '#EDE9FE' : 'black', fontSize: 14 }}>
+            <Text style={{ marginLeft: 10, color: isOwn ? '#EDF1F8' : 'black', fontSize: 14 }}>
                  {plan.name}
             </Text>
         </TouchableOpacity>

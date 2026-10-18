@@ -21,6 +21,8 @@ import { supabase } from '../../lib/supabase';
 import { fetchGroups, getUnreadCount } from '../../services/discussionsService';
 import { loggedInUserAtom, selectedProjectAtom } from '../../store/atoms';
 import { discussionGroupsAtom, discussionLastMsgAtom, discussionUnreadAtom } from '../../store/discussionsAtoms';
+import { HeaderButton, ScreenHeader } from '../../components/ui/ScreenHeader';
+import { C } from '../../constants/theme';
 
 
 function SkeletonBox({ width, height, borderRadius = 8, style }) {
@@ -38,7 +40,7 @@ function SkeletonBox({ width, height, borderRadius = 8, style }) {
   return (
     <Animated.View
       style={[
-        { width, height, borderRadius, backgroundColor: '#E5E7EB', opacity: anim },
+        { width, height, borderRadius, backgroundColor: '#E4E4E0', opacity: anim },
         style,
       ]}
     />
@@ -155,29 +157,6 @@ export default function DiscussionsScreen() {
     };
   }, [groups.length, subscribeToAllGroups]);
 
-  // ── Header ────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    navigation.setOptions({
-      title: 'Discussions',
-      headerTitleAlign: 'center',
-      headerTitleStyle: { fontFamily: 'Outfit_700Bold', fontSize: 24, color: 'black' },
-      headerStyle: { backgroundColor: '#F5F7FA', borderBottomWidth: 0 },
-      headerLeft: () => (
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 10 }}>
-          <View style={styles.headerBtnWhite}>
-            <Feather name="arrow-left" size={20} color="#000" />
-          </View>
-        </TouchableOpacity>
-      ),
-      headerRight: () => (
-        <TouchableOpacity onPress={() => setShowCreate(true)} style={{ marginRight: 16 }}>
-          <View style={styles.headerBtn}>
-            <MessageSquarePlus size={20} color="#FFF" />
-          </View>
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation]);
 
   const onGroupCreated = useCallback((newGroup) => {
     setGroups(prev => [newGroup, ...prev]);
@@ -211,10 +190,10 @@ export default function DiscussionsScreen() {
               {lastMsg.content ?? 'Pièce jointe'}
             </Text>
           ) : (
-            <Text style={[styles.cardSub, { color: '#9CA3AF' }]}>Aucun message</Text>
+            <Text style={[styles.cardSub, { color: '#8A8A84' }]}>Aucun message</Text>
           )}
           <View style={styles.memberRow}>
-            <Users size={12} color="#9CA3AF" />
+            <Users size={12} color="#8A8A84" />
             <Text style={styles.memberText}>{memberCount} membre{memberCount !== 1 ? 's' : ''}</Text>
           </View>
         </View>
@@ -226,18 +205,38 @@ export default function DiscussionsScreen() {
           </View>
         )}
 
-        <Feather name="chevron-right" size={18} color="#D1D5DB" />
+        <Feather name="chevron-right" size={18} color="#D3D3CE" />
       </TouchableOpacity>
     );
   }, [unread, lastMessages, navigation]);
 
+  const totalUnread = Object.values(unread).reduce((n, c) => n + (Number(c) || 0), 0);
+  const headerSubtitle = loading
+    ? ' '
+    : `${groups.length} groupe${groups.length > 1 ? 's' : ''}` +
+      (totalUnread ? `, ${totalUnread} message${totalUnread > 1 ? 's' : ''} non lu${totalUnread > 1 ? 's' : ''}` : '');
+
   return (
     <View style={styles.container}>
+      <ScreenHeader
+        title="Discussions"
+        subtitle={headerSubtitle}
+        left={navigation.canGoBack() ? (
+          <HeaderButton label="Retour" onPress={() => navigation.goBack()}>
+            <Feather name="arrow-left" size={20} color={C.encre} />
+          </HeaderButton>
+        ) : null}
+        right={
+          <HeaderButton label="Nouveau groupe" dark onPress={() => setShowCreate(true)}>
+            <MessageSquarePlus size={20} color={C.blanc} strokeWidth={1.9} />
+          </HeaderButton>
+        }
+      />
       {loading ? (
         <DiscussionsSkeleton />
       ) : groups.length === 0 ? (
         <View style={styles.empty}>
-          <MessageSquare size={64} color="#D1D5DB" />
+          <MessageSquare size={64} color="#D3D3CE" />
           <Text style={styles.emptyTitle}>Aucune discussion</Text>
           <Text style={styles.emptySub}>Créez un groupe pour commencer</Text>
           <TouchableOpacity style={styles.emptyBtn} onPress={() => setShowCreate(true)}>
@@ -250,7 +249,7 @@ export default function DiscussionsScreen() {
           keyExtractor={i => i.id}
           renderItem={renderItem}
           extraData={{ unread, lastMessages }}
-          contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 16 }}
+          contentContainerStyle={{ paddingTop: 0, paddingBottom: 16, paddingHorizontal: 16 }}
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           onRefresh={load}
           refreshing={loading}
@@ -272,7 +271,7 @@ const COLORS = ['#7C3AED','#DB2777','#0891B2','#059669','#D97706','#DC2626','#4F
 const avatarColor = (id) => COLORS[id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % COLORS.length];
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F7FA' },
+  container: { flex: 1, backgroundColor: '#F8F8F6' },
 
   headerBtn: {
     backgroundColor: 'black',
@@ -291,12 +290,12 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E4E4E0',
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2,
   },
   avatar: {
     width: 46, height: 46, borderRadius: 23,
@@ -304,12 +303,12 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: '#FFF', fontSize: 18, fontFamily: 'Outfit_700Bold' },
   cardInfo: { flex: 1, marginRight: 8 },
-  cardTitle: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#111827', marginBottom: 2 },
-  cardSub:   { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginBottom: 4 },
+  cardTitle: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#1C1C1A', marginBottom: 2 },
+  cardSub:   { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginBottom: 4 },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  memberText:{ fontSize: 12, fontFamily: 'Outfit_400Regular', color: '#9CA3AF' },
+  memberText:{ fontSize: 12, fontFamily: 'Outfit_400Regular', color: '#8A8A84' },
   badge: {
-    backgroundColor: '#6D28D9',
+    backgroundColor: '#2C4F91',
     borderRadius: 10, minWidth: 20, height: 20,
     justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: 6, marginRight: 8,
@@ -317,8 +316,8 @@ const styles = StyleSheet.create({
   badgeText: { color: '#FFF', fontSize: 11, fontFamily: 'Outfit_700Bold' },
 
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#111827', marginTop: 16 },
-  emptySub:   { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#6B7280', marginTop: 6, textAlign: 'center' },
+  emptyTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#1C1C1A', marginTop: 16 },
+  emptySub:   { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginTop: 6, textAlign: 'center' },
   emptyBtn:   { marginTop: 24, backgroundColor: 'black', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   emptyBtnText:{ color: '#FFF', fontFamily: 'Outfit_600SemiBold', fontSize: 15 },
 });

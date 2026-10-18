@@ -98,8 +98,8 @@ export default function CategoryFilter({ active, onToggle, tags, setTags }) {
             renderActiveText={false}
             renderInActiveText={false}
             circleBorderWidth={0}
-            backgroundActive="#2563eb"
-            backgroundInactive="#d1d5db"
+            backgroundActive="#2C4F91"
+            backgroundInactive="#D3D3CE"
             circleActiveColor="#fff"
             circleInActiveColor="#fff"
           />
@@ -116,7 +116,7 @@ export default function CategoryFilter({ active, onToggle, tags, setTags }) {
                     <View key={tag} style={styles.chip}>
                       {cat && (
                         <View style={styles.chipIcon}>
-                          {getCategoryIconComponent(cat.icon, '#6D28D9', 11)}
+                          {getCategoryIconComponent(cat.icon, '#2C4F91', 11)}
                         </View>
                       )}
                       <Text style={styles.chipText} numberOfLines={1}>{tag}</Text>
@@ -124,7 +124,7 @@ export default function CategoryFilter({ active, onToggle, tags, setTags }) {
                         onPress={() => removeTag(tag)}
                         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                       >
-                        <Feather name="x" size={11} color="#6D28D9" />
+                        <Feather name="x" size={11} color="#2C4F91" />
                       </TouchableOpacity>
                     </View>
                   );
@@ -136,13 +136,13 @@ export default function CategoryFilter({ active, onToggle, tags, setTags }) {
               style={styles.pickerButton}
               onPress={() => setShowBottomSheet(true)}
             >
-              <Feather name="tag" size={14} color="#6D28D9" />
+              <Feather name="tag" size={14} color="#2C4F91" />
               <Text style={styles.pickerButtonText}>
                 {tags.length > 0
                   ? `${tags.length} catégorie(s) sélectionnée(s)`
                   : 'Choisir une catégorie...'}
               </Text>
-              <Feather name="chevron-right" size={14} color="#6D28D9" style={{ marginLeft: 'auto' }} />
+              <Feather name="chevron-right" size={14} color="#2C4F91" style={{ marginLeft: 'auto' }} />
             </TouchableOpacity>
           </View>
         )}
@@ -176,11 +176,11 @@ export default function CategoryFilter({ active, onToggle, tags, setTags }) {
                   >
                     <View style={[
                       styles.categoryIconCircleSheet,
-                      { backgroundColor: isSelected ? '#6D28D9' : '#e5e7eb' }
+                      { backgroundColor: isSelected ? '#2C4F91' : '#E4E4E0' }
                     ]}>
                       {getCategoryIconComponent(
                         item.icon,
-                        isSelected ? '#fff' : '#6b7280',
+                        isSelected ? '#fff' : '#5B5B56',
                         18
                       )}
                     </View>
@@ -193,7 +193,7 @@ export default function CategoryFilter({ active, onToggle, tags, setTags }) {
                     {isSelected && (
                       <CheckIcon
                         size={18}
-                        color="#6D28D9"
+                        color="#2C4F91"
                         style={{ marginLeft: 'auto' }}
                       />
                     )}
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   innerContainer: {
     backgroundColor: '#f5f5f4',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#D3D3CE',
     padding: 8,
     borderRadius: 8,
     gap: 8,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   label: {
-    color: '#374151',
+    color: '#33332F',
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'capitalize',
@@ -252,9 +252,9 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#EDF1F8',
     borderWidth: 1,
-    borderColor: '#C4B5FD',
+    borderColor: '#CDD8EA',
     borderRadius: 20,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -270,15 +270,15 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 11,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#6D28D9',
+    color: '#2C4F91',
     flexShrink: 1,
   },
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#EDF1F8',
     borderWidth: 1,
-    borderColor: '#C4B5FD',
+    borderColor: '#CDD8EA',
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   pickerButtonText: {
     fontSize: 12,
     fontFamily: 'Outfit_600SemiBold',
-    color: '#6D28D9',
+    color: '#2C4F91',
   },
   modalOverlay: {
     flex: 1,
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   },
   memberTextActive: {
     fontFamily: 'Outfit_600SemiBold',
-    color: '#6D28D9',
+    color: '#2C4F91',
   },
   separator: {
     height: 1,
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
   doneButton: {
     marginHorizontal: 20,
     marginTop: 12,
-    backgroundColor: '#6D28D9',
+    backgroundColor: '#2C4F91',
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',

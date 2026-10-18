@@ -42,6 +42,8 @@ import { Image } from 'react-native';
 import AssignedToFilter from '../../components/FilterPanel/AssignedToFilter';
 import TagFilter from '../../components/FilterPanel/TagFilter';
 import { loggedInUserAtom, pinsAtom, selectedProjectAtom, statusesAtom } from '../../store/atoms';
+import { HeaderButton, ScreenHeader } from '../../components/ui/ScreenHeader';
+import { C } from '../../constants/theme';
 
 // --- CONFIGURATION DU TRI ---
 const SORT_FIELDS = [
@@ -136,7 +138,7 @@ function SkeletonBox({ width, height, borderRadius = 8, style }) {
     return (
         <Animated.View
             style={[
-                { width, height, borderRadius, backgroundColor: '#E5E7EB', opacity: anim },
+                { width, height, borderRadius, backgroundColor: '#E4E4E0', opacity: anim },
                 style,
             ]}
         />
@@ -165,7 +167,7 @@ function TasksSkeleton() {
                     <View key={i} style={[
                         i === 0 && styles.sectionTopRadius,
                         i === 2 && styles.sectionBottomRadius,
-                        i !== 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#F3F4F6' },
+                        i !== 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#F3F3F0' },
                     ]}>
                         <TaskRowSkeleton />
                     </View>
@@ -178,7 +180,7 @@ function TasksSkeleton() {
                     <View key={i} style={[
                         i === 0 && styles.sectionTopRadius,
                         i === 1 && styles.sectionBottomRadius,
-                        i !== 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#F3F4F6' },
+                        i !== 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: '#F3F3F0' },
                     ]}>
                         <TaskRowSkeleton />
                     </View>
@@ -194,7 +196,7 @@ const CustomCheckbox = ({ checked, onPress }) => (
         activeOpacity={0.7}
         style={{
             width: 22, height: 22, borderRadius: 6, borderWidth: 2,
-            borderColor: checked ? 'black' : '#D1D5DB',
+            borderColor: checked ? 'black' : '#D3D3CE',
             backgroundColor: checked ? 'black' : 'white',
             alignItems: 'center', justifyContent: 'center',
         }}
@@ -490,7 +492,7 @@ function ReportOptionsModal({
                             )}
                         </View>
                         <TouchableOpacity onPress={onClose} style={rm.closeBtn} disabled={isSubmitting}>
-                            <Feather name="x" size={20} color="#6B7280" />
+                            <Feather name="x" size={20} color="#5B5B56" />
                         </TouchableOpacity>
                     </View>
 
@@ -531,7 +533,7 @@ function ReportOptionsModal({
                                 value={reportTitle}
                                 onChangeText={setReportTitle}
                                 placeholder="RAPPORT DE TÂCHES"
-                                placeholderTextColor="#D1D5DB"
+                                placeholderTextColor="#D3D3CE"
                                 style={rm.titleInput}
                             />
                             <Text style={rm.modeHint}>
@@ -547,7 +549,7 @@ function ReportOptionsModal({
                                     style={[rm.modeBtn, displayMode === 'list' && rm.modeBtnActive]}
                                     onPress={() => setDisplayMode('list')}
                                 >
-                                    <Feather name="list" size={15} color={displayMode === 'list' ? '#fff' : '#6B7280'} />
+                                    <Feather name="list" size={15} color={displayMode === 'list' ? '#fff' : '#5B5B56'} />
                                     <Text style={[rm.modeBtnText, displayMode === 'list' && rm.modeBtnTextActive]}>
                                         Liste détaillée
                                     </Text>
@@ -556,7 +558,7 @@ function ReportOptionsModal({
                                     style={[rm.modeBtn, displayMode === 'table' && rm.modeBtnActive]}
                                     onPress={() => setDisplayMode('table')}
                                 >
-                                    <Feather name="grid" size={15} color={displayMode === 'table' ? '#fff' : '#6B7280'} />
+                                    <Feather name="grid" size={15} color={displayMode === 'table' ? '#fff' : '#5B5B56'} />
                                     <Text style={[rm.modeBtnText, displayMode === 'table' && rm.modeBtnTextActive]}>
                                         Tableau compact
                                     </Text>
@@ -626,7 +628,7 @@ function ReportOptionsModal({
                                                     <Switch
                                                         value={member.present}
                                                         onValueChange={() => toggleParticipant(member.id)}
-                                                        trackColor={{ false: '#E5E7EB', true: '#111827' }}
+                                                        trackColor={{ false: '#E4E4E0', true: '#1C1C1A' }}
                                                         thumbColor="#fff"
                                                         style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                                                     />
@@ -662,17 +664,17 @@ function ReportOptionsModal({
                                                     disabled={i === 0}
                                                     style={rm.iconBtn}
                                                 >
-                                                    <Feather name="arrow-up" size={14} color={i === 0 ? '#D1D5DB' : '#374151'} />
+                                                    <Feather name="arrow-up" size={14} color={i === 0 ? '#D3D3CE' : '#33332F'} />
                                                 </TouchableOpacity>
                                                 <TouchableOpacity
                                                     onPress={() => movePlanningImage(i, 1)}
                                                     disabled={i === planningImages.length - 1}
                                                     style={rm.iconBtn}
                                                 >
-                                                    <Feather name="arrow-down" size={14} color={i === planningImages.length - 1 ? '#D1D5DB' : '#374151'} />
+                                                    <Feather name="arrow-down" size={14} color={i === planningImages.length - 1 ? '#D3D3CE' : '#33332F'} />
                                                 </TouchableOpacity>
                                                 <TouchableOpacity onPress={() => removePlanningImage(i)} style={rm.iconBtn}>
-                                                    <Feather name="x" size={16} color="#DC2626" />
+                                                    <Feather name="x" size={16} color="#A8322A" />
                                                 </TouchableOpacity>
                                             </View>
                                         ))}
@@ -681,7 +683,7 @@ function ReportOptionsModal({
 
                                 {/* Upload button */}
                                 <TouchableOpacity style={rm.uploadBtn} onPress={pickPlanningImages}>
-                                    <Feather name="upload-cloud" size={18} color="#374151" />
+                                    <Feather name="upload-cloud" size={18} color="#33332F" />
                                     <Text style={rm.uploadText}>Ajouter des captures de planning</Text>
                                 </TouchableOpacity>
                                 <Text style={rm.modeHint}>
@@ -698,7 +700,7 @@ function ReportOptionsModal({
                                             value={planningObservationsText}
                                             onChangeText={setPlanningObservationsText}
                                             placeholder={'- Retard sur le lot Gros-Œuvre\n- Étanchéité à entamer\n- ...'}
-                                            placeholderTextColor="#D1D5DB"
+                                            placeholderTextColor="#D3D3CE"
                                             multiline
                                             numberOfLines={4}
                                             textAlignVertical="top"
@@ -723,7 +725,7 @@ function ReportOptionsModal({
                                             value={section.content}
                                             onChangeText={t => updateSectionContent(section.id, t)}
                                             placeholder={`Contenu de "${section.title}"…`}
-                                            placeholderTextColor="#D1D5DB"
+                                            placeholderTextColor="#D3D3CE"
                                             multiline
                                             numberOfLines={4}
                                             textAlignVertical="top"
@@ -792,12 +794,12 @@ const rm = StyleSheet.create({
     title: {
         fontSize: 18,
         fontFamily: 'Outfit_700Bold',
-        color: '#111827',
+        color: '#1C1C1A',
     },
     subtitle: {
         fontSize: 12,
         fontFamily: 'Outfit_400Regular',
-        color: '#9CA3AF',
+        color: '#8A8A84',
         marginTop: 2,
     },
     closeBtn: {
@@ -810,7 +812,7 @@ const rm = StyleSheet.create({
     sectionLabel: {
         fontSize: 10,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#9CA3AF',
+        color: '#8A8A84',
         letterSpacing: 1,
         marginBottom: 10,
     },
@@ -820,18 +822,18 @@ const rm = StyleSheet.create({
         paddingVertical: 8,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
-        backgroundColor: '#F9FAFB',
+        borderColor: '#E4E4E0',
+        backgroundColor: '#F8F8F6',
         marginRight: 8,
     },
     templateChipActive: {
-        backgroundColor: '#111827',
-        borderColor: '#111827',
+        backgroundColor: '#1C1C1A',
+        borderColor: '#1C1C1A',
     },
     templateChipText: {
         fontSize: 13,
         fontFamily: 'Outfit_500Medium',
-        color: '#6B7280',
+        color: '#5B5B56',
     },
     templateChipTextActive: {
         color: '#fff',
@@ -851,17 +853,17 @@ const rm = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
-        backgroundColor: '#F9FAFB',
+        borderColor: '#E4E4E0',
+        backgroundColor: '#F8F8F6',
     },
     modeBtnActive: {
-        backgroundColor: '#111827',
-        borderColor: '#111827',
+        backgroundColor: '#1C1C1A',
+        borderColor: '#1C1C1A',
     },
     modeBtnText: {
         fontSize: 13,
         fontFamily: 'Outfit_500Medium',
-        color: '#6B7280',
+        color: '#5B5B56',
     },
     modeBtnTextActive: {
         color: '#fff',
@@ -869,7 +871,7 @@ const rm = StyleSheet.create({
     modeHint: {
         fontSize: 11,
         fontFamily: 'Outfit_400Regular',
-        color: '#9CA3AF',
+        color: '#8A8A84',
         marginTop: 6,
     },
     // Fields
@@ -885,30 +887,30 @@ const rm = StyleSheet.create({
         height: 18,
         borderRadius: 5,
         borderWidth: 1.5,
-        borderColor: '#D1D5DB',
+        borderColor: '#D3D3CE',
         backgroundColor: '#fff',
         alignItems: 'center',
         justifyContent: 'center',
     },
     fieldCheckActive: {
-        backgroundColor: '#111827',
-        borderColor: '#111827',
+        backgroundColor: '#1C1C1A',
+        borderColor: '#1C1C1A',
     },
     fieldLabel: {
         fontSize: 13,
         fontFamily: 'Outfit_400Regular',
-        color: '#374151',
+        color: '#33332F',
     },
     // Participants
     emptyText: {
         fontSize: 12,
         fontFamily: 'Outfit_400Regular',
-        color: '#D1D5DB',
+        color: '#D3D3CE',
         marginTop: 4,
     },
     participantsList: {
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         borderRadius: 10,
         overflow: 'hidden',
         marginTop: 8,
@@ -923,71 +925,71 @@ const rm = StyleSheet.create({
     },
     participantRowBorder: {
         borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+        borderBottomColor: '#F3F3F0',
     },
     participantAvatar: {
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#E5E7EB',
+        backgroundColor: '#E4E4E0',
         alignItems: 'center',
         justifyContent: 'center',
     },
     participantAvatarText: {
         fontSize: 12,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#4B5563',
+        color: '#5B5B56',
     },
     participantName: {
         fontSize: 13,
         fontFamily: 'Outfit_500Medium',
-        color: '#111827',
+        color: '#1C1C1A',
     },
     participantRole: {
         fontSize: 11,
         fontFamily: 'Outfit_400Regular',
-        color: '#9CA3AF',
+        color: '#8A8A84',
     },
     participantEmail: {
         fontSize: 11,
         fontFamily: 'Outfit_400Regular',
-        color: '#D1D5DB',
+        color: '#D3D3CE',
     },
     presenceLabel: {
         fontSize: 11,
         fontFamily: 'Outfit_500Medium',
-        color: '#D1D5DB',
+        color: '#D3D3CE',
     },
     presenceLabelActive: {
-        color: '#10B981',
+        color: '#2F6B4A',
     },
     // Custom sections
     customSectionTitle: {
         fontSize: 13,
         fontFamily: 'Outfit_500Medium',
-        color: '#374151',
+        color: '#33332F',
     },
     customSectionType: {
         fontSize: 11,
         fontFamily: 'Outfit_400Regular',
-        color: '#D1D5DB',
+        color: '#D3D3CE',
     },
     customSectionInput: {
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         borderRadius: 8,
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 13,
         fontFamily: 'Outfit_400Regular',
-        color: '#111827',
-        backgroundColor: '#F9FAFB',
+        color: '#1C1C1A',
+        backgroundColor: '#F8F8F6',
         minHeight: 80,
     },
     customSectionHint: {
         fontSize: 10,
         fontFamily: 'Outfit_400Regular',
-        color: '#D1D5DB',
+        color: '#D3D3CE',
         marginTop: 4,
     },
     // Footer
@@ -996,21 +998,21 @@ const rm = StyleSheet.create({
         gap: 10,
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: '#F3F4F6',
+        borderTopColor: '#F3F3F0',
         marginTop: 4,
     },
     cancelBtn: {
         flex: 1,
         paddingVertical: 13,
         borderRadius: 10,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#F3F3F0',
         alignItems: 'center',
         justifyContent: 'center',
     },
     cancelBtnText: {
         fontSize: 14,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#374151',
+        color: '#33332F',
     },
     confirmBtn: {
         flex: 2,
@@ -1020,7 +1022,7 @@ const rm = StyleSheet.create({
         gap: 8,
         paddingVertical: 13,
         borderRadius: 10,
-        backgroundColor: '#111827',
+        backgroundColor: '#1C1C1A',
     },
     confirmBtnText: {
         fontSize: 14,
@@ -1030,14 +1032,14 @@ const rm = StyleSheet.create({
     // ── NEW: Title input
     titleInput: {
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
         borderRadius: 8,
         paddingHorizontal: 12,
         paddingVertical: 11,
         fontSize: 14,
         fontFamily: 'Outfit_600SemiBold',
-        color: '#111827',
-        backgroundColor: '#F9FAFB',
+        color: '#1C1C1A',
+        backgroundColor: '#F8F8F6',
         marginTop: 4,
     },
     // ── NEW: Planning images
@@ -1045,27 +1047,27 @@ const rm = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8F8F6',
         padding: 8,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
+        borderColor: '#E4E4E0',
     },
     planningThumb: {
         width: 56,
         height: 42,
         borderRadius: 4,
-        backgroundColor: '#E5E7EB',
+        backgroundColor: '#E4E4E0',
     },
     planningImageName: {
         fontSize: 12,
         fontFamily: 'Outfit_500Medium',
-        color: '#111827',
+        color: '#1C1C1A',
     },
     planningImagePage: {
         fontSize: 10,
         fontFamily: 'Outfit_400Regular',
-        color: '#9CA3AF',
+        color: '#8A8A84',
         marginTop: 2,
     },
     iconBtn: { padding: 6 },
@@ -1077,15 +1079,15 @@ const rm = StyleSheet.create({
         paddingVertical: 12,
         borderRadius: 8,
         borderWidth: 1.5,
-        borderColor: '#D1D5DB',
+        borderColor: '#D3D3CE',
         borderStyle: 'dashed',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#F8F8F6',
         marginTop: 4,
     },
     uploadText: {
         fontSize: 13,
         fontFamily: 'Outfit_500Medium',
-        color: '#374151',
+        color: '#33332F',
     },
 });
 
@@ -1382,46 +1384,17 @@ useEffect(() => {
 
     const handleOpenSortSheet = useCallback(() => setShowSortSheet(true), []);
 
-    useEffect(() => {
-        navigation.setOptions({
-            title: 'Tâches',
-            headerTitleAlign: 'center',
-            headerLeft: () => (
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 10 }}>
-                    <View style={{
-                        backgroundColor: 'white', width: 36, height: 36, borderRadius: 18,
-                        alignItems: 'center', justifyContent: 'center',
-                        shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
-                    }}>
-                        <Feather name="arrow-left" size={20} color="#000" />
-                    </View>
-                </TouchableOpacity>
-            ),
-            headerRight: () => (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 16 }}>
-                    <TouchableOpacity onPress={handleOpenSortSheet}>
-                        <View style={{
-                            backgroundColor: 'white', width: 36, height: 36, borderRadius: 18,
-                            alignItems: 'center', justifyContent: 'center',
-                            shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
-                        }}>
-                            <ArrowDownNarrowWideIcon size={20} color="#000" />
-                        </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setShowCreateTaskModal(true)}>
-                        <View style={{
-                            backgroundColor: 'black', width: 36, height: 36, borderRadius: 18,
-                            alignItems: 'center', justifyContent: 'center',
-                            shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
-                        }}>
-                            <Plus size={20} color="#FFF" />
-                        </View>
-                    </TouchableOpacity>
-                </View>
-            ),
-            headerTitleStyle: { fontFamily: 'Outfit_700Bold', fontSize: 24, color: 'black' },
-        });
-    }, [projects, handleOpenSortSheet, navigation]);
+    // Compteur sous le titre : tâches affichées et, parmi elles, celles dont
+    // l'échéance est dépassée sans avoir atteint le dernier statut.
+    const headerSubtitle = useMemo(() => {
+        const lastOrder = statuses?.length ? Math.max(...statuses.map((st) => st.order ?? 0)) : null;
+        const now = Date.now();
+        const late = filteredPins.filter((p) =>
+            p.due_date && Date.parse(p.due_date) < now && !(lastOrder != null && p.Status?.order === lastOrder)
+        ).length;
+        const n = filteredPins.length;
+        return `${n} tâche${n > 1 ? 's' : ''}${late ? `, ${late} en retard` : ''}`;
+    }, [filteredPins, statuses]);
 
     const toggleSelect = useCallback((id) => {
         setSelectedIds((prev) => {
@@ -1597,7 +1570,7 @@ useEffect(() => {
                                             {field.isDate ? 'Du plus ancien au plus récent' : 'A → Z (Croissant)'}
                                         </Text>
                                         {(sortField === field.key && sortDirection === 'asc') && (
-                                            <Feather name="check" size={18} color="#6D28D9" style={{ marginLeft: 'auto' }} />
+                                            <Feather name="check" size={18} color="#2C4F91" style={{ marginLeft: 'auto' }} />
                                         )}
                                     </TouchableOpacity>
                                     <TouchableOpacity
@@ -1608,7 +1581,7 @@ useEffect(() => {
                                             {field.isDate ? 'Du plus récent au plus ancien' : 'Z → A (Décroissant)'}
                                         </Text>
                                         {(sortField === field.key && sortDirection === 'desc') && (
-                                            <Feather name="check" size={18} color="#6D28D9" style={{ marginLeft: 'auto' }} />
+                                            <Feather name="check" size={18} color="#2C4F91" style={{ marginLeft: 'auto' }} />
                                         )}
                                     </TouchableOpacity>
                                 </View>
@@ -1622,8 +1595,23 @@ useEffect(() => {
 
     return (
         <View style={styles.container}>
+            <ScreenHeader
+                style={{ marginHorizontal: -16 }}
+                title="Tâches"
+                subtitle={headerSubtitle}
+                right={
+                    <>
+                        <HeaderButton label="Trier les tâches" onPress={handleOpenSortSheet}>
+                            <ArrowDownNarrowWideIcon size={19} color={C.encre} strokeWidth={1.9} />
+                        </HeaderButton>
+                        <HeaderButton label="Nouvelle tâche générale" dark onPress={() => setShowCreateTaskModal(true)}>
+                            <Plus size={20} color={C.blanc} strokeWidth={2.2} />
+                        </HeaderButton>
+                    </>
+                }
+            />
             {/* Search bar */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 8, paddingHorizontal: 12, marginBottom: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, borderWidth: 1, borderColor: C.filet, paddingHorizontal: 12, marginBottom: 10 }}>
                 <Feather name="search" size={20} color="#999" style={{ marginRight: 8 }} />
                 <TextInput
                     placeholder="Rechercher par nom"
@@ -1640,7 +1628,7 @@ useEffect(() => {
                     checked={selectedIds.size === filteredPins.length && filteredPins.length > 0}
                     onPress={toggleSelectAll}
                 />
-                <Text style={{ fontSize: 15, color: '#111827', fontFamily: 'Outfit_500Medium', marginLeft: 8 }}>
+                <Text style={{ fontSize: 15, color: '#1C1C1A', fontFamily: 'Outfit_500Medium', marginLeft: 8 }}>
                     Tout sélectionner
                 </Text>
             </View>
@@ -1760,7 +1748,7 @@ useEffect(() => {
                                     textAlignVertical="top"
                                 />
                                 <View style={styles.infoBox}>
-                                    <Feather name="info" size={16} color="#6D28D9" />
+                                    <Feather name="info" size={16} color="#2C4F91" />
                                     <Text style={styles.infoText}>
                                         Cette tâche n'est pas liée à un plan. Vous pourrez ajouter plus de détails après la création.
                                     </Text>
@@ -1818,9 +1806,9 @@ useEffect(() => {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#F5F7FA', padding: 16 },
-    sectionHeaderWrapper: { paddingBottom: 6, paddingTop: 16, paddingHorizontal: 0, backgroundColor: '#F5F7FA' },
-    groupDateText: { fontSize: 13, color: '#6B7280', fontFamily: 'Outfit_600SemiBold', textTransform: 'uppercase' },
+    container: { flex: 1, backgroundColor: '#F8F8F6', paddingHorizontal: 16, paddingBottom: 16 },
+    sectionHeaderWrapper: { paddingBottom: 6, paddingTop: 16, paddingHorizontal: 0, backgroundColor: '#F8F8F6' },
+    groupDateText: { fontSize: 13, color: '#5B5B56', fontFamily: 'Outfit_600SemiBold', textTransform: 'uppercase' },
     listCardWrapper: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowOffset: { width: 2, height: 2 }, shadowRadius: 6, elevation: 0, marginBottom: 1 },
     listCardNoShadow: { shadowOpacity: 0, shadowRadius: 0, elevation: 0 },
     sectionTopRadius: { borderTopLeftRadius: 16, borderTopRightRadius: 16 },
@@ -1828,8 +1816,8 @@ const styles = StyleSheet.create({
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     filterContainer: { backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80%' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    title: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: '#111827' },
-    subtitle: { fontSize: 12, color: '#6B7280', fontFamily: 'Outfit_400Regular', marginTop: 2 },
+    title: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: '#1C1C1A' },
+    subtitle: { fontSize: 12, color: '#5B5B56', fontFamily: 'Outfit_400Regular', marginTop: 2 },
     headerRight: { flexDirection: 'row', alignItems: 'center' },
     clearText: { color: 'darkmagenta', fontSize: 14, fontFamily: 'Outfit_400Regular', marginRight: 12 },
     closeIcon: { padding: 4 },
@@ -1837,28 +1825,28 @@ const styles = StyleSheet.create({
     sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
     sheetTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: '#111' },
     sortFieldTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: '#333', marginTop: 15, marginBottom: 5 },
-    sortItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#f9fafb', marginTop: 5 },
-    sortItemActive: { backgroundColor: '#ede9fe', borderWidth: 1, borderColor: '#c4b5fd' },
+    sortItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F8F8F6', marginTop: 5 },
+    sortItemActive: { backgroundColor: '#EDF1F8', borderWidth: 1, borderColor: '#CDD8EA' },
     sortText: { fontSize: 15, color: '#333', fontFamily: 'Outfit_400Regular', marginLeft: 5 },
     floatingBar: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row', alignItems: 'center', gap: 12 },
-    filterFloatingBtn: { backgroundColor: 'lightgrey', width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 4 },
-    downloadFloatingBtn: { backgroundColor: '#111827', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, height: 48, borderRadius: 24, gap: 6, elevation: 4 },
+    filterFloatingBtn: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D3D3CE', width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 4 },
+    downloadFloatingBtn: { backgroundColor: '#1C1C1A', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, height: 48, borderRadius: 24, gap: 6, elevation: 4 },
     downloadText: { color: 'white', fontFamily: 'Outfit_600SemiBold', fontSize: 13 },
     createTaskContainer: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20, maxHeight: '80%', width: '100%' },
     createTaskForm: { marginTop: 20, marginBottom: 20 },
-    inputLabel: { fontSize: 14, fontFamily: 'Outfit_600SemiBold', color: '#374151', marginBottom: 8, marginTop: 16 },
+    inputLabel: { fontSize: 14, fontFamily: 'Outfit_600SemiBold', color: '#33332F', marginBottom: 8, marginTop: 16 },
     textInput: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#111827' },
     textAreaInput: { minHeight: 100, textAlignVertical: 'top' },
-    infoBox: { flexDirection: 'row', backgroundColor: '#F3E8FF', padding: 12, borderRadius: 8, marginTop: 16, gap: 8 },
-    infoText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#6D28D9', lineHeight: 18 },
+    infoBox: { flexDirection: 'row', backgroundColor: '#EDF1F8', padding: 12, borderRadius: 8, marginTop: 16, gap: 8 },
+    infoText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#2C4F91', lineHeight: 18 },
     modalButtons: { flexDirection: 'row', gap: 12, marginTop: 20 },
     modalButton: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-    cancelButton: { backgroundColor: '#F3F4F6' },
-    cancelButtonText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#374151' },
-    createButton: { backgroundColor: '#6D28D9' },
-    createButtonDisabled: { backgroundColor: '#D1D5DB' },
+    cancelButton: { backgroundColor: '#F3F3F0' },
+    cancelButtonText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#33332F' },
+    createButton: { backgroundColor: '#2C4F91' },
+    createButtonDisabled: { backgroundColor: '#D3D3CE' },
     createButtonText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#FFFFFF' },
-    filterActiveBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: '#10b981', borderRadius: 10, minWidth: 18, height: 18, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
+    filterActiveBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: '#2F6B4A', borderRadius: 10, minWidth: 18, height: 18, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
     filterActiveBadgeText: { color: 'white', fontSize: 10, fontFamily: 'Outfit_600SemiBold' },
     skeletonGroup: {
     backgroundColor: '#fff',
