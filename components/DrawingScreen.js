@@ -31,7 +31,7 @@
 // - For 10 photos: from ~30s to ~3-5s total time
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRoute } from "@react-navigation/native";
+import { CommonActions, useNavigation, useRoute } from "@react-navigation/native";
 import {
   Canvas,
   ImageFormat,
@@ -156,6 +156,7 @@ export default function DrawingScreen() {
   console.log('🖼️ Photos:', photos);
 
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
   const [pin] = useAtom(selectedPinAtom);
@@ -984,33 +985,49 @@ export default function DrawingScreen() {
         });
       }
 
+      // Après l'envoi, la caméra et l'écran de dessin sont retirés de la pile :
+      // le retour depuis la fiche ramène directement à l'écran d'origine (plan ou
+      // fiche). Avant, la fiche était empilée par-dessus ; en la fermant, iOS
+      // devait démonter d'un coup fiche, dessin et caméra, et l'application se
+      // fermait quand la fiche venait d'être créée.
       const goToPin = () => {
-        if (returnToPinId) {
-          router.push({
-            pathname: "/PinMetadataScreen",
-            params: {
-              pinId: returnToPinId,
-              from: "Pdf",
-              myuri,
-              myname,
-              myplanid,
-              photoUris: JSON.stringify([]),
-              refresh: String(Date.now()),
-            },
-          });
-        } else {
-          router.push({
-            pathname: "/PinMetadataScreen",
-            params: {
-              pinId: pin?.id,
-              from: "Pdf",
-              myuri,
-              myname,
-              myplanid,
-              photoUris: JSON.stringify([]),
-            },
-          });
+        const state = navigation.getState();
+        const routes = state?.routes ?? [];
+        let keep = routes.length;
+        while (keep > 0 && ["CameraScreen", "DrawingScreen"].includes(routes[keep - 1].name)) keep--;
+        const base = routes.slice(0, keep);
+        const below = base[base.length - 1];
+        const pinParams = {
+          from: "Pdf",
+          myuri,
+          myname,
+          myplanid,
+          photoUris: JSON.stringify([]),
+          refresh: String(Date.now()),
+        };
+
+        if (!state || keep === routes.length) {
+          // Pile inattendue : comportement d'avant.
+          router.push({ pathname: "/PinMetadataScreen", params: { ...pinParams, pinId: returnToPinId || pin?.id } });
+          return;
         }
+
+        if (returnToPinId && below?.name === "PinMetadataScreen" && below.params?.pinId === returnToPinId) {
+          // Photos ajoutées depuis une fiche : on revient à cette fiche, qui se recharge.
+          const updated = { ...below, params: { ...below.params, refresh: pinParams.refresh } };
+          navigation.dispatch(CommonActions.reset({
+            ...state,
+            routes: [...base.slice(0, -1), updated],
+            index: base.length - 1,
+          }));
+          return;
+        }
+
+        navigation.dispatch(CommonActions.reset({
+          ...state,
+          routes: [...base, { name: "PinMetadataScreen", params: { ...pinParams, pinId: returnToPinId || pin?.id } }],
+          index: base.length,
+        }));
       };
 
       if (failedIndexes.length > 0) {
