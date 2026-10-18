@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         textTransform: 'capitalize',
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
     },
     expandedArea: { gap: 8 },
     chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     },
     chipText: {
         fontSize: 11,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#2C4F91',
         flexShrink: 1,
     },
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     },
     pickerButtonText: {
         fontSize: 12,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#2C4F91',
     },
     overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 14,
     },
-    sheetTitle: { fontSize: 18, fontFamily: 'Geist_700Bold', color: '#111' },
+    sheetTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: '#111' },
     searchRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
         paddingVertical: 9,
         marginBottom: 12,
     },
-    searchInput: { flex: 1, fontSize: 14, fontFamily: 'Geist_400Regular', color: '#1C1C1A' },
+    searchInput: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#1C1C1A' },
     tagRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -296,10 +296,10 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     tagBadgeActive: { backgroundColor: '#CDD8EA' },
-    tagName: { flex: 1, fontSize: 14, fontFamily: 'Geist_400Regular', color: '#33332F' },
-    tagNameActive: { fontFamily: 'Geist_600SemiBold', color: '#2C4F91' },
+    tagName: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#33332F' },
+    tagNameActive: { fontFamily: 'Outfit_600SemiBold', color: '#2C4F91' },
     emptyBox: { paddingVertical: 24, alignItems: 'center' },
-    emptyText: { fontSize: 13, fontFamily: 'Geist_400Regular', color: '#8A8A84' },
+    emptyText: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#8A8A84' },
     doneButton: {
         marginTop: 12,
         backgroundColor: '#2C4F91',
@@ -307,5 +307,5 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         alignItems: 'center',
     },
-    doneButtonText: { fontSize: 15, fontFamily: 'Geist_700Bold', color: '#fff' },
+    doneButtonText: { fontSize: 15, fontFamily: 'Outfit_700Bold', color: '#fff' },
 });

@@ -1552,7 +1552,7 @@ export default function PinMetadataScreen() {
 
                         {waitingPhotos.length > 0 && (
                             <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-                                <Text style={{ fontFamily: 'Geist_500Medium', fontSize: 13, color: '#92400E', marginBottom: 6 }}>
+                                <Text style={{ fontFamily: 'Outfit_500Medium', fontSize: 13, color: '#92400E', marginBottom: 6 }}>
                                     {waitingPhotos.length} photo{waitingPhotos.length > 1 ? 's' : ''} en attente d'envoi
                                 </Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -1669,7 +1669,7 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     backButton: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    headerId: { fontFamily: 'GeistMono_500Medium', fontSize: 14, color: '#5B5B56', marginRight: 6 },
+    headerId: { fontFamily: 'Outfit_500Medium', fontSize: 14, color: '#5B5B56', marginRight: 6 },
     navButton: {
         width: 40, height: 40, borderRadius: 12, borderWidth: 1, borderColor: '#E4E4E0',
         backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', marginLeft: 4,
@@ -1690,7 +1690,7 @@ const styles = StyleSheet.create({
     statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
     statusIconCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
     statusButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 9999, justifyContent: 'space-between', width: 150 },
-    statusButtonText: { color: 'white', fontFamily: 'Geist_400Regular', fontSize: 16 },
+    statusButtonText: { color: 'white', fontFamily: 'Outfit_400Regular', fontSize: 16 },
     idText: { color: '#5B5B56', fontSize: 12, marginTop: 8, marginBottom: 10 },
     categoryButton: {
         marginTop: 2,
@@ -1708,7 +1708,7 @@ const styles = StyleSheet.create({
         width: 28, height: 28, borderRadius: 8, borderWidth: 1.5,
         alignItems: 'center', justifyContent: 'center',
     },
-    categoryButtonText: { color: '#1C1C1A', fontFamily: 'Geist_500Medium', fontSize: 15 },
+    categoryButtonText: { color: '#1C1C1A', fontFamily: 'Outfit_500Medium', fontSize: 15 },
     assigneeDueDateRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, gap: 8 },
     actionButton: {
         flex: 1,
@@ -1726,31 +1726,31 @@ const styles = StyleSheet.create({
     },
     mediaButton: { justifyContent: 'center', paddingLeft: 8 },
     photoButton: { backgroundColor: '#EDF1F8', borderColor: '#CDD8EA' },
-    mediaButtonText: { color: '#1C1C1A', fontFamily: 'Geist_600SemiBold', fontSize: 14 },
+    mediaButtonText: { color: '#1C1C1A', fontFamily: 'Outfit_600SemiBold', fontSize: 14 },
     pastDueBackground: { backgroundColor: '#F9ECEA' },
     pastDueBorder: { borderColor: '#ECC9C3' },
-    pastDueText: { color: '#A8322A', fontFamily: 'Geist_600SemiBold' },
+    pastDueText: { color: '#A8322A', fontFamily: 'Outfit_600SemiBold' },
     dateSelectedButton: { justifyContent: 'space-between', paddingRight: 8 },
     iconWrapper: { backgroundColor: 'white', borderRadius: 9999, padding: 6, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-    actionButtonText: { flex: 1, color: '#1C1C1A', fontFamily: 'Geist_400Regular', fontSize: 14 },
+    actionButtonText: { flex: 1, color: '#1C1C1A', fontFamily: 'Outfit_400Regular', fontSize: 14 },
     dateSelectedText: { flexShrink: 1, marginRight: 8 },
     clearIconWrapper: { width: 22, height: 22, backgroundColor: '#F3F3F0', borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
     bottomSheet: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 20, maxHeight: '70%', width: '100%' },
     sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 15 },
-    sheetTitle: { fontSize: 18, fontFamily: 'Geist_600SemiBold', color: '#111' },
+    sheetTitle: { fontSize: 18, fontFamily: 'Outfit_600SemiBold', color: '#111' },
     memberItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20 },
-    memberText: { marginLeft: 10, fontSize: 16, color: '#333', fontFamily: 'Geist_400Regular' },
+    memberText: { marginLeft: 10, fontSize: 16, color: '#333', fontFamily: 'Outfit_400Regular' },
     separator: { height: 1, backgroundColor: '#f0f0f0', marginHorizontal: 20 },
     statusIndicator: { width: 12, height: 12, borderRadius: 6, marginLeft: 6, marginRight: 6 },
     categoryIconCircleSheet: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
     actionItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20 },
-    actionText: { marginLeft: 10, fontSize: 16, color: '#333', fontFamily: 'Geist_400Regular' },
+    actionText: { marginLeft: 10, fontSize: 16, color: '#333', fontFamily: 'Outfit_400Regular' },
     tabContainer: { flexDirection: 'row', borderRadius: 10, backgroundColor: '#EEEEEB', padding: 3, marginVertical: 16 },
     tab: { flex: 1, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
     activeTab: { backgroundColor: '#FFFFFF', shadowColor: '#1C1C1A', shadowOpacity: 0.08, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
-    tabText: { color: '#5B5B56', fontSize: 13, fontFamily: 'Geist_500Medium' },
-    activeTabText: { color: '#1C1C1A', fontFamily: 'Geist_600SemiBold' },
+    tabText: { color: '#5B5B56', fontSize: 13, fontFamily: 'Outfit_500Medium' },
+    activeTabText: { color: '#1C1C1A', fontFamily: 'Outfit_600SemiBold' },
     // ── Comment bar wrapper : couvre TOUT l'espace jusqu'au bas de l'écran, fond opaque ──
     commentBarWrapper: {
         position: 'absolute',
@@ -1776,7 +1776,7 @@ const styles = StyleSheet.create({
         paddingTop: 12,
         paddingBottom: 12,
     },
-    commentInput: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E4E0', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, fontFamily: 'Geist_400Regular' },
+    commentInput: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E4E0', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, fontFamily: 'Outfit_400Regular' },
     sendButton: { backgroundColor: '#2C4F91', padding: 10, borderRadius: 9999, justifyContent: 'center', alignItems: 'center' },
     // ── Comment mic ───────────────────────────────────────────────────────────
     commentMicButton: {
@@ -1809,15 +1809,15 @@ const styles = StyleSheet.create({
     listeningBadgeText: {
         color: '#fff',
         fontSize: 16,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
     },
     inputContainerDictation: {
         flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10,
         backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E4E0', borderRadius: 12,
         paddingVertical: 8, paddingLeft: 14, paddingRight: 8,
     },
-    textAreaDictation: { flex: 1, fontSize: 17, lineHeight: 23, fontFamily: 'Geist_600SemiBold', color: '#1C1C1A', paddingTop: 6, paddingBottom: 4, minHeight: 36 },
-    noteInputDictation: { flex: 1, fontSize: 14, lineHeight: 21, fontFamily: 'Geist_400Regular', color: '#5B5B56', paddingTop: 7, paddingBottom: 4, minHeight: 36 },
+    textAreaDictation: { flex: 1, fontSize: 17, lineHeight: 23, fontFamily: 'Outfit_600SemiBold', color: '#1C1C1A', paddingTop: 6, paddingBottom: 4, minHeight: 36 },
+    noteInputDictation: { flex: 1, fontSize: 14, lineHeight: 21, fontFamily: 'Outfit_400Regular', color: '#5B5B56', paddingTop: 7, paddingBottom: 4, minHeight: 36 },
     micButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F3F0' },
     micButtonNote: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F3F0' },
     micButtonActive: { backgroundColor: '#2C4F91' },
@@ -1825,20 +1825,20 @@ const styles = StyleSheet.create({
     pinLocationCard: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#E4E4E0', overflow: 'hidden' },
     pinLocationHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12 },
     locationIconCircle: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
-    pinLocationTitle: { fontSize: 14, fontFamily: 'Geist_600SemiBold', color: '#1C1C1A' },
+    pinLocationTitle: { fontSize: 14, fontFamily: 'Outfit_600SemiBold', color: '#1C1C1A' },
     pinPreviewContainer: { overflow: 'hidden', borderTopWidth: 1, borderTopColor: '#EEEEEB' },
     placePinButton: { backgroundColor: '#EDF1F8', borderRadius: 12, borderWidth: 1, borderColor: '#CDD8EA', padding: 14 },
     placePinContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     placePinIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
-    placePinTitle: { fontSize: 16, fontFamily: 'Geist_600SemiBold', color: '#2C4F91' },
-    placePinSubtitle: { fontSize: 13, fontFamily: 'Geist_400Regular', color: '#5B5B56', marginTop: 2 },
+    placePinTitle: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#2C4F91' },
+    placePinSubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginTop: 2 },
     planItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20, gap: 12 },
     planIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#EDF1F8', justifyContent: 'center', alignItems: 'center' },
-    planItemTitle: { fontSize: 16, fontFamily: 'Geist_600SemiBold', color: '#111' },
-    planItemSubtitle: { fontSize: 13, fontFamily: 'Geist_400Regular', color: '#5B5B56', marginTop: 2 },
+    planItemTitle: { fontSize: 16, fontFamily: 'Outfit_600SemiBold', color: '#111' },
+    planItemSubtitle: { fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginTop: 2 },
     readOnlyInput: { backgroundColor: '#F3F3F0', color: '#8A8A84', borderColor: '#E4E4E0' },
     readOnlyButton: { backgroundColor: '#F3F3F0', borderColor: '#E4E4E0', opacity: 0.7 },
     readOnlyText: { color: '#8A8A84' },
     readOnlyBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9ECEA', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1, borderColor: '#ECC9C3', gap: 4 },
-    readOnlyBadgeText: { color: '#A8322A', fontSize: 12, fontWeight: '600', fontFamily: 'Geist_600SemiBold' },
+    readOnlyBadgeText: { color: '#A8322A', fontSize: 12, fontWeight: '600', fontFamily: 'Outfit_600SemiBold' },
 });

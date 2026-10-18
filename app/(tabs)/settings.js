@@ -35,7 +35,7 @@ export default function SettingsScreen() {
       headerTitleAlign: 'center',
       headerShadowVisible: false,
       headerTitleStyle: {
-        fontFamily: 'Geist_700Bold',
+        fontFamily: 'Outfit_700Bold',
         fontSize: 20,
         color: '#000',
       },
@@ -58,7 +58,7 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
       ),
-       headerTitleStyle: { fontFamily: 'Geist_700Bold', fontSize: 24, color: 'black' },
+       headerTitleStyle: { fontFamily: 'Outfit_700Bold', fontSize: 24, color: 'black' },
     });
   }, [navigation]);
 
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   avatarText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
   },
 
   profileText: {
@@ -231,14 +231,14 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     color: '#1C1C1A',
-    fontFamily: 'Geist_700Bold',
+    fontFamily: 'Outfit_700Bold',
   },
 
   email: {
     fontSize: 14,
     color: '#5B5B56',
     marginTop: 2,
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
   },
 
   /* Sections */
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     fontSize: 13,
     color: '#5B5B56',
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
     textTransform: 'uppercase',
   },
 
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   rowText: {
     fontSize: 15,
     color: '#1C1C1A',
-    fontFamily: 'Geist_500Medium',
+    fontFamily: 'Outfit_500Medium',
   },
 
   separator: {
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
   logoutText: {
     color: '#A8322A',
     fontSize: 16,
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
   },
   smallAvatar: {
   width: 48,
@@ -322,14 +322,14 @@ const styles = StyleSheet.create({
 smallAvatarText: {
   color: '#FFFFFF',
   fontSize: 18,
-  fontFamily: 'Geist_600SemiBold',
+  fontFamily: 'Outfit_600SemiBold',
 },
 
 subText: {
   fontSize: 14,
   color: '#5B5B56',
   marginTop: 2,
-  fontFamily: 'Geist_400Regular',
+  fontFamily: 'Outfit_400Regular',
 },
 
 });

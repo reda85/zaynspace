@@ -493,7 +493,7 @@ const styles = StyleSheet.create({
     maxWidth: 220,
   },
   orgPickerText: {
-    fontFamily: 'Geist_700Bold',
+    fontFamily: 'Outfit_700Bold',
     fontSize: 15,
     color: '#1C1C1A',
     flexShrink: 1,
@@ -528,7 +528,7 @@ const styles = StyleSheet.create({
   },
 
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
-  loadingText: { fontFamily: 'Geist_500Medium', fontSize: 16, color: '#5B5B56' },
+  loadingText: { fontFamily: 'Outfit_500Medium', fontSize: 16, color: '#5B5B56' },
 
   listContent: { padding: 16, gap: 12 },
 
@@ -555,12 +555,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   projectText: { flex: 1, gap: 4 },
-  projectTitle: { fontFamily: 'Geist_600SemiBold', fontSize: 16, color: '#1C1C1A' },
-  projectSubtitle: { fontFamily: 'Geist_400Regular', fontSize: 14, color: '#5B5B56', lineHeight: 20 },
+  projectTitle: { fontFamily: 'Outfit_600SemiBold', fontSize: 16, color: '#1C1C1A' },
+  projectSubtitle: { fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#5B5B56', lineHeight: 20 },
 
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: 60, gap: 12 },
-  emptyTitle: { fontFamily: 'Geist_600SemiBold', fontSize: 18, color: '#1C1C1A', marginTop: 8 },
-  emptySubtitle: { fontFamily: 'Geist_400Regular', fontSize: 14, color: '#5B5B56', textAlign: 'center' },
+  emptyTitle: { fontFamily: 'Outfit_600SemiBold', fontSize: 18, color: '#1C1C1A', marginTop: 8 },
+  emptySubtitle: { fontFamily: 'Outfit_400Regular', fontSize: 14, color: '#5B5B56', textAlign: 'center' },
 
   modalOverlay: {
     flex: 1,
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 12,
   },
-  modalTitle: { fontFamily: 'Geist_700Bold', fontSize: 18, color: '#1C1C1A', marginBottom: 8 },
+  modalTitle: { fontFamily: 'Outfit_700Bold', fontSize: 18, color: '#1C1C1A', marginBottom: 8 },
 
   orgItem: {
     flexDirection: 'row',
@@ -604,8 +604,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   orgIconActive: { backgroundColor: '#1C1C1A' },
-  orgItemText: { fontFamily: 'Geist_500Medium', fontSize: 15, color: '#33332F' },
-  orgItemTextActive: { fontFamily: 'Geist_600SemiBold', color: '#1C1C1A' },
+  orgItemText: { fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#33332F' },
+  orgItemTextActive: { fontFamily: 'Outfit_600SemiBold', color: '#1C1C1A' },
 
   createModalHeader: {
     flexDirection: 'row',
@@ -615,7 +615,7 @@ const styles = StyleSheet.create({
   },
   fieldGroup: { gap: 6, marginTop: 8 },
   fieldLabel: {
-    fontFamily: 'Geist_500Medium',
+    fontFamily: 'Outfit_500Medium',
     fontSize: 13,
     color: '#33332F',
     letterSpacing: 0.2,
@@ -627,7 +627,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
     fontSize: 15,
     color: '#1C1C1A',
   },
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   errorText: {
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
     fontSize: 13,
     color: '#A8322A',
     marginTop: 2,
@@ -657,7 +657,7 @@ const styles = StyleSheet.create({
   },
   createButtonDisabled: { opacity: 0.6 },
   createButtonText: {
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
     fontSize: 16,
     color: '#fff',
   },

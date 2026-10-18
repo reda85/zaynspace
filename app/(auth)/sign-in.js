@@ -123,13 +123,13 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   title: {
-    fontFamily: 'Geist_700Bold',
+    fontFamily: 'Outfit_700Bold',
     fontSize: 22,
     textAlign: 'center',
     color: '#1C1C1A',
   },
   subtitle: {
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
     fontSize: 14,
     textAlign: 'center',
     color: '#5B5B56',
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
     fontSize: 14,
     color: '#33332F',
     marginBottom: 6,
@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
     fontSize: 15,
     color: '#1C1C1A',
   },
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: 'white',
-    fontFamily: 'Geist_700Bold',
+    fontFamily: 'Outfit_700Bold',
     fontSize: 16,
   },
 });

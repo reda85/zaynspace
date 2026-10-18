@@ -365,7 +365,7 @@ const data = memberProjects
       <SafeAreaView style={styles.container}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" />
-          <Text style={{ marginTop: 16, fontFamily: 'Geist_500Medium', color: '#5B5B56' }}>
+          <Text style={{ marginTop: 16, fontFamily: 'Outfit_500Medium', color: '#5B5B56' }}>
             Chargement...
           </Text>
         </View>
@@ -612,12 +612,12 @@ const data = memberProjects
                 }}
               >
                 <View style={[styles.sheetDot, { backgroundColor: cat.color }]} />
-                <Text style={[styles.sheetItemText, isSelected && { color: cat.color, fontFamily: 'Geist_700Bold' }]}>
+                <Text style={[styles.sheetItemText, isSelected && { color: cat.color, fontFamily: 'Outfit_700Bold' }]}>
                   {cat.label}
                 </Text>
                 {isSelected && (
                   <View style={[styles.sheetCheckmark, { backgroundColor: cat.color }]}>
-                    <Text style={{ color: '#fff', fontSize: 11, fontFamily: 'Geist_700Bold' }}>✓</Text>
+                    <Text style={{ color: '#fff', fontSize: 11, fontFamily: 'Outfit_700Bold' }}>✓</Text>
                   </View>
                 )}
               </Pressable>
@@ -757,7 +757,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E4E4E0', alignSelf: 'center', marginBottom: 16,
   },
   sheetTitle: {
-    fontFamily: 'Geist_700Bold', fontSize: 15, color: '#1C1C1A', marginBottom: 12,
+    fontFamily: 'Outfit_700Bold', fontSize: 15, color: '#1C1C1A', marginBottom: 12,
   },
   sheetItem: {
     flexDirection: 'row', alignItems: 'center',
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
   },
   sheetDot: { width: 10, height: 10, borderRadius: 5 },
   sheetItemText: {
-    flex: 1, fontFamily: 'Geist_500Medium', fontSize: 15, color: '#33332F',
+    flex: 1, fontFamily: 'Outfit_500Medium', fontSize: 15, color: '#33332F',
   },
   sheetCheckmark: {
     width: 20, height: 20, borderRadius: 10,

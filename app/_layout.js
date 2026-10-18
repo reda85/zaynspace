@@ -1,6 +1,5 @@
 // app/_layout.tsx
-import { Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, useFonts } from '@expo-google-fonts/geist'
-import { GeistMono_500Medium } from '@expo-google-fonts/geist-mono'
+import { Outfit_400Regular, Outfit_500Medium, Outfit_600SemiBold, Outfit_700Bold, useFonts } from '@expo-google-fonts/outfit'
 import { Stack } from 'expo-router'
 import { Text, TouchableOpacity, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
@@ -37,13 +36,12 @@ export function ErrorBoundary({ error, retry }) {
 }
 
 export default function RootLayout() {
-  // Polices de la refonte, chargées une fois pour toute l'application.
+  // Polices de l'application, chargées une fois pour toute l'application.
   const [fontsLoaded] = useFonts({
-    Geist_400Regular,
-    Geist_500Medium,
-    Geist_600SemiBold,
-    Geist_700Bold,
-    GeistMono_500Medium,
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
   })
   if (!fontsLoaded) return null
 

@@ -95,7 +95,7 @@ export default function StorageDataScreen() {
       headerTitleAlign: 'center',
       headerShadowVisible: false,
       headerTitleStyle: {
-        fontFamily: 'Geist_700Bold',
+        fontFamily: 'Outfit_700Bold',
         fontSize: 24,
         color: 'black',
         backgroundColor: '#F8F8F6',
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
 
   /* Section Title */
   sectionTitle: {
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
     fontSize: 14,
     color: '#5B5B56',
     marginTop: 24,
@@ -278,14 +278,14 @@ const styles = StyleSheet.create({
   },
 
   menuTitle: {
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
     fontSize: 16,
     color: '#1C1C1A',
     marginBottom: 4,
   },
 
   menuSubtitle: {
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
     fontSize: 14,
     color: '#5B5B56',
     lineHeight: 20,

@@ -554,7 +554,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   groupDateText: {
-    fontFamily: 'Geist_700Bold',
+    fontFamily: 'Outfit_700Bold',
     fontSize: 14,
     color: '#33332F',
     marginBottom: 8,
@@ -590,7 +590,7 @@ selected: {
     paddingVertical: 60,
   },
   emptyText: {
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
     fontSize: 16,
     color: '#8A8A84',
   },
@@ -610,7 +610,7 @@ selected: {
   },
   activeFiltersText: {
     flex: 1,
-    fontFamily: 'Geist_500Medium',
+    fontFamily: 'Outfit_500Medium',
     fontSize: 12,
     color: '#2C4F91',
   },
@@ -663,7 +663,7 @@ selected: {
   },
   downloadText: {
     color: 'white',
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
     fontSize: 13,
   },
 
@@ -688,7 +688,7 @@ selected: {
     borderBottomColor: '#E4E4E0',
   },
   modalTitle: {
-    fontFamily: 'Geist_700Bold',
+    fontFamily: 'Outfit_700Bold',
     fontSize: 20,
     color: '#1C1C1A',
   },
@@ -699,7 +699,7 @@ selected: {
     marginBottom: 24,
   },
   filterLabel: {
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
     fontSize: 16,
     color: '#33332F',
     marginBottom: 12,
@@ -718,7 +718,7 @@ selected: {
     backgroundColor: 'black',
   },
   planChipText: {
-    fontFamily: 'Geist_500Medium',
+    fontFamily: 'Outfit_500Medium',
     fontSize: 14,
     color: '#5B5B56',
   },
@@ -733,7 +733,7 @@ selected: {
     flex: 1,
   },
   dateInputLabel: {
-    fontFamily: 'Geist_500Medium',
+    fontFamily: 'Outfit_500Medium',
     fontSize: 13,
     color: '#5B5B56',
     marginBottom: 6,
@@ -747,7 +747,7 @@ selected: {
     paddingHorizontal: 12,
   },
   dateInputText: {
-    fontFamily: 'Geist_500Medium',
+    fontFamily: 'Outfit_500Medium',
     fontSize: 14,
     color: '#33332F',
   },
@@ -756,7 +756,7 @@ selected: {
     alignSelf: 'flex-start',
   },
   clearDatesBtnText: {
-    fontFamily: 'Geist_500Medium',
+    fontFamily: 'Outfit_500Medium',
     fontSize: 13,
     color: '#2C4F91',
   },
@@ -775,7 +775,7 @@ selected: {
     alignItems: 'center',
   },
   clearAllBtnText: {
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
     fontSize: 15,
     color: '#5B5B56',
   },
@@ -787,7 +787,7 @@ selected: {
     alignItems: 'center',
   },
   applyBtnText: {
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
     fontSize: 15,
     color: 'white',
   },

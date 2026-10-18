@@ -50,7 +50,7 @@ export default function MembersScreen() {
     navigation.setOptions({
       title: 'Membres',
       headerTitleAlign: 'center',
-      headerTitleStyle: { fontFamily: 'Geist_700Bold', fontSize: 20, color: 'black' },
+      headerTitleStyle: { fontFamily: 'Outfit_700Bold', fontSize: 20, color: 'black' },
       headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 },
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 10 }}>
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 2,
   },
 
-  sectionLabel: { fontSize: 12, fontFamily: 'Geist_600SemiBold', color: '#5B5B56', textTransform: 'uppercase', marginBottom: 10 },
+  sectionLabel: { fontSize: 12, fontFamily: 'Outfit_600SemiBold', color: '#5B5B56', textTransform: 'uppercase', marginBottom: 10 },
 
   searchPanel: {
     backgroundColor: '#FFF', borderRadius: 16, padding: 14, marginBottom: 16,
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F8F6', borderWidth: 1, borderColor: '#E4E4E0',
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 10,
   },
-  searchInput: { flex: 1, fontSize: 15, fontFamily: 'Geist_400Regular', color: '#1C1C1A' },
+  searchInput: { flex: 1, fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#1C1C1A' },
 
   memberRow: {
     flexDirection: 'row', alignItems: 'center',
@@ -256,16 +256,16 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.04, shadowOffset: { width: 0, height: 1 }, shadowRadius: 2, elevation: 1,
   },
   avatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  avatarText: { color: '#FFF', fontSize: 16, fontFamily: 'Geist_700Bold' },
+  avatarText: { color: '#FFF', fontSize: 16, fontFamily: 'Outfit_700Bold' },
   memberInfo: { flex: 1 },
-  memberName:  { fontSize: 15, fontFamily: 'Geist_600SemiBold', color: '#1C1C1A' },
-  memberEmail: { fontSize: 12, fontFamily: 'Geist_400Regular', color: '#5B5B56' },
+  memberName:  { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#1C1C1A' },
+  memberEmail: { fontSize: 12, fontFamily: 'Outfit_400Regular', color: '#5B5B56' },
 
   addBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: '#2C4F91', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6,
   },
-  addBtnText: { color: '#FFF', fontSize: 13, fontFamily: 'Geist_600SemiBold' },
+  addBtnText: { color: '#FFF', fontSize: 13, fontFamily: 'Outfit_600SemiBold' },
 
   sep: { height: 6 },
   adminBadge: {
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
 },
 adminBadgeText: {
   fontSize: 10,
-  fontFamily: 'Geist_600SemiBold',
+  fontFamily: 'Outfit_600SemiBold',
   color: '#2C4F91',
   letterSpacing: 0.5,
   textTransform: 'uppercase',

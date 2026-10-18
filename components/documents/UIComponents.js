@@ -119,7 +119,7 @@ export function SectionHeader({ title, count }) {
 
 const styles = StyleSheet.create({
   fileIcon: { alignItems: 'center', justifyContent: 'center' },
-  fileIconLabel: { fontFamily: 'Geist_700Bold', letterSpacing: 0.5 },
+  fileIconLabel: { fontFamily: 'Outfit_700Bold', letterSpacing: 0.5 },
 
   uploadRow: {
     backgroundColor: Colors.surface, borderRadius: 12, padding: 12,
@@ -128,21 +128,21 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2,
   },
   uploadInfo: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  uploadFileName: { color: Colors.text, fontSize: 13, fontFamily: 'Geist_600SemiBold', flex: 1, marginRight: 8 },
-  uploadStatus: { fontSize: 12, fontFamily: 'Geist_500Medium' },
+  uploadFileName: { color: Colors.text, fontSize: 13, fontFamily: 'Outfit_600SemiBold', flex: 1, marginRight: 8 },
+  uploadStatus: { fontSize: 12, fontFamily: 'Outfit_500Medium' },
   progressTrack: { height: 4, backgroundColor: Colors.border, borderRadius: 2, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 2 },
 
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { color: Colors.text, fontSize: 17, fontFamily: 'Geist_700Bold', textAlign: 'center', marginBottom: 6 },
-  emptySubtitle: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Geist_400Regular', textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { color: Colors.text, fontSize: 17, fontFamily: 'Outfit_700Bold', textAlign: 'center', marginBottom: 6 },
+  emptySubtitle: { color: Colors.textMuted, fontSize: 14, fontFamily: 'Outfit_400Regular', textAlign: 'center', lineHeight: 20 },
 
   sectionHeaderWrapper: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingBottom: 6, paddingTop: 16, backgroundColor: Colors.bg,
   },
-  sectionTitle: { fontSize: 13, color: Colors.textMuted, fontFamily: 'Geist_600SemiBold', textTransform: 'uppercase' },
+  sectionTitle: { fontSize: 13, color: Colors.textMuted, fontFamily: 'Outfit_600SemiBold', textTransform: 'uppercase' },
   countBadge: { backgroundColor: 'black', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
-  countBadgeText: { color: 'white', fontSize: 11, fontFamily: 'Geist_600SemiBold' },
+  countBadgeText: { color: 'white', fontSize: 11, fontFamily: 'Outfit_600SemiBold' },
 });

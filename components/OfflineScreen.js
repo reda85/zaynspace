@@ -91,5 +91,5 @@ const styles = StyleSheet.create({
   syncing: { backgroundColor: '#33332F' },
   failed: { backgroundColor: '#B91C1C' },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FBBF24' },
-  text: { color: '#FFFFFF', fontSize: 12, fontFamily: 'Geist_500Medium' },
+  text: { color: '#FFFFFF', fontSize: 12, fontFamily: 'Outfit_500Medium' },
 });

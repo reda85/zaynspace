@@ -41,7 +41,7 @@ export default function AccountScreen() {
       headerTitleAlign: 'center',
       headerShadowVisible: false,
       headerTitleStyle: {
-        fontFamily: 'Geist_700Bold',
+        fontFamily: 'Outfit_700Bold',
         fontSize: 20,
         color: '#000',
       },
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    fontFamily: 'Geist_500Medium',
+    fontFamily: 'Outfit_500Medium',
     fontSize: 14,
     color: '#5B5B56',
   },
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontFamily: 'Geist_500Medium',
+    fontFamily: 'Outfit_500Medium',
     fontSize: 16,
     color: '#1C1C1A',
   },
@@ -254,13 +254,13 @@ const styles = StyleSheet.create({
   },
 
   infoLabel: {
-    fontFamily: 'Geist_500Medium',
+    fontFamily: 'Outfit_500Medium',
     fontSize: 13,
     color: '#5B5B56',
   },
 
   infoValue: {
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
     fontSize: 15,
     color: '#1C1C1A',
   },
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   deleteText: {
     color: '#A8322A',
     fontSize: 16,
-    fontFamily: 'Geist_600SemiBold',
+    fontFamily: 'Outfit_600SemiBold',
   },
   headerBtnWhite: {
   backgroundColor: '#FFF',

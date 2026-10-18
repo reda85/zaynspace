@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     padding: 20, paddingBottom: 32,
   },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  title:  { fontSize: 18, fontFamily: 'Geist_700Bold', color: '#111' },
+  title:  { fontSize: 18, fontFamily: 'Outfit_700Bold', color: '#111' },
 
   tabs: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   tab: {
@@ -151,21 +151,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F3F0',
   },
   tabActive:     { backgroundColor: '#EDF1F8' },
-  tabText:       { fontSize: 13, fontFamily: 'Geist_500Medium', color: '#5B5B56' },
-  tabTextActive: { color: '#2C4F91', fontFamily: 'Geist_600SemiBold' },
+  tabText:       { fontSize: 13, fontFamily: 'Outfit_500Medium', color: '#5B5B56' },
+  tabTextActive: { color: '#2C4F91', fontFamily: 'Outfit_600SemiBold' },
 
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#F8F8F6', borderWidth: 1, borderColor: '#E4E4E0',
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, marginBottom: 12,
   },
-  searchInput: { flex: 1, fontSize: 14, fontFamily: 'Geist_400Regular', color: '#1C1C1A' },
+  searchInput: { flex: 1, fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#1C1C1A' },
 
   item: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 12, paddingHorizontal: 4,
   },
-  itemLabel: { flex: 1, fontSize: 15, fontFamily: 'Geist_400Regular', color: '#1C1C1A', marginRight: 12 },
+  itemLabel: { flex: 1, fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#1C1C1A', marginRight: 12 },
   sep:   { height: 1, backgroundColor: '#F3F3F0' },
-  empty: { textAlign: 'center', color: '#8A8A84', fontFamily: 'Geist_400Regular', marginTop: 20 },
+  empty: { textAlign: 'center', color: '#8A8A84', fontFamily: 'Outfit_400Regular', marginTop: 20 },
 });

@@ -138,12 +138,12 @@ const styles = StyleSheet.create({
     labelText: {
         color: '#fff',
         fontSize: 11,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
     },
     fallbackText: {
         color: '#8A8A84',
         fontSize: 13,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         textAlign: 'center',
         marginTop: 45,
     },

@@ -793,12 +793,12 @@ const rm = StyleSheet.create({
     },
     title: {
         fontSize: 18,
-        fontFamily: 'Geist_700Bold',
+        fontFamily: 'Outfit_700Bold',
         color: '#1C1C1A',
     },
     subtitle: {
         fontSize: 12,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#8A8A84',
         marginTop: 2,
     },
@@ -811,7 +811,7 @@ const rm = StyleSheet.create({
     },
     sectionLabel: {
         fontSize: 10,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#8A8A84',
         letterSpacing: 1,
         marginBottom: 10,
@@ -832,7 +832,7 @@ const rm = StyleSheet.create({
     },
     templateChipText: {
         fontSize: 13,
-        fontFamily: 'Geist_500Medium',
+        fontFamily: 'Outfit_500Medium',
         color: '#5B5B56',
     },
     templateChipTextActive: {
@@ -862,7 +862,7 @@ const rm = StyleSheet.create({
     },
     modeBtnText: {
         fontSize: 13,
-        fontFamily: 'Geist_500Medium',
+        fontFamily: 'Outfit_500Medium',
         color: '#5B5B56',
     },
     modeBtnTextActive: {
@@ -870,7 +870,7 @@ const rm = StyleSheet.create({
     },
     modeHint: {
         fontSize: 11,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#8A8A84',
         marginTop: 6,
     },
@@ -898,13 +898,13 @@ const rm = StyleSheet.create({
     },
     fieldLabel: {
         fontSize: 13,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#33332F',
     },
     // Participants
     emptyText: {
         fontSize: 12,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#D3D3CE',
         marginTop: 4,
     },
@@ -937,27 +937,27 @@ const rm = StyleSheet.create({
     },
     participantAvatarText: {
         fontSize: 12,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#5B5B56',
     },
     participantName: {
         fontSize: 13,
-        fontFamily: 'Geist_500Medium',
+        fontFamily: 'Outfit_500Medium',
         color: '#1C1C1A',
     },
     participantRole: {
         fontSize: 11,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#8A8A84',
     },
     participantEmail: {
         fontSize: 11,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#D3D3CE',
     },
     presenceLabel: {
         fontSize: 11,
-        fontFamily: 'Geist_500Medium',
+        fontFamily: 'Outfit_500Medium',
         color: '#D3D3CE',
     },
     presenceLabelActive: {
@@ -966,12 +966,12 @@ const rm = StyleSheet.create({
     // Custom sections
     customSectionTitle: {
         fontSize: 13,
-        fontFamily: 'Geist_500Medium',
+        fontFamily: 'Outfit_500Medium',
         color: '#33332F',
     },
     customSectionType: {
         fontSize: 11,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#D3D3CE',
     },
     customSectionInput: {
@@ -981,14 +981,14 @@ const rm = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 13,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#1C1C1A',
         backgroundColor: '#F8F8F6',
         minHeight: 80,
     },
     customSectionHint: {
         fontSize: 10,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#D3D3CE',
         marginTop: 4,
     },
@@ -1011,7 +1011,7 @@ const rm = StyleSheet.create({
     },
     cancelBtnText: {
         fontSize: 14,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#33332F',
     },
     confirmBtn: {
@@ -1026,7 +1026,7 @@ const rm = StyleSheet.create({
     },
     confirmBtnText: {
         fontSize: 14,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#fff',
     },
     // ── NEW: Title input
@@ -1037,7 +1037,7 @@ const rm = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 11,
         fontSize: 14,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#1C1C1A',
         backgroundColor: '#F8F8F6',
         marginTop: 4,
@@ -1061,12 +1061,12 @@ const rm = StyleSheet.create({
     },
     planningImageName: {
         fontSize: 12,
-        fontFamily: 'Geist_500Medium',
+        fontFamily: 'Outfit_500Medium',
         color: '#1C1C1A',
     },
     planningImagePage: {
         fontSize: 10,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#8A8A84',
         marginTop: 2,
     },
@@ -1086,7 +1086,7 @@ const rm = StyleSheet.create({
     },
     uploadText: {
         fontSize: 13,
-        fontFamily: 'Geist_500Medium',
+        fontFamily: 'Outfit_500Medium',
         color: '#33332F',
     },
 });
@@ -1617,7 +1617,7 @@ useEffect(() => {
                     placeholder="Rechercher par nom"
                     value={searchTerm}
                     onChangeText={updateSearch}
-                    style={{ flex: 1, paddingVertical: 10, fontFamily: 'Geist_400Regular' }}
+                    style={{ flex: 1, paddingVertical: 10, fontFamily: 'Outfit_400Regular' }}
                     placeholderTextColor="#999"
                 />
             </View>
@@ -1628,7 +1628,7 @@ useEffect(() => {
                     checked={selectedIds.size === filteredPins.length && filteredPins.length > 0}
                     onPress={toggleSelectAll}
                 />
-                <Text style={{ fontSize: 15, color: '#1C1C1A', fontFamily: 'Geist_500Medium', marginLeft: 8 }}>
+                <Text style={{ fontSize: 15, color: '#1C1C1A', fontFamily: 'Outfit_500Medium', marginLeft: 8 }}>
                     Tout sélectionner
                 </Text>
             </View>
@@ -1808,7 +1808,7 @@ useEffect(() => {
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8F8F6', paddingHorizontal: 16, paddingBottom: 16 },
     sectionHeaderWrapper: { paddingBottom: 6, paddingTop: 16, paddingHorizontal: 0, backgroundColor: '#F8F8F6' },
-    groupDateText: { fontSize: 13, color: '#5B5B56', fontFamily: 'Geist_600SemiBold', textTransform: 'uppercase' },
+    groupDateText: { fontSize: 13, color: '#5B5B56', fontFamily: 'Outfit_600SemiBold', textTransform: 'uppercase' },
     listCardWrapper: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.08, shadowOffset: { width: 2, height: 2 }, shadowRadius: 6, elevation: 0, marginBottom: 1 },
     listCardNoShadow: { shadowOpacity: 0, shadowRadius: 0, elevation: 0 },
     sectionTopRadius: { borderTopLeftRadius: 16, borderTopRightRadius: 16 },
@@ -1816,38 +1816,38 @@ const styles = StyleSheet.create({
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     filterContainer: { backgroundColor: 'white', padding: 16, borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: '80%' },
     header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    title: { fontSize: 18, fontFamily: 'Geist_700Bold', color: '#1C1C1A' },
-    subtitle: { fontSize: 12, color: '#5B5B56', fontFamily: 'Geist_400Regular', marginTop: 2 },
+    title: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: '#1C1C1A' },
+    subtitle: { fontSize: 12, color: '#5B5B56', fontFamily: 'Outfit_400Regular', marginTop: 2 },
     headerRight: { flexDirection: 'row', alignItems: 'center' },
-    clearText: { color: 'darkmagenta', fontSize: 14, fontFamily: 'Geist_400Regular', marginRight: 12 },
+    clearText: { color: 'darkmagenta', fontSize: 14, fontFamily: 'Outfit_400Regular', marginRight: 12 },
     closeIcon: { padding: 4 },
     bottomSheet: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingTop: 20, maxHeight: '70%', width: '100%' },
     sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-    sheetTitle: { fontSize: 18, fontFamily: 'Geist_700Bold', color: '#111' },
-    sortFieldTitle: { fontSize: 16, fontFamily: 'Geist_700Bold', color: '#333', marginTop: 15, marginBottom: 5 },
+    sheetTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: '#111' },
+    sortFieldTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: '#333', marginTop: 15, marginBottom: 5 },
     sortItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 10, borderRadius: 8, backgroundColor: '#F8F8F6', marginTop: 5 },
     sortItemActive: { backgroundColor: '#EDF1F8', borderWidth: 1, borderColor: '#CDD8EA' },
-    sortText: { fontSize: 15, color: '#333', fontFamily: 'Geist_400Regular', marginLeft: 5 },
+    sortText: { fontSize: 15, color: '#333', fontFamily: 'Outfit_400Regular', marginLeft: 5 },
     floatingBar: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row', alignItems: 'center', gap: 12 },
     filterFloatingBtn: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D3D3CE', width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 4 },
     downloadFloatingBtn: { backgroundColor: '#1C1C1A', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, height: 48, borderRadius: 24, gap: 6, elevation: 4 },
-    downloadText: { color: 'white', fontFamily: 'Geist_600SemiBold', fontSize: 13 },
+    downloadText: { color: 'white', fontFamily: 'Outfit_600SemiBold', fontSize: 13 },
     createTaskContainer: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20, maxHeight: '80%', width: '100%' },
     createTaskForm: { marginTop: 20, marginBottom: 20 },
-    inputLabel: { fontSize: 14, fontFamily: 'Geist_600SemiBold', color: '#33332F', marginBottom: 8, marginTop: 16 },
-    textInput: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, fontFamily: 'Geist_400Regular', color: '#111827' },
+    inputLabel: { fontSize: 14, fontFamily: 'Outfit_600SemiBold', color: '#33332F', marginBottom: 8, marginTop: 16 },
+    textInput: { backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12, fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#111827' },
     textAreaInput: { minHeight: 100, textAlignVertical: 'top' },
     infoBox: { flexDirection: 'row', backgroundColor: '#EDF1F8', padding: 12, borderRadius: 8, marginTop: 16, gap: 8 },
-    infoText: { flex: 1, fontSize: 13, fontFamily: 'Geist_400Regular', color: '#2C4F91', lineHeight: 18 },
+    infoText: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#2C4F91', lineHeight: 18 },
     modalButtons: { flexDirection: 'row', gap: 12, marginTop: 20 },
     modalButton: { flex: 1, paddingVertical: 14, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
     cancelButton: { backgroundColor: '#F3F3F0' },
-    cancelButtonText: { fontSize: 15, fontFamily: 'Geist_600SemiBold', color: '#33332F' },
+    cancelButtonText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#33332F' },
     createButton: { backgroundColor: '#2C4F91' },
     createButtonDisabled: { backgroundColor: '#D3D3CE' },
-    createButtonText: { fontSize: 15, fontFamily: 'Geist_600SemiBold', color: '#FFFFFF' },
+    createButtonText: { fontSize: 15, fontFamily: 'Outfit_600SemiBold', color: '#FFFFFF' },
     filterActiveBadge: { position: 'absolute', top: -4, right: -4, backgroundColor: '#2F6B4A', borderRadius: 10, minWidth: 18, height: 18, paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
-    filterActiveBadgeText: { color: 'white', fontSize: 10, fontFamily: 'Geist_600SemiBold' },
+    filterActiveBadgeText: { color: 'white', fontSize: 10, fontFamily: 'Outfit_600SemiBold' },
     skeletonGroup: {
     backgroundColor: '#fff',
     borderRadius: 16,

@@ -487,13 +487,13 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1, paddingVertical: 10,
-    fontFamily: 'Geist_400Regular', color: Colors.text,
+    fontFamily: 'Outfit_400Regular', color: Colors.text,
   },
 
   // Breadcrumb
   breadcrumbBar: { maxHeight: 36, marginBottom: 6 },
   breadcrumbContent: { alignItems: 'center' },
-  breadcrumbItem: { color: Colors.textMuted, fontSize: 13, fontFamily: 'Geist_600SemiBold' },
+  breadcrumbItem: { color: Colors.textMuted, fontSize: 13, fontFamily: 'Outfit_600SemiBold' },
   breadcrumbActive: { color: Colors.text },
   breadcrumbSep: { color: Colors.textDim, fontSize: 13 },
 
@@ -503,15 +503,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between',
   },
-  newFolderLink: { color: 'black', fontSize: 13, fontFamily: 'Geist_600SemiBold', paddingVertical: 16 },
+  newFolderLink: { color: 'black', fontSize: 13, fontFamily: 'Outfit_600SemiBold', paddingVertical: 16 },
   // Empty states — identiques à DiscussionsScreen
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40, marginTop: 40 },
-  emptyTitle: { fontSize: 20, fontFamily: 'Geist_700Bold', color: '#1C1C1A', marginTop: 16 },
-  emptySub: { fontSize: 14, fontFamily: 'Geist_400Regular', color: '#5B5B56', marginTop: 6, textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 20, fontFamily: 'Outfit_700Bold', color: '#1C1C1A', marginTop: 16 },
+  emptySub: { fontSize: 14, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginTop: 6, textAlign: 'center', lineHeight: 20 },
   emptyBtn: { marginTop: 24, backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
-  emptyBtnText: { color: '#FFF', fontFamily: 'Geist_600SemiBold', fontSize: 15 },
+  emptyBtnText: { color: '#FFF', fontFamily: 'Outfit_600SemiBold', fontSize: 15 },
 
-  emptyHint: { color: '#5B5B56', fontSize: 16, fontFamily: 'Geist_600SemiBold', textAlign: 'center', paddingVertical: 16 },
+  emptyHint: { color: '#5B5B56', fontSize: 16, fontFamily: 'Outfit_600SemiBold', textAlign: 'center', paddingVertical: 16 },
 
   // Inline folder creation
   inlineInput: {
@@ -522,13 +522,13 @@ const styles = StyleSheet.create({
   },
   inlineTextInput: {
     flex: 1, color: Colors.text, fontSize: 14,
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
     backgroundColor: Colors.bg, borderRadius: 6,
     paddingHorizontal: 10, paddingVertical: 6,
   },
   inlineSubmit: { backgroundColor: Colors.primary, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 7 },
-  inlineSubmitText: { color: '#fff', fontFamily: 'Geist_600SemiBold', fontSize: 13 },
-  inlineCancel: { color: Colors.textMuted, fontSize: 13, fontFamily: 'Geist_400Regular' },
+  inlineSubmitText: { color: '#fff', fontFamily: 'Outfit_600SemiBold', fontSize: 13 },
+  inlineCancel: { color: Colors.textMuted, fontSize: 13, fontFamily: 'Outfit_400Regular' },
 
   // Sort bottom sheet — identique à bottomSheet de TasksScreen
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
@@ -539,15 +539,15 @@ const styles = StyleSheet.create({
     maxHeight: '70%',
   },
   sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  sheetTitle: { fontSize: 18, fontFamily: 'Geist_700Bold', color: '#111' },
-  sortFieldTitle: { fontSize: 16, fontFamily: 'Geist_700Bold', color: '#333', marginTop: 15, marginBottom: 5 },
+  sheetTitle: { fontSize: 18, fontFamily: 'Outfit_700Bold', color: '#111' },
+  sortFieldTitle: { fontSize: 16, fontFamily: 'Outfit_700Bold', color: '#333', marginTop: 15, marginBottom: 5 },
   sortItem: {
     flexDirection: 'row', alignItems: 'center',
     paddingVertical: 12, paddingHorizontal: 10,
     borderRadius: 8, backgroundColor: '#F8F8F6', marginTop: 5,
   },
   sortItemActive: { backgroundColor: '#EDF1F8', borderWidth: 1, borderColor: '#CDD8EA' },
-  sortText: { fontSize: 15, color: '#333', fontFamily: 'Geist_400Regular', marginLeft: 5 },
+  sortText: { fontSize: 15, color: '#333', fontFamily: 'Outfit_400Regular', marginLeft: 5 },
 
 
 });

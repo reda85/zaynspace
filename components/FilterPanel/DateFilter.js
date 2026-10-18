@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         textTransform: 'capitalize',
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
     },
 
     // ── Pills ────────────────────────────────────────────────────────────────
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     },
     pillText: {
         fontSize: 12,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#33332F',
     },
     pillTextSelected: {

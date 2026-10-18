@@ -34,9 +34,9 @@ export default function Layout() {
         tabBarActiveTintColor: C.encre,
         tabBarInactiveTintColor: C.mineClair,
         tabBarStyle: {
-          backgroundColor: C.blanc,
-          borderTopColor: C.filet,
-          borderTopWidth: StyleSheet.hairlineWidth,
+          // Fond gris comme avant la refonte, sans trait au-dessus.
+          backgroundColor: C.papier,
+          borderTopWidth: 0,
           // Assez haut pour l'icône, le libellé et le trait de l'onglet actif.
           height: 64 + insets.bottom,
           paddingTop: 6,

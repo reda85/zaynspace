@@ -362,7 +362,7 @@ const styles = StyleSheet.create({
     },
     addTagButtonText: {
         color: '#5B5B56',
-        fontFamily: 'Geist_500Medium',
+        fontFamily: 'Outfit_500Medium',
         fontSize: 12,
     },
     chipsRow: {
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     },
     chipText: {
         fontSize: 12,
-        fontFamily: 'Geist_500Medium',
+        fontFamily: 'Outfit_500Medium',
         color: '#1C1C1A',
         flexShrink: 1,
     },
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     },
     sheetTitle: {
         fontSize: 18,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#111',
     },
     searchRow: {
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         fontSize: 14,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#1C1C1A',
     },
 
@@ -462,11 +462,11 @@ const styles = StyleSheet.create({
     tagName: {
         flex: 1,
         fontSize: 16,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#333',
     },
     tagNameActive: {
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#2C4F91',
     },
 
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
     createTagInlineText: {
         flex: 1,
         fontSize: 16,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#2C4F91',
     },
 
@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 13,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#8A8A84',
         textAlign: 'center',
     },
@@ -513,7 +513,7 @@ const styles = StyleSheet.create({
     createTagButtonText: {
         color: '#fff',
         fontSize: 13,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
     },
 
     // ── Done button ──────────────────────────────────────────────────────────
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     },
     doneButtonText: {
         fontSize: 15,
-        fontFamily: 'Geist_700Bold',
+        fontFamily: 'Outfit_700Bold',
         color: '#fff',
     },
 });

@@ -260,13 +260,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontFamily: 'Geist_700Bold',
+    fontFamily: 'Outfit_700Bold',
     color: '#1C1C1A',
   },
   subtitle: {
     fontSize: 12,
     color: '#5B5B56',
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
     marginTop: 2,
   },
   headerRight: {
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   clearText: {
     color: C.tirage,
     fontSize: 14,
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
     marginRight: 12,
   },
 });

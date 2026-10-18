@@ -834,7 +834,7 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 15,
     fontWeight: '500',
-    fontFamily: 'Geist_400Regular',
+    fontFamily: 'Outfit_400Regular',
   },
   checkButton: { backgroundColor: '#2F6B4A' },
   closeButton: { backgroundColor: '#A8322A' },
@@ -898,25 +898,25 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '500',
     fontSize: 14,
-    fontFamily: 'Geist_400Regular'
+    fontFamily: 'Outfit_400Regular'
   },
   idText: {
     color: '#5B5B56',
     fontSize: 12,
     marginBottom: 8,
-    fontFamily: 'Geist_400Regular'
+    fontFamily: 'Outfit_400Regular'
   },
   pinName: {
     fontSize: 20,
     color: '#000',
     marginBottom: 8,
-    fontFamily: 'Geist_400Regular'
+    fontFamily: 'Outfit_400Regular'
   },
   pinNote: {
     fontSize: 14,
     color: '#33332F',
     lineHeight: 24,
     marginBottom: 16,
-    fontFamily: 'Geist_400Regular'
+    fontFamily: 'Outfit_400Regular'
   },
 });

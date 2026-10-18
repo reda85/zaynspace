@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         textTransform: 'capitalize',
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
     },
 
     // ── Expanded area (chips + picker button) ───────────────────────────────
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     },
     chipText: {
         fontSize: 11,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#2C4F91',
         flexShrink: 1,
     },
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     },
     pickerButtonText: {
         fontSize: 12,
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#2C4F91',
     },
 
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     },
     sheetTitle: {
         fontSize: 18,
-        fontFamily: 'Geist_700Bold',
+        fontFamily: 'Outfit_700Bold',
         color: '#111',
     },
     searchRow: {
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     searchInput: {
         flex: 1,
         fontSize: 14,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#1C1C1A',
     },
     planRow: {
@@ -348,11 +348,11 @@ const styles = StyleSheet.create({
     planName: {
         flex: 1,
         fontSize: 14,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#33332F',
     },
     planNameActive: {
-        fontFamily: 'Geist_600SemiBold',
+        fontFamily: 'Outfit_600SemiBold',
         color: '#2C4F91',
     },
     emptyBox: {
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     },
     emptyText: {
         fontSize: 13,
-        fontFamily: 'Geist_400Regular',
+        fontFamily: 'Outfit_400Regular',
         color: '#8A8A84',
     },
     doneButton: {
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     },
     doneButtonText: {
         fontSize: 15,
-        fontFamily: 'Geist_700Bold',
+        fontFamily: 'Outfit_700Bold',
         color: '#fff',
     },
 });

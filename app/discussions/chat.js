@@ -59,7 +59,7 @@ export default function ChatScreen() {
     navigation.setOptions({
       title: groupName ?? 'Discussion',
       headerTitleAlign: 'center',
-      headerTitleStyle: { fontFamily: 'Geist_700Bold', fontSize: 20, color: 'black' },
+      headerTitleStyle: { fontFamily: 'Outfit_700Bold', fontSize: 20, color: 'black' },
       headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 },
       headerLeft: () => (
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginLeft: 10 }}>
@@ -419,10 +419,10 @@ const styles = StyleSheet.create({
   rowOwn: { flexDirection: 'row-reverse' },
 
   avatarSmall: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  avatarSmallText: { color: '#FFF', fontSize: 12, fontFamily: 'Geist_700Bold' },
+  avatarSmallText: { color: '#FFF', fontSize: 12, fontFamily: 'Outfit_700Bold' },
 
   bubbleWrapper: { maxWidth: '75%' },
-  senderName: { fontSize: 11, fontFamily: 'Geist_500Medium', color: '#5B5B56', marginBottom: 3, marginLeft: 12 },
+  senderName: { fontSize: 11, fontFamily: 'Outfit_500Medium', color: '#5B5B56', marginBottom: 3, marginLeft: 12 },
 
   bubble:        { padding: 12, borderRadius: 16, marginBottom: 2 },
   bubbleOwn:     { backgroundColor: '#2C4F91', borderBottomRightRadius: 4 },
@@ -430,23 +430,23 @@ const styles = StyleSheet.create({
                    shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 1 }, shadowRadius: 3, elevation: 1 },
   bubbleDeleted: { backgroundColor: '#F3F3F0', paddingVertical: 8 },
 
-  msgText:    { fontSize: 15, fontFamily: 'Geist_400Regular', color: '#1C1C1A', lineHeight: 20 },
+  msgText:    { fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#1C1C1A', lineHeight: 20 },
   msgTextOwn: { color: '#FFF' },
-  deletedText:{ fontSize: 13, fontFamily: 'Geist_400Regular', color: '#8A8A84', fontStyle: 'italic' },
+  deletedText:{ fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#8A8A84', fontStyle: 'italic' },
 
-  time:    { fontSize: 10, fontFamily: 'Geist_400Regular', color: '#8A8A84', marginTop: 6, alignSelf: 'flex-end' },
+  time:    { fontSize: 10, fontFamily: 'Outfit_400Regular', color: '#8A8A84', marginTop: 6, alignSelf: 'flex-end' },
   timeOwn: { color: '#CDD8EA' },
 
   attachImage: { width: 200, height: 200, borderRadius: 10, marginTop: 6 },
 
   docRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6,
              backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 8, padding: 8 },
-  docName: { flex: 1, fontSize: 13, fontFamily: 'Geist_400Regular', color: '#33332F' },
+  docName: { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#33332F' },
 
   linkedRow:    { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6,
                   backgroundColor: 'rgba(109,40,217,0.1)', borderRadius: 8, padding: 8 },
   linkedRowOwn: { backgroundColor: 'rgba(255,255,255,0.15)' },
-  linkedText:   { flex: 1, fontSize: 13, fontFamily: 'Geist_400Regular', color: '#2C4F91' },
+  linkedText:   { flex: 1, fontSize: 13, fontFamily: 'Outfit_400Regular', color: '#2C4F91' },
 
   deleteTap: { alignSelf: 'flex-end', padding: 4, marginTop: 2 },
 
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 6, maxWidth: 180,
   },
   pendingThumb: { width: 24, height: 24, borderRadius: 4 },
-  pendingName:  { flex: 1, fontSize: 12, fontFamily: 'Geist_400Regular', color: '#2C4F91' },
+  pendingName:  { flex: 1, fontSize: 12, fontFamily: 'Outfit_400Regular', color: '#2C4F91' },
 
   // Input
   inputRow: {
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: '#F8F8F6',
     borderWidth: 1, borderColor: '#E4E4E0', borderRadius: 20,
     paddingHorizontal: 14, paddingVertical: 8,
-    fontSize: 15, fontFamily: 'Geist_400Regular', color: '#1C1C1A',
+    fontSize: 15, fontFamily: 'Outfit_400Regular', color: '#1C1C1A',
     maxHeight: 100,
   },
   sendBtn: {

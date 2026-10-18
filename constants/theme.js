@@ -1,5 +1,5 @@
-// Palette et polices de la refonte, alignées sur l'application web
-// (app/globals.css, variables --zs-*). Toute nouvelle couleur d'interface
+// Palette de la refonte, alignée sur l'application web (app/globals.css,
+// variables --zs-*) ; la police reste Outfit. Toute nouvelle couleur d'interface
 // passe par ce fichier ; les couleurs de statut et de catégorie viennent de
 // la base et ne sont pas concernées.
 
@@ -28,9 +28,9 @@ export const C = {
 };
 
 export const F = {
-  regular: 'Geist_400Regular',
-  medium: 'Geist_500Medium',
-  semibold: 'Geist_600SemiBold',
-  bold: 'Geist_700Bold',
-  mono: 'GeistMono_500Medium',
+  regular: 'Outfit_400Regular',
+  medium: 'Outfit_500Medium',
+  semibold: 'Outfit_600SemiBold',
+  bold: 'Outfit_700Bold',
+  mono: 'Outfit_500Medium', // identifiants (#projet-pin)
 };
