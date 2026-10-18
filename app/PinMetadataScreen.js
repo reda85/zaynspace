@@ -1322,7 +1322,7 @@ export default function PinMetadataScreen() {
     const commentBarBottomInset = keyboardHeight > 0 ? keyboardHeight : insets.bottom;
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#F8F8F6' }} edges={['top', 'left', 'right']}>
             <View style={{ flex: 1 }}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => handleClose()} style={styles.backButton} accessibilityLabel="Retour">
@@ -1427,11 +1427,11 @@ export default function PinMetadataScreen() {
                             onPress={handleOpenCategorySheet}
                             style={[styles.categoryButton, !canEditEverythingElse && styles.readOnlyButton]}
                         >
-                            <View style={[styles.iconWrapper, { borderColor: currentStatusColor, borderWidth: 1 }]}>
-                                {getCategoryIconComponent(currentCategory?.icon, currentStatusColor, 16)}
+                            <View style={[styles.categoryIcon, { borderColor: currentStatusColor }]}>
+                                {getCategoryIconComponent(currentCategory?.icon, currentStatusColor, 15)}
                             </View>
                             <Text style={styles.categoryButtonText}>{currentCategory?.name ?? 'Catégorie'}</Text>
-                            <ChevronDown size={16} color="#333" style={{ marginLeft: 'auto' }} />
+                            <ChevronDown size={16} color="#5B5B56" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
 
                         <PinTagEditor
@@ -1449,11 +1449,11 @@ export default function PinMetadataScreen() {
                                 onPress={handleOpenAssigneeSheet}
                                 style={[assigneeButtonStyles, !canEditEverythingElse && styles.readOnlyButton]}
                             >
-                                <View style={styles.iconWrapper}><UserPlus size={16} color="#333" /></View>
+                                <UserPlus size={16} color="#5B5B56" />
                                 <Text style={assigneeTextStyles}>{assigneeName}</Text>
                                 {assignee && (
                                     <TouchableOpacity style={styles.clearIconWrapper} onPress={handleClearAssignee}>
-                                        <CloseIcon size={16} color="#333" />
+                                        <CloseIcon size={12} color="#5B5B56" strokeWidth={2.4} />
                                     </TouchableOpacity>
                                 )}
                             </TouchableOpacity>
@@ -1463,31 +1463,25 @@ export default function PinMetadataScreen() {
                                 onPress={handleOpenDatePicker}
                                 style={[dateButtonStyles, !canEditEverythingElse && styles.readOnlyButton]}
                             >
-                                <View style={[styles.iconWrapper, isPast && styles.pastDueIconBorder]}>
-                                    <Calendar size={16} color={isPast ? styles.pastDueText.color : "#333"} />
-                                </View>
+                                <Calendar size={16} color={isPast ? styles.pastDueText.color : "#5B5B56"} />
                                 <Text style={dateTextStyles}>{due_date ? formatDate(due_date) : 'Date échéance'}</Text>
                                 {due_date && (
-                                    <TouchableOpacity style={styles.clearIconWrapper} onPress={handleClearDueDate}>
-                                        <CloseIcon size={16} color="#333" />
+                                    <TouchableOpacity style={[styles.clearIconWrapper, isPast && { backgroundColor: '#FFFFFF' }]} onPress={handleClearDueDate}>
+                                        <CloseIcon size={12} color={isPast ? styles.pastDueText.color : "#5B5B56"} strokeWidth={2.4} />
                                     </TouchableOpacity>
                                 )}
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.assigneeDueDateRow}>
-                            <TouchableOpacity style={[styles.actionButton, { borderColor: '#2C4F91' }]} onPress={handleAddPhotosToCurrentPin}>
-                                <View style={[styles.iconWrapper, { borderColor: '#2C4F91', borderWidth: 1 }]}>
-                                    <Camera size={16} color="#2C4F91" />
-                                </View>
-                                <Text style={[styles.actionButtonText, { color: '#2C4F91' }]}>Ajouter photos</Text>
+                            <TouchableOpacity style={[styles.actionButton, styles.mediaButton, styles.photoButton]} onPress={handleAddPhotosToCurrentPin}>
+                                <Camera size={16} color="#2C4F91" />
+                                <Text style={[styles.mediaButtonText, { color: '#2C4F91' }]}>Ajouter photos</Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity style={[styles.actionButton, { borderColor: '#ec4899' }]} onPress={handleAddSnippetToCurrentPin}>
-                                <View style={[styles.iconWrapper, { borderColor: '#ec4899', borderWidth: 1 }]}>
-                                    <Scissors size={16} color="#ec4899" />
-                                </View>
-                                <Text style={[styles.actionButtonText, { color: '#ec4899' }]}>Ajouter snippet</Text>
+                            <TouchableOpacity style={[styles.actionButton, styles.mediaButton]} onPress={handleAddSnippetToCurrentPin}>
+                                <Scissors size={16} color="#1C1C1A" />
+                                <Text style={styles.mediaButtonText}>Ajouter snippet</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -1514,12 +1508,12 @@ export default function PinMetadataScreen() {
                                 >
                                     <View style={styles.pinLocationHeader}>
                                         <View style={[styles.locationIconCircle, { backgroundColor: currentStatusColor }]}>
-                                            <MapPin size={20} color="#fff" />
+                                            <MapPin size={15} color="#fff" />
                                         </View>
                                         <View style={{ flex: 1 }}>
                                             <Text style={styles.pinLocationTitle}>Position sur le plan</Text>
                                         </View>
-                                        <ChevronRight size={20} color="#5B5B56" />
+                                        <ChevronRight size={18} color="#8A8A84" />
                                     </View>
                                     <View style={styles.pinPreviewContainer}>
                                         <PlanMiniSnapshot pngUrl={planPngPublicUrl} x={xcoordinate} y={ycoordinate} pinColor={currentStatusColor} />
@@ -1671,7 +1665,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 8,
         paddingVertical: 6,
-        backgroundColor: '#fff',
+        backgroundColor: '#F8F8F6',
         gap: 4,
     },
     backButton: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
@@ -1692,46 +1686,55 @@ const styles = StyleSheet.create({
     },
     middleIcons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     disabledButton: { opacity: 0.5 },
-    scroll: { padding: 20 },
+    scroll: { paddingHorizontal: 16, paddingTop: 4 },
     statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
     statusIconCircle: { width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
     statusButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 9999, justifyContent: 'space-between', width: 150 },
     statusButtonText: { color: 'white', fontFamily: 'Geist_400Regular', fontSize: 16 },
     idText: { color: '#5B5B56', fontSize: 12, marginTop: 8, marginBottom: 10 },
     categoryButton: {
-        marginTop: 10,
+        marginTop: 2,
+        height: 48,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        gap: 10,
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: '#ddd',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
+        borderColor: '#D3D3CE',
+        paddingHorizontal: 14,
+        borderRadius: 12,
     },
-    categoryButtonText: { color: '#333', fontFamily: 'Geist_400Regular', fontSize: 14, marginLeft: 8 },
-    assigneeDueDateRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, gap: 10 },
+    categoryIcon: {
+        width: 28, height: 28, borderRadius: 8, borderWidth: 1.5,
+        alignItems: 'center', justifyContent: 'center',
+    },
+    categoryButtonText: { color: '#1C1C1A', fontFamily: 'Geist_500Medium', fontSize: 15 },
+    assigneeDueDateRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, gap: 8 },
     actionButton: {
         flex: 1,
+        height: 46,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'flex-start',
-        backgroundColor: '#f5f5f5',
+        gap: 8,
+        backgroundColor: '#FFFFFF',
         borderWidth: 1,
-        borderColor: '#ddd',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 8,
+        borderColor: '#D3D3CE',
+        paddingLeft: 12,
+        paddingRight: 8,
+        borderRadius: 12,
     },
-    pastDueBackground: { backgroundColor: '#fdecec' },
-    pastDueBorder: { borderColor: '#f05252' },
-    pastDueText: { color: '#f05252' },
-    pastDueIconBorder: { borderColor: '#f05252', borderWidth: 1 },
+    mediaButton: { justifyContent: 'center', paddingLeft: 8 },
+    photoButton: { backgroundColor: '#EDF1F8', borderColor: '#CDD8EA' },
+    mediaButtonText: { color: '#1C1C1A', fontFamily: 'Geist_600SemiBold', fontSize: 14 },
+    pastDueBackground: { backgroundColor: '#F9ECEA' },
+    pastDueBorder: { borderColor: '#ECC9C3' },
+    pastDueText: { color: '#A8322A', fontFamily: 'Geist_600SemiBold' },
     dateSelectedButton: { justifyContent: 'space-between', paddingRight: 8 },
     iconWrapper: { backgroundColor: 'white', borderRadius: 9999, padding: 6, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
-    actionButtonText: { color: '#333', fontFamily: 'Geist_400Regular', fontSize: 14 },
+    actionButtonText: { flex: 1, color: '#1C1C1A', fontFamily: 'Geist_400Regular', fontSize: 14 },
     dateSelectedText: { flexShrink: 1, marginRight: 8 },
-    clearIconWrapper: { backgroundColor: 'white', borderRadius: 9999, padding: 6, justifyContent: 'center', alignItems: 'center' },
+    clearIconWrapper: { width: 22, height: 22, backgroundColor: '#F3F3F0', borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
     bottomSheet: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 20, maxHeight: '70%', width: '100%' },
     sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 15 },
@@ -1743,11 +1746,11 @@ const styles = StyleSheet.create({
     categoryIconCircleSheet: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
     actionItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20 },
     actionText: { marginLeft: 10, fontSize: 16, color: '#333', fontFamily: 'Geist_400Regular' },
-    tabContainer: { flexDirection: 'row', alignSelf: 'center', borderRadius: 9999, backgroundColor: '#F3F3F0', marginVertical: 20 },
-    tab: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 9999 },
-    activeTab: { backgroundColor: '#2C4F91' },
-    tabText: { color: '#33332F', fontSize: 14, fontFamily: 'Geist_400Regular' },
-    activeTabText: { color: '#fff', fontWeight: '600' },
+    tabContainer: { flexDirection: 'row', borderRadius: 10, backgroundColor: '#EEEEEB', padding: 3, marginVertical: 16 },
+    tab: { flex: 1, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    activeTab: { backgroundColor: '#FFFFFF', shadowColor: '#1C1C1A', shadowOpacity: 0.08, shadowRadius: 2, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+    tabText: { color: '#5B5B56', fontSize: 13, fontFamily: 'Geist_500Medium' },
+    activeTabText: { color: '#1C1C1A', fontFamily: 'Geist_600SemiBold' },
     // ── Comment bar wrapper : couvre TOUT l'espace jusqu'au bas de l'écran, fond opaque ──
     commentBarWrapper: {
         position: 'absolute',
@@ -1773,7 +1776,7 @@ const styles = StyleSheet.create({
         paddingTop: 12,
         paddingBottom: 12,
     },
-    commentInput: { flex: 1, backgroundColor: '#F8F8F6', borderWidth: 1, borderColor: '#E4E4E0', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, fontFamily: 'Geist_400Regular' },
+    commentInput: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E4E0', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 16, fontFamily: 'Geist_400Regular' },
     sendButton: { backgroundColor: '#2C4F91', padding: 10, borderRadius: 9999, justifyContent: 'center', alignItems: 'center' },
     // ── Comment mic ───────────────────────────────────────────────────────────
     commentMicButton: {
@@ -1808,30 +1811,34 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'Geist_600SemiBold',
     },
-    inputContainerDictation: { flexDirection: 'row', alignItems: 'flex-start', position: 'relative', marginBottom: 10 },
-    textAreaDictation: { flex: 1, fontSize: 24, fontFamily: 'Geist_400Regular', marginTop: 12, marginRight: 40 },
-    noteInputDictation: { flex: 1, fontSize: 18, fontFamily: 'Geist_400Regular', marginTop: 8, marginRight: 40 },
-    micButton: { position: 'absolute', right: 0, top: 18, padding: 5, borderRadius: 999, backgroundColor: '#F3F3F0' },
-    micButtonNote: { position: 'absolute', right: 0, top: 14, padding: 5, borderRadius: 999, backgroundColor: '#F3F3F0' },
+    inputContainerDictation: {
+        flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 10,
+        backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E4E0', borderRadius: 12,
+        paddingVertical: 8, paddingLeft: 14, paddingRight: 8,
+    },
+    textAreaDictation: { flex: 1, fontSize: 17, lineHeight: 23, fontFamily: 'Geist_600SemiBold', color: '#1C1C1A', paddingTop: 6, paddingBottom: 4, minHeight: 36 },
+    noteInputDictation: { flex: 1, fontSize: 14, lineHeight: 21, fontFamily: 'Geist_400Regular', color: '#5B5B56', paddingTop: 7, paddingBottom: 4, minHeight: 36 },
+    micButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F3F0' },
+    micButtonNote: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F3F3F0' },
     micButtonActive: { backgroundColor: '#2C4F91' },
-    pinLocationSection: { marginTop: 16, marginBottom: 8 },
-    pinLocationCard: { backgroundColor: '#F8F8F6', borderRadius: 12, borderWidth: 1, borderColor: '#E4E4E0', padding: 16, gap: 12 },
-    pinLocationHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    locationIconCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-    pinLocationTitle: { fontSize: 16, fontFamily: 'Geist_600SemiBold', color: '#111' },
-    pinPreviewContainer: { borderRadius: 8, overflow: 'hidden' },
-    placePinButton: { backgroundColor: '#EDF1F8', borderRadius: 12, borderWidth: 1, borderColor: '#bfdbfe', padding: 16 },
+    pinLocationSection: { marginTop: 12, marginBottom: 0 },
+    pinLocationCard: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#E4E4E0', overflow: 'hidden' },
+    pinLocationHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, paddingHorizontal: 12 },
+    locationIconCircle: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+    pinLocationTitle: { fontSize: 14, fontFamily: 'Geist_600SemiBold', color: '#1C1C1A' },
+    pinPreviewContainer: { overflow: 'hidden', borderTopWidth: 1, borderTopColor: '#EEEEEB' },
+    placePinButton: { backgroundColor: '#EDF1F8', borderRadius: 12, borderWidth: 1, borderColor: '#CDD8EA', padding: 14 },
     placePinContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    placePinIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#dbeafe', justifyContent: 'center', alignItems: 'center' },
+    placePinIconCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#FFFFFF', justifyContent: 'center', alignItems: 'center' },
     placePinTitle: { fontSize: 16, fontFamily: 'Geist_600SemiBold', color: '#2C4F91' },
     placePinSubtitle: { fontSize: 13, fontFamily: 'Geist_400Regular', color: '#5B5B56', marginTop: 2 },
     planItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 20, gap: 12 },
     planIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#EDF1F8', justifyContent: 'center', alignItems: 'center' },
     planItemTitle: { fontSize: 16, fontFamily: 'Geist_600SemiBold', color: '#111' },
     planItemSubtitle: { fontSize: 13, fontFamily: 'Geist_400Regular', color: '#5B5B56', marginTop: 2 },
-    readOnlyInput: { backgroundColor: '#f5f5f5', color: '#71717a', borderColor: '#e4e4e7' },
-    readOnlyButton: { backgroundColor: '#F8F8F6', borderColor: '#e2e8f0', opacity: 0.7 },
-    readOnlyText: { color: '#94a3b8' },
+    readOnlyInput: { backgroundColor: '#F3F3F0', color: '#8A8A84', borderColor: '#E4E4E0' },
+    readOnlyButton: { backgroundColor: '#F3F3F0', borderColor: '#E4E4E0', opacity: 0.7 },
+    readOnlyText: { color: '#8A8A84' },
     readOnlyBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9ECEA', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1, borderColor: '#ECC9C3', gap: 4 },
     readOnlyBadgeText: { color: '#A8322A', fontSize: 12, fontWeight: '600', fontFamily: 'Geist_600SemiBold' },
 });

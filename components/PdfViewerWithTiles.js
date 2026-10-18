@@ -65,6 +65,7 @@ import { isOnline, loadPlanTiles, localTileUri, runOrQueue } from '../lib/offlin
 import { remoteTileUrl } from '../lib/tileUrl';
 import { categoriesAtom, selectedPinAtom, statusesAtom } from "../store/atoms";
 import MapPin from './MapPin';
+import Svg, { Defs, Path, Pattern, Rect } from 'react-native-svg';
 import PdfViewerFilterOverlay from './PdfViewerFilterOverlay';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -72,7 +73,9 @@ const TILE_SIZE = 512;
 const PIN_SIZE = 24;
 const FLOATING_BUTTON_SIZE = 56;
 const FAB_DEFAULT_RIGHT = 20;
-const FAB_DEFAULT_BOTTOM = 180;
+// Le bouton des filtres est passé dans la barre du haut : le bouton d'ajout
+// de pin prend sa place en bas à droite.
+const FAB_DEFAULT_BOTTOM = 40;
 const API_URL = process.env.EXPO_PUBLIC_API_URL;
 const USE_BACKEND = API_URL && !API_URL.includes('localhost');
 
@@ -604,6 +607,15 @@ export default function PdfViewerWithTiles({
 
   return (
     <GestureHandlerRootView style={styles.container}>
+      {/* Fond quadrillé autour du plan, comme sur le web */}
+      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%" pointerEvents="none">
+        <Defs>
+          <Pattern id="grille" width={20} height={20} patternUnits="userSpaceOnUse">
+            <Path d="M 20 0 L 0 0 0 20" fill="none" stroke="#E4E4E0" strokeWidth={1} />
+          </Pattern>
+        </Defs>
+        <Rect width="100%" height="100%" fill="url(#grille)" />
+      </Svg>
 
 
       {/*
@@ -673,7 +685,7 @@ export default function PdfViewerWithTiles({
 
           {/* Confirm / cancel bar — fixed at bottom center, independent of FAB position */}
           {showFabActions && (
-            <View style={[styles.fabActionsContainer, { bottom: insets.bottom + 84 }]}>
+            <View style={[styles.fabActionsContainer, { bottom: insets.bottom + FAB_DEFAULT_BOTTOM + FLOATING_BUTTON_SIZE + 16 }]}>
               <TouchableOpacity style={[styles.actionButton, styles.checkButton]} onPress={handleConfirmDrop}>
                 <CheckIcon size={20} color="white" />
                 <Text style={styles.actionButtonText}>Confirmer</Text>
@@ -686,7 +698,7 @@ export default function PdfViewerWithTiles({
           )}
 
           <GestureDetector gesture={buttonGesture}>
-            <Animated.View ref={buttonRef} style={[styles.floatingButton, buttonAnimatedStyle]}>
+            <Animated.View ref={buttonRef} style={[styles.floatingButton, { bottom: FAB_DEFAULT_BOTTOM + insets.bottom }, buttonAnimatedStyle]}>
               <MapPinPlusIcon size={28} color="white" />
             </Animated.View>
           </GestureDetector>
@@ -758,7 +770,7 @@ export default function PdfViewerWithTiles({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#EEEEEB' },
+  container: { flex: 1, backgroundColor: '#F8F8F6' },
   gestureContainer: { flex: 1, overflow: 'hidden' },
   pdfContainer: { position: 'absolute', backgroundColor: 'white' },
   pinScreenWrapper: {

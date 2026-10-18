@@ -173,40 +173,25 @@ useEffect(() => {
 
     return (
         <View style={styles.wrapper}>
-            {/* ── Add tag button ── */}
-            <TouchableOpacity
-                style={styles.addTagButton}
-                onPress={() => setShowSheet(true)}
-            >
-                <View style={styles.iconWrapper}>
-                    <Feather name="tag" size={16} color="#333" />
-                </View>
-                <Text style={styles.addTagButtonText}>
-                    {pinTags.length > 0 ? `${pinTags.length} tag(s)` : 'Ajouter tags'}
-                </Text>
-                {pinTags.length > 0 && (
-                    <Feather name="chevron-down" size={16} color="#333" style={{ marginLeft: 'auto' }} />
-                )}
-            </TouchableOpacity>
-
-            {/* ── Chips row ── */}
-            {pinTags.length > 0 && (
-                <View style={styles.chipsRow}>
-                    {pinTags.map((tag) => (
-                        <View key={tag.id} style={styles.chip}>
-                            <Feather name="tag" size={10} color="#2C4F91" style={{ marginRight: 3 }} />
-                            <Text style={styles.chipText} numberOfLines={1}>{tag.name}</Text>
-                            <TouchableOpacity
-                                onPress={() => handleRemoveChip(tag)}
-                                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                                disabled={saving}
-                            >
-                                <Feather name="x" size={10} color="#2C4F91" />
-                            </TouchableOpacity>
-                        </View>
-                    ))}
-                </View>
-            )}
+            {/* Tags du pin (pastilles grises) puis le bouton d'ajout, sur une ligne */}
+            <View style={styles.chipsRow}>
+                {pinTags.map((tag) => (
+                    <View key={tag.id} style={styles.chip}>
+                        <Text style={styles.chipText} numberOfLines={1}>{tag.name}</Text>
+                        <TouchableOpacity
+                            onPress={() => handleRemoveChip(tag)}
+                            hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            disabled={saving}
+                            accessibilityLabel={`Retirer le tag ${tag.name}`}
+                        >
+                            <Feather name="x" size={11} color="#5B5B56" />
+                        </TouchableOpacity>
+                    </View>
+                ))}
+                <TouchableOpacity style={styles.addTagButton} onPress={() => setShowSheet(true)}>
+                    <Text style={styles.addTagButtonText}>{pinTags.length > 0 ? '+ Tag' : '+ Ajouter des tags'}</Text>
+                </TouchableOpacity>
+            </View>
 
             {/* ── Bottom sheet ── */}
             <Modal
@@ -364,54 +349,43 @@ const styles = StyleSheet.create({
         gap: 8,
     },
 
-    // ── Add tag button ───────────────────────────────────────────────────────
+    // ── Bouton d'ajout et pastilles ─────────────────────────────────────────
     addTagButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#f5f5f5',
+        height: 28,
+        paddingHorizontal: 10,
+        borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#ddd',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 9999,
-        alignSelf: 'flex-start',
-    },
-    iconWrapper: {
-        backgroundColor: 'white',
-        borderRadius: 9999,
-        padding: 6,
+        borderStyle: 'dashed',
+        borderColor: '#D3D3CE',
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
     },
     addTagButtonText: {
-        color: '#333',
-        fontFamily: 'Geist_400Regular',
-        fontSize: 14,
+        color: '#5B5B56',
+        fontFamily: 'Geist_500Medium',
+        fontSize: 12,
     },
-
-    // ── Chips ────────────────────────────────────────────────────────────────
     chipsRow: {
         flexDirection: 'row',
         flexWrap: 'wrap',
+        alignItems: 'center',
         gap: 6,
     },
     chip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EDF1F8',
-        borderWidth: 1,
-        borderColor: '#CDD8EA',
-        borderRadius: 20,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        gap: 3,
-        maxWidth: 160,
+        backgroundColor: '#EEEEEB',
+        borderRadius: 14,
+        height: 28,
+        paddingLeft: 10,
+        paddingRight: 8,
+        gap: 6,
+        maxWidth: 180,
     },
     chipText: {
-        fontSize: 11,
-        fontFamily: 'Geist_600SemiBold',
-        color: '#2C4F91',
+        fontSize: 12,
+        fontFamily: 'Geist_500Medium',
+        color: '#1C1C1A',
         flexShrink: 1,
     },
 
