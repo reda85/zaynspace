@@ -411,12 +411,6 @@ export default function PinMetadataScreen() {
         }
     }, [currentPinId]);
 
-    // Retour depuis l'ajout de photos (DrawingScreen) : l'écran déjà ouvert
-    // reçoit un nouveau paramètre `refresh` et recharge le pin.
-    useEffect(() => {
-        if (params.refresh && currentPinId) getPinFromId(currentPinId);
-    }, [params.refresh]);
-
     // ─── Enregistrement d'un pin ──────────────────────────────────────────────
     // Seuls les champs modifiés sont envoyés, la réponse est attendue, et un
     // échec est signalé à l'utilisateur au lieu d'être ignoré.
