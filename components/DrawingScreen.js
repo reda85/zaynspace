@@ -49,7 +49,7 @@ import { encode } from "base64-arraybuffer";
 import { Buffer } from "buffer";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
@@ -255,12 +255,6 @@ export default function DrawingScreen() {
   const [textPosition, setTextPosition] = useState({ x: 0, y: 0 });
   const [descriptions, setDescriptions] = useState(photos.map(() => ""));
   const [isSaving, setIsSaving] = useState(false);
-  // Le canevas Skia est retiré avant de quitter l'écran : sur iOS, le démonter
-  // pendant une transition (ou plus tard, quand la fiche du pin dépile
-  // dessin + caméra d'un coup) fermait l'application. Il revient si l'on
-  // retourne sur l'écran.
-  const [canvasHidden, setCanvasHidden] = useState(false);
-  useFocusEffect(useCallback(() => { setCanvasHidden(false); }, []));
   // Index des photos déjà envoyées (fichier + ligne) : jamais renvoyées lors d'une nouvelle tentative.
   const uploadedIndexesRef = useRef(new Set());
   const [savingProgress, setSavingProgress] = useState(0);
@@ -991,10 +985,6 @@ export default function DrawingScreen() {
       }
 
       const goToPin = () => {
-        setCanvasHidden(true);
-        requestAnimationFrame(() => requestAnimationFrame(openPin));
-      };
-      const openPin = () => {
         if (returnToPinId) {
           router.push({
             pathname: "/PinMetadataScreen",
@@ -1125,8 +1115,12 @@ export default function DrawingScreen() {
         ]}
         onLayout={onCanvasLayout}
       >
+        {/* Le canevas Skia n'est plus l'enfant direct du GestureDetector : sur
+            iOS (nouvelle architecture), démonter l'écran plantait avec
+            « unmountChildComponentView » (vue démontée d'un autre parent).
+            Une vue native fixe (collapsable={false}) porte les gestes. */}
         <GestureDetector gesture={Gesture.Simultaneous(pinch, pan)}>
-          {canvasHidden ? <View style={{ flex: 1 }} /> : (
+          <View style={{ flex: 1 }} collapsable={false}>
           <Canvas style={{ flex: 1 }} ref={canvasRef}>
             {background && (
               <SkiaImage
@@ -1199,7 +1193,7 @@ export default function DrawingScreen() {
               return null;
             })}
           </Canvas>
-          )}
+          </View>
         </GestureDetector>
       </View>
 
