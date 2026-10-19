@@ -66,6 +66,7 @@ import {
     Keyboard,
     Modal,
     Platform,
+    Pressable,
     StyleSheet,
     Text,
     TextInput,
@@ -290,14 +291,26 @@ export default function PinMetadataScreen() {
 
     const router = useRouter();
 
-    // Retour au plan : on revient à l'écran du plan déjà ouvert, sans toucher au
-    // reste de la navigation. Avant, dismissAll + replace remplaçait les onglets
-    // eux-mêmes par l'écran du plan : tous les onglets (accueil, tâches…) étaient
-    // détruits puis recréés, avec leurs chargements — c'est sur ce chemin que
-    // l'application se fermait hors ligne.
+    // Retour au plan.
+    // - Fiche ouverte depuis le plan (plan juste en dessous) : simple retour,
+    //   les onglets ne sont pas touchés.
+    // - Fiche ouverte après une création (plan → caméra → dessin → fiche) :
+    //   dismissTo, qui dépilait ces trois écrans d'un coup, fermait
+    //   l'application sur iOS (exception dans unmountChildComponentView). On
+    //   reprend le chemin d'avant le 10 octobre, qui fonctionnait (dismissAll),
+    //   mais en rouvrant le plan par-dessus les onglets au lieu de les
+    //   remplacer : les onglets restent montés (c'est leur recréation qui
+    //   fermait l'application hors ligne).
     const handleClose = () => {
         if (params.from === 'Pdf' && params.myplanid) {
-            router.dismissTo({
+            const state = navigation.getState?.();
+            const below = state?.routes?.[state.index - 1];
+            if (below?.name === 'plans/MainScreen' && String(below.params?.myplanid) === String(params.myplanid)) {
+                router.back();
+                return;
+            }
+            router.dismissAll();
+            router.push({
                 pathname: '/plans/MainScreen',
                 params: {
                     myuri: params.myuri,
@@ -872,14 +885,34 @@ export default function PinMetadataScreen() {
         immediateSave({ assigned_to_id: null });
     };
 
-    const handleOpenDatePicker = () => { setShowDatePicker(true); };
-    const onChangeDate = (event, selectedDate) => {
-        setShowDatePicker(false);
-        if (event.type === 'set' && selectedDate) {
-            const dateString = selectedDate.toISOString();
-            setDue_date(dateString);
-            immediateSave({ due_date: dateString });
+    // Sur iOS, le sélecteur s'affiche dans une fenêtre en bas d'écran avec un
+    // calendrier complet ; la date n'est enregistrée qu'avec « Valider ».
+    // Avant, la roue iOS était posée sous la barre de commentaire et chaque
+    // molette (jour, mois ou année) fermait le sélecteur.
+    const [iosDraftDate, setIosDraftDate] = useState(null);
+    const saveDueDate = (date) => {
+        const dateString = date.toISOString();
+        setDue_date(dateString);
+        immediateSave({ due_date: dateString });
+    };
+    const handleOpenDatePicker = () => {
+        if (Platform.OS === 'ios') {
+            const start = due_date ? new Date(due_date) : new Date();
+            setIosDraftDate(start < new Date() ? new Date() : start);
         }
+        setShowDatePicker(true);
+    };
+    const onChangeDate = (event, selectedDate) => {
+        if (Platform.OS === 'ios') {
+            if (selectedDate) setIosDraftDate(selectedDate);
+            return;
+        }
+        setShowDatePicker(false);
+        if (event.type === 'set' && selectedDate) saveDueDate(selectedDate);
+    };
+    const confirmIosDate = () => {
+        setShowDatePicker(false);
+        if (iosDraftDate) saveDueDate(iosDraftDate);
     };
     const handleClearDueDate = () => {
         setDue_date(null);
@@ -1583,15 +1616,51 @@ export default function PinMetadataScreen() {
                     </ScrollView>
                 </GestureDetector>
 
-                {showDatePicker && (
+                {showDatePicker && Platform.OS !== 'ios' && (
                     <DateTimePicker
                         testID="dateTimePicker"
                         value={initialDate}
                         mode={'date'}
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        display="default"
                         onChange={onChangeDate}
                         minimumDate={new Date()}
                     />
+                )}
+
+                {Platform.OS === 'ios' && (
+                    <Modal
+                        visible={showDatePicker}
+                        transparent
+                        animationType="slide"
+                        onRequestClose={() => setShowDatePicker(false)}
+                    >
+                        <View style={styles.modalOverlay}>
+                            <Pressable style={{ flex: 1 }} onPress={() => setShowDatePicker(false)} />
+                            <View style={[styles.dateSheet, { paddingBottom: insets.bottom + 12 }]}>
+                                <View style={styles.dateSheetHeader}>
+                                    <TouchableOpacity onPress={() => setShowDatePicker(false)} hitSlop={8}>
+                                        <Text style={styles.dateSheetCancel}>Annuler</Text>
+                                    </TouchableOpacity>
+                                    <Text style={styles.dateSheetTitle}>Date d'échéance</Text>
+                                    <TouchableOpacity onPress={confirmIosDate} hitSlop={8}>
+                                        <Text style={styles.dateSheetConfirm}>Valider</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <DateTimePicker
+                                    testID="dateTimePicker"
+                                    value={iosDraftDate ?? initialDate}
+                                    mode="date"
+                                    display="inline"
+                                    locale="fr-FR"
+                                    themeVariant="light"
+                                    accentColor="#2C4F91"
+                                    onChange={onChangeDate}
+                                    minimumDate={new Date()}
+                                    style={{ alignSelf: 'stretch' }}
+                                />
+                            </View>
+                        </View>
+                    </Modal>
                 )}
 
                 {/* Appelées comme des fonctions, pas comme des composants : ces feuilles
@@ -1736,6 +1805,11 @@ const styles = StyleSheet.create({
     dateSelectedText: { flexShrink: 1, marginRight: 8 },
     clearIconWrapper: { width: 22, height: 22, backgroundColor: '#F3F3F0', borderRadius: 11, justifyContent: 'center', alignItems: 'center' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' },
+    dateSheet: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 12, paddingTop: 8 },
+    dateSheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8, paddingVertical: 10 },
+    dateSheetTitle: { fontFamily: 'Outfit_600SemiBold', fontSize: 16, color: '#1C1C1A' },
+    dateSheetCancel: { fontFamily: 'Outfit_400Regular', fontSize: 16, color: '#5B5B56' },
+    dateSheetConfirm: { fontFamily: 'Outfit_600SemiBold', fontSize: 16, color: '#2C4F91' },
     bottomSheet: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 20, maxHeight: '70%', width: '100%' },
     sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 15 },
     sheetTitle: { fontSize: 18, fontFamily: 'Outfit_600SemiBold', color: '#111' },
