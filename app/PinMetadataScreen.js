@@ -291,14 +291,26 @@ export default function PinMetadataScreen() {
 
     const router = useRouter();
 
-    // Retour au plan : on revient à l'écran du plan déjà ouvert, sans toucher au
-    // reste de la navigation. Avant, dismissAll + replace remplaçait les onglets
-    // eux-mêmes par l'écran du plan : tous les onglets (accueil, tâches…) étaient
-    // détruits puis recréés, avec leurs chargements — c'est sur ce chemin que
-    // l'application se fermait hors ligne.
+    // Retour au plan.
+    // - Fiche ouverte depuis le plan (plan juste en dessous) : simple retour,
+    //   les onglets ne sont pas touchés.
+    // - Fiche ouverte après une création (plan → caméra → dessin → fiche) :
+    //   dismissTo, qui dépilait ces trois écrans d'un coup, fermait
+    //   l'application sur iOS (exception dans unmountChildComponentView). On
+    //   reprend le chemin d'avant le 10 octobre, qui fonctionnait (dismissAll),
+    //   mais en rouvrant le plan par-dessus les onglets au lieu de les
+    //   remplacer : les onglets restent montés (c'est leur recréation qui
+    //   fermait l'application hors ligne).
     const handleClose = () => {
         if (params.from === 'Pdf' && params.myplanid) {
-            router.dismissTo({
+            const state = navigation.getState?.();
+            const below = state?.routes?.[state.index - 1];
+            if (below?.name === 'plans/MainScreen' && String(below.params?.myplanid) === String(params.myplanid)) {
+                router.back();
+                return;
+            }
+            router.dismissAll();
+            router.push({
                 pathname: '/plans/MainScreen',
                 params: {
                     myuri: params.myuri,

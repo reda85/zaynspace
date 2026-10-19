@@ -1115,12 +1115,7 @@ export default function DrawingScreen() {
         ]}
         onLayout={onCanvasLayout}
       >
-        {/* Le canevas Skia n'est plus l'enfant direct du GestureDetector : sur
-            iOS (nouvelle architecture), démonter l'écran plantait avec
-            « unmountChildComponentView » (vue démontée d'un autre parent).
-            Une vue native fixe (collapsable={false}) porte les gestes. */}
         <GestureDetector gesture={Gesture.Simultaneous(pinch, pan)}>
-          <View style={{ flex: 1 }} collapsable={false}>
           <Canvas style={{ flex: 1 }} ref={canvasRef}>
             {background && (
               <SkiaImage
@@ -1193,7 +1188,6 @@ export default function DrawingScreen() {
               return null;
             })}
           </Canvas>
-          </View>
         </GestureDetector>
       </View>
 
