@@ -398,6 +398,7 @@ export default function DrawingScreen() {
         mode: 'photo',
         source: 'drawing',
         photoKey: String(currentIndex),
+        photoUri: photoUris[currentIndex],
         pinIdToPlace: pin?.id,
         x: existingForThisPlan?.x,
         y: existingForThisPlan?.y,

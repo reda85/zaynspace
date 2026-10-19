@@ -23,6 +23,19 @@ import Animated, {
     useSharedValue
 } from 'react-native-reanimated';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Camera as CameraIcon } from 'lucide-react-native';
+import {
+    ConfirmButtons,
+    GridBackground,
+    HintIcon,
+    Leading,
+    PlacementMarker,
+    PlacementSheet,
+    PlacementTopBar,
+    ReadOnlyIcon,
+    RemoveButton,
+    SheetMessage,
+} from '../components/placement/PlacementUI';
 import { supabase } from '../lib/supabase';
 import { categoriesAtom, MetaPinAtom, PhotoPlanPositionAtom, pinsAtom, selectedPinAtom, statusesAtom } from '../store/atoms';
 
@@ -69,6 +82,7 @@ export default function ImagePinPlacementScreen() {
         pdfInfo: pdfInfoParam,  // Using same param name as PdfViewerWithTiles
         mode: modeParam,        // 'pin' (default) ou 'photo'
         photoKey,               // identifiant de la photo quand mode === 'photo'
+        photoUri,               // image de la photo (mode 'photo'), pour le marqueur
         source,                 // 'drawing' | 'pin' — quel écran a initié le placement,
                                 // relayé tel quel dans PhotoPlanPositionAtom pour que
                                 // seul cet écran traite la réponse (l'atome est global,
@@ -219,6 +233,7 @@ export default function ImagePinPlacementScreen() {
     const currentCategory = categories.find(c => c.id === pin?.category_id) || categories[0];
     const currentStatus = statuses.find(s => s.id === pin?.status_id) || statuses[0];
     const currentStatusColor = currentStatus?.color || '#2C4F91';
+    const isPhoto = mode === 'photo';
 
     // Calculate zoom levels and tiles
     const maxLevel = useMemo(() => {
@@ -573,187 +588,144 @@ export default function ImagePinPlacementScreen() {
         transform: [{ scale: 1 / scale.value }]
     }));
 
-    // Render pins
-    const renderPin = (coords, opacity) => {
-        if (!coords) return null;
+    // Marqueurs : position actuelle (en pointillés pendant un déplacement) et
+    // nouvelle position.
+    const markerIcon = (color) => isPhoto
+        ? <CameraIcon size={16} color={color} strokeWidth={2.2} />
+        : getCategoryIconComponent(currentCategory?.icon, color, 16);
 
-        const absX = coords.x * pdfInfo.width;
-        const absY = coords.y * pdfInfo.height;
-
+    const renderMarker = (coords, { ghost, label, pulse } = {}) => {
+        if (!coords || coords.x == null || coords.y == null) return null;
         return (
-            <Animated.View
-                key={coords === pendingCoordinates ? 'pending' : 'existing'}
-                style={[
-                    styles.pinContainer,
-                    { left: absX, top: absY },
-                    pinAnimatedStyle,
-                ]}
-                pointerEvents="none"
-            >
-                <View style={[styles.pinCircle, { backgroundColor: currentStatusColor, opacity }]}>
-                    {getCategoryIconComponent(currentCategory.icon, 'white', 16)}
-                </View>
-            </Animated.View>
+            <PlacementMarker
+                key={ghost ? 'ghost' : (coords === pendingCoordinates ? 'pending' : 'existing')}
+                x={Number(coords.x) * pdfInfo.width}
+                y={Number(coords.y) * pdfInfo.height}
+                color={currentStatusColor}
+                icon={markerIcon(ghost ? currentStatusColor : '#FFFFFF')}
+                photoUri={isPhoto ? photoUri : null}
+                ghost={ghost}
+                label={label}
+                pulse={pulse}
+                inverseScaleStyle={pinAnimatedStyle}
+            />
         );
     };
 
-    const existingCoords = hasExistingPin && !pendingCoordinates ? { x: x, y: y } : null;
+    const existingCoords = hasExistingPin ? { x: x, y: y } : null;
+    const what = isPhoto ? 'la photo' : 'le pin';
+    const title = canPlacePin
+        ? (hasExistingPin ? `Déplacer ${what}` : `Placer ${what}`)
+        : `Voir ${what}`;
+    const subtitle = isPhoto ? 'Position sur le plan' : (pin?.name || 'Sans nom');
+    const leading = (
+        <Leading
+            color={currentStatusColor}
+            photoUri={isPhoto ? photoUri : null}
+            icon={isPhoto ? null : getCategoryIconComponent(currentCategory?.icon, '#FFFFFF', 14)}
+        />
+    );
 
     return (
         <GestureHandlerRootView style={styles.container}>
-            <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={handleClose} style={styles.iconCircle}>
-                        <CloseIcon size={20} color="#111" />
-                    </TouchableOpacity>
-                    <View style={{ flex: 1, alignItems: 'center' }}>
-                        <Text style={styles.headerTitle}>
-                            {canPlacePin 
-                                ? (hasExistingPin
-                                    ? (mode === 'photo' ? 'Déplacer la photo' : 'Déplacer le pin')
-                                    : (mode === 'photo' ? 'Placer la photo' : 'Placer le pin'))
-                                : (mode === 'photo' ? 'Voir la photo' : 'Voir le pin')
-                            }
-                        </Text>
-                        <Text style={styles.headerSubtitle}>
-                            {mode === 'photo' ? 'Position sur le plan' : (pin?.name || 'Sans nom')}
-                        </Text>
-                    </View>
-                    {/* Show remove button if pin/photo is already placed and user can edit */}
-                    {hasExistingPin && canPlacePin ? (
-                        <TouchableOpacity onPress={handleRemoveFromPlan} style={[styles.iconCircle, styles.removeButton]}>
-                            <Text style={styles.removeButtonText}>Retirer</Text>
-                        </TouchableOpacity>
-                    ) : (
-                        <View style={{ width: 40 }} />
-                    )}
-                </View>
+            <View style={styles.container}>
+                <GridBackground />
 
-                {/* Image Viewer with Tiles */}
-                <View 
-                    style={{ flex: 1, backgroundColor: '#000' }}
-                    onLayout={(e) => {
-                        e.target.measure((x, y, width, height, pageX, pageY) => {
-                            console.log('Image Container Y position:', pageY);
-                            setImageContainerTop(pageY);
-                        });
-                    }}
-                >
-                    {isLoadingImage ? (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="large" color="#2C4F91" />
-                            <Text style={styles.loadingText}>Chargement de l'image...</Text>
-                        </View>
-                    ) : (
-                        <GestureDetector gesture={composedGesture}>
-                            <View ref={imageWrapperRef} style={styles.gestureContainer}>
-                                <Animated.View style={[styles.imageContainer, imageContainerStyle]}>
-                                    {/* Base layer */}
-                                    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-                                        {renderLayer(baseLevel, true)}
+                {isLoadingImage ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#2C4F91" />
+                        <Text style={styles.loadingText}>Chargement de l'image...</Text>
+                    </View>
+                ) : (
+                    <GestureDetector gesture={composedGesture}>
+                        <View ref={imageWrapperRef} style={styles.gestureContainer}>
+                            <Animated.View style={[styles.imageContainer, imageContainerStyle]}>
+                                {/* Base layer */}
+                                <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                                    {renderLayer(baseLevel, true)}
+                                </View>
+
+                                {/* Current zoom level */}
+                                {zoomLevels.current !== baseLevel && (
+                                    <View
+                                        style={[
+                                            StyleSheet.absoluteFill,
+                                            { opacity: zoomLevels.next === null ? 1 : 1 - (zoomLevels.percent - 0.5) * 2 }
+                                        ]}
+                                        pointerEvents="none"
+                                    >
+                                        {renderLayer(zoomLevels.current, false)}
                                     </View>
-                                    
-                                    {/* Current zoom level */}
-                                    {zoomLevels.current !== baseLevel && (
-                                        <View 
-                                            style={[
-                                                StyleSheet.absoluteFill,
-                                                { opacity: zoomLevels.next === null ? 1 : 1 - (zoomLevels.percent - 0.5) * 2 }
-                                            ]} 
-                                            pointerEvents="none"
-                                        >
-                                            {renderLayer(zoomLevels.current, false)}
-                                        </View>
-                                    )}
-                                    
-                                    {/* Next zoom level */}
-                                    {zoomLevels.next !== null && zoomLevels.next !== zoomLevels.current && zoomLevels.next !== baseLevel && (
-                                        <View 
-                                            style={[
-                                                StyleSheet.absoluteFill, 
-                                                { opacity: (zoomLevels.percent - 0.5) * 2 }
-                                            ]} 
-                                            pointerEvents="none"
-                                        >
-                                            {renderLayer(zoomLevels.next, false)}
-                                        </View>
-                                    )}
-                                    
-                                    {/* Existing Pin */}
-                                    {renderPin(existingCoords, 0.5)}
-                                    
-                                    {/* Pending Pin */}
-                                    {renderPin(pendingCoordinates, 0.95)}
-                                </Animated.View>
-                            </View>
-                        </GestureDetector>
-                    )}
-                </View>
+                                )}
 
-                {/* Bottom Menu */}
-                <View 
-                    style={[styles.bottomMenu, { paddingBottom: insets.bottom + 12 }]}
-                    onLayout={(e) => {
-                        const height = e.nativeEvent.layout.height;
-                        console.log('Bottom bar height:', height);
-                        setBottomBarHeight(height);
-                    }}
-                >
-                    <View style={styles.bottomMenuContent}>
-                        {!canPlacePin ? (
-                            <View style={styles.instructionSection}>
-                                <View style={[styles.iconCircleLarge, { backgroundColor: '#5B5B56' }]}>
-                                    <MapPin size={24} color="#fff" />
-                                </View>
-                                <View style={{ flex: 1, marginLeft: 16 }}>
-                                    <Text style={styles.instructionTitle}>Mode visualisation</Text>
-                                    <Text style={styles.instructionText}>Vous pouvez voir le pin mais pas le modifier</Text>
-                                </View>
-                            </View>
-                        ) : pendingCoordinates ? (
-                            <>
-                                <View style={styles.buttonRow}>
-                                    <TouchableOpacity style={[styles.button, styles.buttonSecondary]} onPress={handleCancelPlacement} disabled={isSaving}>
-                                        <CloseIcon size={18} color="#33332F" />
-                                        <Text style={styles.buttonSecondaryText}>Annuler</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={[styles.button, styles.buttonPrimary]} onPress={handleConfirmPlacement} disabled={isSaving}>
-                                        <CheckIcon size={18} color="#fff" />
-                                        <Text style={styles.buttonPrimaryText}>{isSaving ? 'Enregistrement...' : 'Confirmer'}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </>
-                        ) : (
-                            <View style={styles.instructionSection}>
-                                <View style={[styles.iconCircleLarge, { backgroundColor: currentStatusColor }]}>
-                                    <MapPin size={24} color="#fff" />
-                                </View>
-                                <View style={{ flex: 1, marginLeft: 16 }}>
-                                    <Text style={styles.instructionTitle}>
-                                        {hasExistingPin
-                                            ? (mode === 'photo' ? 'Déplacer la photo' : 'Déplacer le pin')
-                                            : (mode === 'photo' ? 'Placer la photo' : 'Placer le pin')}
-                                    </Text>
-                                    <Text style={styles.instructionText}>
-                                        {hasExistingPin
-                                            ? (mode === 'photo' ? 'Appuyez sur l\'image pour déplacer la position de la photo' : 'Appuyez sur l\'image pour déplacer le pin')
-                                            : (mode === 'photo' ? 'Appuyez sur l\'image pour placer cette photo sur le plan' : 'Appuyez sur l\'image pour placer le pin')}
-                                    </Text>
-                                    {hasExistingPin && (
-                                        <TouchableOpacity 
-                                            style={styles.removeFromPlanButton}
-                                            onPress={handleRemoveFromPlan}
-                                        >
-                                            <Text style={styles.removeFromPlanText}>Retirer du plan</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            </View>
-                        )}
-                    </View>
-                </View>
-            </SafeAreaView>
+                                {/* Next zoom level */}
+                                {zoomLevels.next !== null && zoomLevels.next !== zoomLevels.current && zoomLevels.next !== baseLevel && (
+                                    <View
+                                        style={[
+                                            StyleSheet.absoluteFill,
+                                            { opacity: (zoomLevels.percent - 0.5) * 2 }
+                                        ]}
+                                        pointerEvents="none"
+                                    >
+                                        {renderLayer(zoomLevels.next, false)}
+                                    </View>
+                                )}
+
+                                {pendingCoordinates
+                                    ? renderMarker(existingCoords, { ghost: true, label: 'Actuelle' })
+                                    : renderMarker(existingCoords)}
+                                {renderMarker(pendingCoordinates, {
+                                    pulse: true,
+                                    label: isPhoto ? 'Cette photo' : (hasExistingPin ? 'Nouvelle position' : null),
+                                })}
+                            </Animated.View>
+                        </View>
+                    </GestureDetector>
+                )}
+
+                <PlacementTopBar
+                    onClose={handleClose}
+                    title={title}
+                    subtitle={subtitle}
+                    leading={leading}
+                    hint={canPlacePin && !hasExistingPin && !pendingCoordinates ? 'Pincez pour zoomer · touchez pour placer' : null}
+                />
+
+                <PlacementSheet>
+                    {!canPlacePin ? (
+                        <SheetMessage
+                            icon={<ReadOnlyIcon />}
+                            title="Lecture seule"
+                            text={`Vous pouvez voir ${what} mais pas le déplacer.`}
+                        />
+                    ) : pendingCoordinates ? (
+                        <>
+                            <SheetMessage
+                                icon={<Leading color={currentStatusColor} photoUri={isPhoto ? photoUri : null} size={40}
+                                    icon={isPhoto ? null : getCategoryIconComponent(currentCategory?.icon, '#FFFFFF', 20)} />}
+                                title={isPhoto ? 'Photo placée' : 'Nouvelle position'}
+                                text="Touchez ailleurs sur le plan pour ajuster."
+                            />
+                            <ConfirmButtons
+                                onCancel={handleCancelPlacement}
+                                onConfirm={handleConfirmPlacement}
+                                saving={isSaving}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            <SheetMessage
+                                icon={<HintIcon />}
+                                title="Touchez le plan"
+                                text={hasExistingPin
+                                    ? `pour déplacer ${what}.`
+                                    : (isPhoto ? "à l'endroit de la photo. Vous pourrez ajuster avant de confirmer." : "à l'endroit de la tâche. Vous pourrez ajuster avant de confirmer.")}
+                            />
+                            {hasExistingPin && <RemoveButton onPress={handleRemoveFromPlan} />}
+                        </>
+                    )}
+                </PlacementSheet>
+            </View>
         </GestureHandlerRootView>
     );
 }
@@ -825,7 +797,7 @@ const TileImage = React.memo(({ uri, left, top, width, height }) => (
  */
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#222' },
+    container: { flex: 1, backgroundColor: '#F8F8F6' },
     header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E4E4E0', backgroundColor: '#fff' },
     iconCircle: { backgroundColor: '#F3F3F0', borderRadius: 9999, padding: 8, justifyContent: 'center', alignItems: 'center' },
     removeButton: { backgroundColor: '#F9ECEA', paddingHorizontal: 12 },
@@ -856,6 +828,6 @@ const styles = StyleSheet.create({
     errorDebug: { fontSize: 12, fontFamily: 'Courier', color: '#8A8A84', marginTop: 8, textAlign: 'center', paddingHorizontal: 20 },
     backButton: { marginTop: 20, paddingHorizontal: 24, paddingVertical: 12, backgroundColor: '#2C4F91', borderRadius: 8 },
     backButtonText: { color: '#fff', fontSize: 16, fontFamily: 'Outfit_600SemiBold' },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8F8F6' },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { fontSize: 16, fontFamily: 'Outfit_400Regular', color: '#5B5B56', marginTop: 12 },
 });
