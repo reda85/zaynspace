@@ -1,4 +1,5 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { StackActions } from '@react-navigation/native';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import {
     ExpoSpeechRecognitionModule,
@@ -62,6 +63,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     FlatList,
     Keyboard,
     Modal,
@@ -301,7 +303,31 @@ export default function PinMetadataScreen() {
     //   mais en rouvrant le plan par-dessus les onglets au lieu de les
     //   remplacer : les onglets restent montés (c'est leur recréation qui
     //   fermait l'application hors ligne).
+    // Écrans d'ajout de photos (caméra, dessin) et, en dessous, la fiche du
+    // même pin depuis laquelle on les a ouverts : le retour les saute tous.
+    // Sans cela, un simple retour ramenait sur l'écran de dessin, qui n'a pas
+    // de bouton pour en sortir.
+    const isPhotoFlowRoute = (r) =>
+        r?.name === 'CameraScreen' ||
+        r?.name === 'DrawingScreen' ||
+        (r?.name === 'PinMetadataScreen' && String(r.params?.pinId) === String(currentPinId));
+    const photoFlowBelow = () => {
+        const state = navigation.getState?.();
+        if (!state) return null;
+        const below = state.routes?.[state.index - 1];
+        if (!below || !isPhotoFlowRoute(below) || below.name === 'PinMetadataScreen') return null;
+        let target = state.index - 1;
+        while (target >= 0 && isPhotoFlowRoute(state.routes[target])) target--;
+        return { count: state.index - target, target };
+    };
+
     const handleClose = () => {
+        const photoFlow = photoFlowBelow();
+        if (photoFlow && !(params.from === 'Pdf' && params.myplanid)) {
+            if (photoFlow.target >= 0) navigation.dispatch(StackActions.pop(photoFlow.count));
+            else router.replace('/(tabs)/acceuil');
+            return;
+        }
         if (params.from === 'Pdf' && params.myplanid) {
             const state = navigation.getState?.();
             const below = state?.routes?.[state.index - 1];
@@ -325,6 +351,22 @@ export default function PinMetadataScreen() {
             router.replace('/(tabs)/acceuil');
         }
     };
+
+    // Glisser pour revenir (iOS) ou le bouton retour d'Android mèneraient à
+    // l'écran de dessin : le geste est désactivé et le bouton Android suit le
+    // même chemin que le bouton retour de l'écran.
+    const overPhotoFlow = !!photoFlowBelow();
+    const handleCloseRef = useRef(null);
+    handleCloseRef.current = handleClose;
+    useEffect(() => {
+        navigation.setOptions?.({ gestureEnabled: !overPhotoFlow });
+        if (!overPhotoFlow) return;
+        const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+            handleCloseRef.current?.();
+            return true;
+        });
+        return () => sub.remove();
+    }, [overPhotoFlow]);
 
     async function getPinFromId(id) {
         if (!id) return;
