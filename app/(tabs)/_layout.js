@@ -1,6 +1,6 @@
 // app/(tabs)/_layout.js
 import { Tabs } from 'expo-router';
-import { Camera, CheckSquare, Folder, Home, Map, MessageSquare, Settings } from 'lucide-react-native';
+import { Camera, CheckSquare, Folder, HardHat, Home, Map, MessageSquare, Settings } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import { C, F } from '../../constants/theme';
 
@@ -51,6 +51,10 @@ export default function Layout() {
       <Tabs.Screen
         name="taches"
         options={{ title: 'Tâches', tabBarLabel: tabLabel('Tâches'), tabBarIcon: tabIcon(CheckSquare) }}
+      />
+      <Tabs.Screen
+        name="chantier"
+        options={{ title: 'Chantier', tabBarLabel: tabLabel('Chantier'), tabBarIcon: tabIcon(HardHat) }}
       />
       <Tabs.Screen
         name="medias"

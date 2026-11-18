@@ -91,7 +91,7 @@ export default function CategoryFilter({ active, onToggle, tags, setTags }) {
       <View style={styles.innerContainer}>
         {/* Toggle row */}
         <View style={styles.row}>
-          <Text style={styles.label}>Filtrer par catégorie</Text>
+          <Text style={styles.label}>Filtrer par lot</Text>
           <Switch
             value={active}
             onValueChange={onToggle}
@@ -139,8 +139,8 @@ export default function CategoryFilter({ active, onToggle, tags, setTags }) {
               <Feather name="tag" size={14} color="#2C4F91" />
               <Text style={styles.pickerButtonText}>
                 {tags.length > 0
-                  ? `${tags.length} catégorie(s) sélectionnée(s)`
-                  : 'Choisir une catégorie...'}
+                  ? `${tags.length} lot(s) sélectionné(s)`
+                  : 'Choisir un lot...'}
               </Text>
               <Feather name="chevron-right" size={14} color="#2C4F91" style={{ marginLeft: 'auto' }} />
             </TouchableOpacity>
@@ -158,7 +158,7 @@ export default function CategoryFilter({ active, onToggle, tags, setTags }) {
         <View style={styles.modalOverlay}>
           <View style={[styles.bottomSheet, { paddingBottom: Math.max(insets.bottom, 20) }]}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Choisir une catégorie</Text>
+              <Text style={styles.sheetTitle}>Choisir un lot</Text>
               <TouchableOpacity onPress={() => setShowBottomSheet(false)}>
                 <Feather name="x" size={24} color="#333" />
               </TouchableOpacity>

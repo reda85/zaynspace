@@ -1306,7 +1306,7 @@ export default function PinMetadataScreen() {
             <View style={styles.modalOverlay}>
                 <View style={[styles.bottomSheet, { paddingBottom: insets.bottom + 20 }]}>
                     <View style={styles.sheetHeader}>
-                        <Text style={styles.sheetTitle}>Choisir une catégorie</Text>
+                        <Text style={styles.sheetTitle}>Choisir un lot</Text>
                         <TouchableOpacity onPress={() => setShowCategorySheet(false)}><CloseIcon size={24} color="#333" /></TouchableOpacity>
                     </View>
                     <FlatList
@@ -1507,7 +1507,7 @@ export default function PinMetadataScreen() {
                             <View style={[styles.categoryIcon, { borderColor: currentStatusColor }]}>
                                 {getCategoryIconComponent(currentCategory?.icon, currentStatusColor, 15)}
                             </View>
-                            <Text style={styles.categoryButtonText}>{currentCategory?.name ?? 'Catégorie'}</Text>
+                            <Text style={styles.categoryButtonText}>{currentCategory?.name ?? 'Lot'}</Text>
                             <ChevronDown size={16} color="#5B5B56" style={{ marginLeft: 'auto' }} />
                         </TouchableOpacity>
 

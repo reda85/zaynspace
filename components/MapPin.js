@@ -39,7 +39,7 @@ import {
 } from 'lucide-react-native';
 import { categoriesAtom, statusesAtom } from '../store/atoms';
 
-const categoriesIcons = {
+export const categoriesIcons = {
   'zap':               <ZapIcon color="white" />,
   'fire-extinguisher': <FireExtinguisherIcon color="white" />,
   'droplets':          <DropletsIcon color="white" />,

@@ -8,7 +8,7 @@ const FIELD_LABELS = {
   name: 'le nom',
   note: 'la note',
   status_id: 'le statut',
-  category_id: 'la catégorie',
+  category_id: 'le lot',
   assigned_to: "l'assigné",
   due_date: "la date d'échéance",
   x: 'la position X',

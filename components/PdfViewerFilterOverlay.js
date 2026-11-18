@@ -60,7 +60,7 @@ export default function PdfViewerFilterOverlay({ pins, onFilter, planName, onBac
       if (st) out.push(st.name);
     }
     if (overdue) out.push('En retard');
-    if (categoryActive) out.push(...(categoryTags.length ? categoryTags : ['Aucune catégorie']));
+    if (categoryActive) out.push(...(categoryTags.length ? categoryTags : ['Aucun lot']));
     if (dateActive) out.push('Date');
     if (tagActive) out.push(tagIds.length > 1 ? `${tagIds.length} tags` : 'Tag');
     if (assignedToActive) out.push(selectedAssignees.length > 1 ? `${selectedAssignees.length} intervenants` : 'Intervenant');
