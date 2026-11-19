@@ -141,7 +141,7 @@ export function AuthGate({ children }) {
           ? { data: await readCache(`org-${verifiedOrgId}`) }
           : await cachedSelect(`org-${verifiedOrgId}`, () => supabase
           .from('organizations')
-          .select('id, name')
+          .select('*')        // dont is_demo (organisation de démonstration)
           .eq('id', verifiedOrgId)
           .single());
 

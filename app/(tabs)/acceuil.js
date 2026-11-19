@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useAtom, useAtomValue } from 'jotai';
-import { Bell, CameraIcon, ChevronDown, Clock, MapPin, MapPinnedIcon, MessageSquare, Pencil } from 'lucide-react-native';
+import { Bell, CameraIcon, FlaskConical, ChevronDown, Clock, MapPin, MapPinnedIcon, MessageSquare, Pencil } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -489,6 +489,15 @@ const data = memberProjects
           </View>
         </View>
 
+        {selectedOrg?.is_demo ? (
+          <View style={styles.demoBanner} accessibilityRole="text">
+            <FlaskConical size={15} color={C.tirage} strokeWidth={2} />
+            <Text style={styles.demoText}>
+              <Text style={{ fontFamily: F.semibold }}>Démonstration</Text> · toutes les données sont fictives
+            </Text>
+          </View>
+        ) : null}
+
         {/* Indicateurs */}
         {loadingData ? <CardsSkeleton /> : (
           <View style={styles.kpiGrid}>
@@ -666,6 +675,11 @@ const styles = StyleSheet.create({
   projectName: { flexShrink: 1, fontFamily: F.semibold, fontSize: 17, letterSpacing: -0.2, color: C.encre },
 
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 },
+  demoBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 9,
+    borderRadius: 10, backgroundColor: C.tiragePale,
+  },
+  demoText: { flex: 1, fontFamily: F.regular, fontSize: 13, color: C.tirage },
   countBadge: {
     position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
     backgroundColor: C.alerte, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: C.papier,
