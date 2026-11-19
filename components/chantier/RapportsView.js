@@ -1,6 +1,6 @@
 // Onglet Chantier › Rapports : rapports de réserves, de visite et
 // d'avancement sur une période, et historique des rapports du projet.
-import { BarChart3, Camera, ClipboardCheck, Download, FileText, Trash2 } from 'lucide-react-native';
+import { BarChart3, Calendar, Camera, ChevronDown, ClipboardCheck, Download, FileText, Trash2 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { C, F } from '../../constants/theme';
@@ -12,6 +12,7 @@ import {
   fmtDateTime, fmtSize, itemsForReport, lastReportByKind, periodLabel, reportDownload, resolvePeriod,
 } from '../../lib/reports';
 import { supabase } from '../../lib/supabase';
+import PeriodSheet from '../reports/PeriodSheet';
 import ReportOptionsModal from '../reports/ReportOptionsModal';
 import { Badge, Card, Empty, PrimaryButton, SectionTitle, Segmented } from './ui';
 
@@ -66,9 +67,26 @@ export default function RapportsView({ project, canEdit, active, refreshKey }) {
 
   // ── Période et modèle de chaque carte ─────────────────────────────────────
   const [presets, setPresets] = useState({});
-  const presetOf = (kind) => presets[kind] ?? defaultPreset(kind, lastByKind[kind]);
-  const periodOf = (kind) => resolvePeriod(presetOf(kind), { lastReport: lastByKind[kind] });
+  const [customs, setCustoms] = useState({});
+  const [periodKind, setPeriodKind] = useState(null); // carte dont on choisit la période
+  // Par défaut, la visite part du dernier rapport ; s'il ne reste rien depuis
+  // (rapport du jour), on prend les 7 derniers jours.
+  const presetOf = (kind) => {
+    if (presets[kind]) return presets[kind];
+    const d = defaultPreset(kind, lastByKind[kind]);
+    if (d !== 'since-last') return d;
+    const since = itemsForReport(data?.candidates ?? [], kind, resolvePeriod(d, { lastReport: lastByKind[kind] }));
+    return since.length ? d : '7d';
+  };
+  const periodOf = (kind) => resolvePeriod(presetOf(kind), { lastReport: lastByKind[kind], custom: customs[kind] });
   const idsOf = (kind) => itemsForReport(data?.candidates ?? [], kind, periodOf(kind));
+  const countFor = (kind, preset, custom) =>
+    itemsForReport(data?.candidates ?? [], kind, resolvePeriod(preset, { lastReport: lastByKind[kind], custom })).length;
+  const presetLabel = (kind) => {
+    const preset = presetOf(kind);
+    if (preset === 'all') return kind === 'avancement' ? 'Situation à ce jour' : 'Tout le projet';
+    return PERIOD_PRESETS.find((p) => p.value === preset)?.label ?? 'Période';
+  };
   const templatesOf = (kind) => (data?.templates ?? []).filter((t) => templateKind(t) === kind || templateKind(t) === 'libre');
 
   // ── Composition ───────────────────────────────────────────────────────────
@@ -178,17 +196,27 @@ export default function RapportsView({ project, canEdit, active, refreshKey }) {
                 <Text style={styles.hint} numberOfLines={2}>{k.hint}</Text>
               </View>
             </View>
-            <Segmented
-              small
-              value={presetOf(kind)}
-              options={PERIOD_PRESETS.filter((p) => p.value !== 'since-last' || last)}
-              onChange={(v) => setPresets((p) => ({ ...p, [kind]: v }))}
-              style={{ marginTop: 12 }}
-            />
-            <Text style={styles.period}>
-              {period ? periodLabel(period) : kind === 'avancement' ? 'Situation à ce jour' : `Toutes les ${WORDS[k.pinType]}s du projet`}
-              {period ? (kind === 'avancement' ? ' · tâches actives' : ' · constatées sur la période') : ''}
-            </Text>
+            <Pressable
+              onPress={() => setPeriodKind(kind)}
+              style={({ pressed }) => [styles.periodRow, pressed && { backgroundColor: C.voile }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Période : ${presetLabel(kind)}. Changer`}
+            >
+              <Calendar size={16} color={C.mine} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.periodLabel}>{presetLabel(kind)}</Text>
+                <Text style={styles.period} numberOfLines={1}>
+                  {period ? periodLabel(period) : kind === 'avancement' ? 'Toutes les tâches' : `Toutes les ${WORDS[k.pinType]}s`}
+                </Text>
+              </View>
+              <Text style={styles.periodChange}>Changer</Text>
+              <ChevronDown size={16} color={C.mine} />
+            </Pressable>
+            {!count && period && (
+              <Text style={styles.emptyHint}>
+                Aucune {WORDS[k.pinType]} sur cette période : choisissez une période plus large.
+              </Text>
+            )}
             <View style={styles.cardFoot}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.count}>{count} {itemWord(kind, count)}</Text>
@@ -261,6 +289,21 @@ export default function RapportsView({ project, canEdit, active, refreshKey }) {
       )}
       {shown.length > 0 && <Text style={styles.footnote}>Touchez un rapport pour le télécharger et le partager.</Text>}
 
+      <PeriodSheet
+        visible={Boolean(periodKind)}
+        onClose={() => setPeriodKind(null)}
+        title={periodKind ? `Période · ${REPORT_KINDS[periodKind].label}` : ''}
+        preset={periodKind ? presetOf(periodKind) : 'all'}
+        custom={periodKind ? customs[periodKind] : null}
+        lastReport={periodKind ? lastByKind[periodKind] : null}
+        countFor={(preset, custom) => countFor(periodKind, preset, custom)}
+        itemWord={(n) => (periodKind ? itemWord(periodKind, n) : '')}
+        onApply={(preset, custom) => {
+          setPresets((p) => ({ ...p, [periodKind]: preset }));
+          if (preset === 'custom') setCustoms((c) => ({ ...c, [periodKind]: custom }));
+        }}
+      />
+
       {composing && (
         <ReportOptionsModal
           visible
@@ -285,7 +328,11 @@ const styles = StyleSheet.create({
   icon: { width: 34, height: 34, borderRadius: 9, borderWidth: 1, borderColor: C.filet, backgroundColor: C.papier, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { fontFamily: F.medium, fontSize: 15, color: C.encre },
   hint: { fontFamily: F.regular, fontSize: 12.5, color: C.mineClair, marginTop: 2 },
-  period: { fontFamily: F.regular, fontSize: 12, color: C.mineClair, marginTop: 6 },
+  periodRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: C.filet, backgroundColor: C.papier },
+  periodLabel: { fontFamily: F.medium, fontSize: 14, color: C.encre },
+  period: { fontFamily: F.regular, fontSize: 12, color: C.mineClair, marginTop: 1 },
+  periodChange: { fontFamily: F.medium, fontSize: 13, color: C.mine },
+  emptyHint: { fontFamily: F.regular, fontSize: 12, color: C.alerte, marginTop: 6 },
   cardFoot: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.voile },
   count: { fontFamily: F.medium, fontSize: 14, color: C.encre },
   meta: { fontFamily: F.regular, fontSize: 12, color: C.mineClair, marginTop: 2 },
