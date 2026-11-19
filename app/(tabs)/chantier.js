@@ -18,7 +18,7 @@ import {
   fetchMeetings,
   fetchPlanning,
   fetchProjectPoints,
-  updatePlanningTask,
+  setPlanningProgress,
 } from '../../lib/chantier';
 import { isOnline } from '../../lib/offline';
 import { isReadOnlyRole } from '../../lib/projectLists';
@@ -66,6 +66,7 @@ export default function ChantierScreen() {
       points,
       entreprises,
       tasks: planningRes.tasks,
+      finalStatusId: planningRes.finalStatusId,
       // Table absente (migration non appliquée) : on le dit plutôt que d'afficher un planning vide.
       planningUnavailable: Boolean(planningRes.error && !planningRes.error.offline && /planning_tasks|schema cache|does not exist/i.test(planningRes.error.message ?? '')),
       cachedAt: lotsRes.cachedAt,
@@ -104,8 +105,8 @@ export default function ChantierScreen() {
       return false;
     }
     try {
-      await updatePlanningTask(task.id, { avancement });
-      setData((d) => ({ ...d, tasks: d.tasks.map((t) => (t.id === task.id ? { ...t, avancement } : t)) }));
+      await setPlanningProgress(task, avancement, data.finalStatusId);
+      setData((d) => ({ ...d, tasks: d.tasks.map((t) => (t.id === task.id ? { ...t, avancement, done: avancement >= 100 } : t)) }));
     } catch (err) {
       console.error('[chantier] avancement de tâche', err);
       Alert.alert('Planning', "L'avancement n'a pas pu être enregistré.");

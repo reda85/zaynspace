@@ -44,6 +44,8 @@ import TagFilter from '../../components/FilterPanel/TagFilter';
 import { loggedInUserAtom, pinsAtom, selectedProjectAtom, statusesAtom } from '../../store/atoms';
 import { HeaderButton, ScreenHeader } from '../../components/ui/ScreenHeader';
 import { C } from '../../constants/theme';
+import { Segmented } from '../../components/chantier/ui';
+import { PIN_TYPES, pinType } from '../../lib/pinTypes';
 
 // --- CONFIGURATION DU TRI ---
 const SORT_FIELDS = [
@@ -1109,6 +1111,9 @@ export default function TasksScreen() {
     const [projectMembers, setProjectMembers] = useState([]);
 
     const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+    // Nature affichée (null = tout) et nature de l'élément en cours de création.
+    const [natureFilter, setNatureFilter] = useState(null);
+    const [newNature, setNewNature] = useState('tache');
     const [newTaskName, setNewTaskName] = useState('');
     const [newTaskDescription, setNewTaskDescription] = useState('');
     const [isCreatingTask, setIsCreatingTask] = useState(false);
@@ -1295,6 +1300,7 @@ useEffect(() => {
                     project_id: projects?.id,
                     name: newTaskName.trim(),
                     note: newTaskDescription.trim() || null,
+                    type: newNature,
                     created_by: loggedInUser?.id,
                     updated_by: loggedInUser?.id,
                     created_at: nowIso,
@@ -1323,6 +1329,7 @@ useEffect(() => {
                     project_id: projects?.id,
                     name: newTaskName.trim(),
                     note: newTaskDescription.trim() || null,
+                    type: newNature,
                     pin_number: nextPinNumber.toString(),
                     created_by: loggedInUser?.id,
                     updated_by: loggedInUser?.id,
@@ -1393,8 +1400,11 @@ useEffect(() => {
             p.due_date && Date.parse(p.due_date) < now && !(lastOrder != null && p.Status?.order === lastOrder)
         ).length;
         const n = filteredPins.length;
-        return `${n} tâche${n > 1 ? 's' : ''}${late ? `, ${late} en retard` : ''}`;
-    }, [filteredPins, statuses]);
+        const label = natureFilter
+            ? PIN_TYPES[natureFilter].label.toLowerCase() + (n > 1 ? 's' : '')
+            : `élément${n > 1 ? 's' : ''}`;
+        return `${n} ${label}${late ? `, ${late} en retard` : ''}`;
+    }, [filteredPins, statuses, natureFilter]);
 
     const toggleSelect = useCallback((id) => {
         setSelectedIds((prev) => {
@@ -1439,6 +1449,7 @@ useEffect(() => {
                     p.assigned_to?.name?.toLowerCase().includes(lower)
                 );
             }
+            if (natureFilter) result = result.filter(p => pinType(p) === natureFilter);
             if (createdByMe && loggedInUser?.id) result = result.filter(p => p.created_by === loggedInUser.id);
             if (activeStatuses.length > 0) result = result.filter(p => activeStatuses.includes(p.status_id));
             if (overdue) {
@@ -1509,7 +1520,7 @@ useEffect(() => {
             result = sortPins(result);
             setFilteredPins(result);
         };
-    }, [pins, searchTerm, createdByMe, activeStatuses, overdue, dateActive, dateTags, loggedInUser, categoryActive, planActive, selectedPlans, categoryTags, assignedToActive, selectedAssignees, tagActive, selectedTagIds, showArchived, sortPins]);
+    }, [pins, natureFilter, searchTerm, createdByMe, activeStatuses, overdue, dateActive, dateTags, loggedInUser, categoryActive, planActive, selectedPlans, categoryTags, assignedToActive, selectedAssignees, tagActive, selectedTagIds, showArchived, sortPins]);
 
     useEffect(() => applyAllFilters(), [applyAllFilters]);
 
@@ -1604,7 +1615,7 @@ useEffect(() => {
                         <HeaderButton label="Trier les tâches" onPress={handleOpenSortSheet}>
                             <ArrowDownNarrowWideIcon size={19} color={C.encre} strokeWidth={1.9} />
                         </HeaderButton>
-                        <HeaderButton label="Nouvelle tâche générale" dark onPress={() => setShowCreateTaskModal(true)}>
+                        <HeaderButton label="Nouvel élément" dark onPress={() => { setNewNature(natureFilter ?? 'tache'); setShowCreateTaskModal(true); }}>
                             <Plus size={20} color={C.blanc} strokeWidth={2.2} />
                         </HeaderButton>
                     </>
@@ -1621,6 +1632,14 @@ useEffect(() => {
                     placeholderTextColor="#999"
                 />
             </View>
+
+            {/* Nature : réserves, tâches, observations */}
+            <Segmented
+                value={natureFilter ?? 'all'}
+                options={[{ value: 'all', label: 'Tout' }, ...Object.entries(PIN_TYPES).map(([value, t]) => ({ value, label: t.plural }))]}
+                onChange={(v) => setNatureFilter(v === 'all' ? null : v)}
+                style={{ marginBottom: 10 }}
+            />
 
             {/* Select all row */}
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
@@ -1722,13 +1741,19 @@ useEffect(() => {
                     <View style={styles.modalOverlay}>
                         <View style={[styles.createTaskContainer, { paddingBottom: Math.max(insets.bottom, 20), marginBottom: createTaskKeyboardOffset, }]}>
                             <View style={styles.sheetHeader}>
-                                <Text style={styles.sheetTitle}>Nouvelle tâche générale</Text>
+                                <Text style={styles.sheetTitle}>{newNature === 'reserve' ? 'Nouvelle réserve' : newNature === 'observation' ? 'Nouvelle observation' : 'Nouvelle tâche'}</Text>
                                 <TouchableOpacity onPress={() => setShowCreateTaskModal(false)}>
                                     <Feather name="x" size={24} color="#333" />
                                 </TouchableOpacity>
                             </View>
                             <ScrollView style={styles.createTaskForm} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                                <Text style={styles.inputLabel}>Nom de la tâche *</Text>
+                                <Segmented
+                                    value={newNature}
+                                    options={Object.entries(PIN_TYPES).map(([value, t]) => ({ value, label: t.label }))}
+                                    onChange={setNewNature}
+                                    style={{ marginBottom: 14 }}
+                                />
+                                <Text style={styles.inputLabel}>Nom *</Text>
                                 <TextInput
                                     style={styles.textInput}
                                     placeholder="Ex: Préparer le rapport mensuel"

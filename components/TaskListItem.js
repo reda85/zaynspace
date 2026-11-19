@@ -6,6 +6,7 @@ import { MapPinned, MapPinOff } from 'lucide-react-native';
 import { memo, useCallback } from 'react';
 import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Checkbox } from 'react-native-paper';
+import { PIN_TYPES, pinType } from '../lib/pinTypes';
 
 // ─── Custom Checkbox (iOS only) ───────────────────────────────────────────────
 const CustomCheckbox = ({ checked, onPress }) => (
@@ -78,6 +79,9 @@ const TaskListItem = memo(({
                 <View style={styles.textColumn}>
                     <View style={styles.idPlanRow}>
                         <Text style={styles.pinIdText}>#{pinNumber}</Text>
+                        <View style={[styles.naturePill, { backgroundColor: PIN_TYPES[pinType(pin)].bg }]}>
+                            <Text style={[styles.natureText, { color: PIN_TYPES[pinType(pin)].fg }]}>{PIN_TYPES[pinType(pin)].label}</Text>
+                        </View>
                         {pin.pdf_name ? (
                             <View style={styles.pdfNamePill}>
                                 <MapPinned size={14} color="#5B5B56" />
@@ -140,6 +144,8 @@ const TaskListItem = memo(({
 export default TaskListItem;
 
 const styles = StyleSheet.create({
+    naturePill: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
+    natureText: { fontFamily: 'Outfit_500Medium', fontSize: 11.5 },
     itemContainer: {
         flexDirection: 'row',
         alignItems: 'flex-start',
