@@ -337,6 +337,7 @@ useEffect(() => {
   const handleGenerateReport = useCallback(async ({
     progress,
     progressContent,
+    lotIds = [],
     reportTitle,
     displayMode,
     fields,
@@ -345,7 +346,12 @@ useEffect(() => {
     planningImages,
     planningObservations,
 }) => {
-    const ids = reportWholeTab ? filteredPins.map((p) => p.id) : Array.from(selectedIds);
+    // Rapport par lot sur tout l'onglet : les éléments de ces lots, quel que
+    // soit le filtre de lot de la liste (le serveur ne garde que la bonne nature).
+    const lotSet = new Set(lotIds.map(String));
+    const ids = reportWholeTab
+        ? (lotSet.size ? pins.filter((p) => lotSet.has(String(p.category_id)) && (showArchived || !p.isArchived)) : filteredPins).map((p) => p.id)
+        : Array.from(selectedIds);
     if (ids.length === 0 || isDownloading) return;
     if (!isOnline()) {
         Alert.alert('Indisponible hors ligne', 'La génération du rapport nécessite une connexion.');
@@ -361,6 +367,7 @@ useEffect(() => {
             templateKind: templateKind(selectedTemplate),
             ...(progress ? { progress } : {}),
             ...(progressContent ? { progressContent } : {}),
+            ...(lotIds.length ? { lotIds } : {}),
             fields,
             displayMode,
             templateConfig: selectedTemplate?.config || null,
@@ -397,7 +404,7 @@ useEffect(() => {
         setIsDownloading(false);
         setReportWholeTab(false);
     }
-}, [selectedIds, projects, isDownloading, selectedTemplate, reportKind, reportWholeTab, filteredPins]);
+}, [selectedIds, projects, isDownloading, selectedTemplate, reportKind, reportWholeTab, filteredPins, pins, showArchived]);
 
     const handleCreateGeneralTask = useCallback(async () => {
         if (!newTaskName.trim() || isCreatingTask) return;
@@ -863,6 +870,7 @@ useEffect(() => {
     setSelectedTemplate={setSelectedTemplate}
     projectMembers={projectMembers}
     projectId={projects?.id}
+    defaultLotNames={categoryActive ? categoryTags : []}
 />
 
             {/* Create task modal */}
