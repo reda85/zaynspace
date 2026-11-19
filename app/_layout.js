@@ -64,6 +64,8 @@ export default function RootLayout() {
             <Stack.Screen name="AccountScreen" options={{ headerShown: true, headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 } }} />
             <Stack.Screen name="select-project" options={{ headerShown: true, headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 } }} />
             <Stack.Screen name="PinPlacementScreen" options={{ headerShown: false }} />
+            <Stack.Screen name="chantier/lot" options={{ headerShown: false }} />
+            <Stack.Screen name="chantier/reunion" options={{ headerShown: false }} />
             <Stack.Screen name="StorageDataScreen" options={{ headerShown: true, headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 } }} />
             <Stack.Screen name="discussions/chat" options={{ headerShown: true, headerStyle: { backgroundColor: '#F8F8F6', borderBottomWidth: 0 } }} />
           </Stack>

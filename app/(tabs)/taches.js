@@ -219,7 +219,7 @@ const FIELD_LABELS = {
     snapshot: 'Snapshot du plan',
     assignedTo: 'Assigné à',
     dueDate: 'Échéance',
-    category: 'Catégorie',
+    category: 'Lot',
     status: 'Statut',
 };
 
