@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as Crypto from 'expo-crypto';
+import { openNotificationTarget, refreshUnreadCount } from '../lib/notifications';
 import { supabase } from '../lib/supabase';
 
 // Configure notification behavior
@@ -55,6 +56,9 @@ export function useNotifications(session) {
 
       // Application ouverte : la bannière système s'affiche déjà
       // (setNotificationHandler), pas de fenêtre bloquante en plus.
+
+      // Push reçu application ouverte : la pastille des non lues se met à jour.
+      notificationListener = Notifications.addNotificationReceivedListener(() => refreshUnreadCount());
 
       // Appui sur une notification : ouvrir l'élément concerné.
       responseListener = Notifications.addNotificationResponseReceivedListener(openFromNotification);
@@ -169,8 +173,19 @@ function openFromNotification(response) {
   try {
     lastHandledId = response?.notification?.request?.identifier ?? null;
     const data = response?.notification?.request?.content?.data ?? {};
+    // Notification de la table : marquée lue, puis ouverture de l'élément.
+    if (data.notificationId) {
+      supabase.from('notifications').update({ read_at: new Date().toISOString() })
+        .eq('id', data.notificationId).is('read_at', null)
+        .then(() => refreshUnreadCount(), () => {});
+    }
     if (data.type === 'pin_assigned' && data.pinId) {
       router.push({ pathname: '/PinMetadataScreen', params: { pinId: String(data.pinId), from: 'Notification' } });
+    } else if (data.type === 'notification') {
+      openNotificationTarget(data);
+    } else if (data.type === 'notifications') {
+      // Résumé de plusieurs notifications : la liste.
+      router.push('/notifications');
     } else if (data.type === 'discussion_message' && data.groupId) {
       router.push({
         pathname: '/discussions/chat',

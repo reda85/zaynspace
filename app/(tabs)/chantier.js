@@ -1,6 +1,6 @@
 // Onglet Chantier : pilotage du projet (lots, réunions de chantier, planning, rapports).
 import { useIsFocused } from '@react-navigation/native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useAtomValue } from 'jotai';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -40,6 +40,11 @@ export default function ChantierScreen() {
   const canEdit = Boolean(user) && !isReadOnlyRole(user.role);
 
   const [view, setView] = useState('lots');
+  // Ouvert depuis une notification de rapport : …/chantier?view=rapports
+  const { view: viewParam } = useLocalSearchParams();
+  useEffect(() => {
+    if (viewParam && VIEWS.some((v) => v.value === viewParam)) setView(String(viewParam));
+  }, [viewParam]);
   const scroller = useRef(null);
   const changeView = (v) => {
     setView(v);

@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import { useNavigation, useRouter } from 'expo-router';
 import { useAtom, useAtomValue } from 'jotai';
-import { CameraIcon, ChevronDown, Clock, MapPin, MapPinnedIcon, MessageSquare, Pencil } from 'lucide-react-native';
+import { Bell, CameraIcon, ChevronDown, Clock, MapPin, MapPinnedIcon, MessageSquare, Pencil } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ import { C, F } from '../../constants/theme';
 
 import { fetchGroups, getUnreadCount } from '../../services/discussionsService';
 import { discussionUnreadAtom } from '../../store/discussionsAtoms';
+import { refreshUnreadCount, unreadNotificationsAtom } from '../../lib/notifications';
 
 // ── Shimmer skeleton ──────────────────────────────────────────────────────────
 function SkeletonBox({ width, height, borderRadius = 8, style }) {
@@ -130,6 +131,11 @@ export default function AcceuilScreen() {
   // changement de projet), et la recharge quand on y revient.
   const isFocused = useIsFocused();
   const isFocusedRef = useRef(isFocused);
+  const unreadNotifications = useAtomValue(unreadNotificationsAtom);
+  // Pastille des notifications : rechargée à chaque retour sur l'accueil.
+  useEffect(() => {
+    if (isFocused) refreshUnreadCount();
+  }, [isFocused]);
   isFocusedRef.current = isFocused;
   const wasFocusedRef = useRef(isFocused);
   const [focusTick, setFocusTick] = useState(0);
@@ -454,6 +460,18 @@ const data = memberProjects
 
           <View style={styles.headerActions}>
             <TouchableOpacity
+              onPress={() => router.push('/notifications')}
+              style={styles.messageButton}
+              accessibilityLabel={unreadNotifications ? `Notifications, ${unreadNotifications} non lue${unreadNotifications > 1 ? 's' : ''}` : 'Notifications'}
+            >
+              <Bell size={20} color={C.encre} strokeWidth={1.8} />
+              {unreadNotifications > 0 && (
+                <View style={styles.countBadge}>
+                  <Text style={styles.countBadgeText}>{unreadNotifications > 99 ? '99+' : unreadNotifications}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={() => router.push('/discussions')}
               style={styles.messageButton}
               accessibilityLabel="Discussions"
@@ -648,6 +666,11 @@ const styles = StyleSheet.create({
   projectName: { flexShrink: 1, fontFamily: F.semibold, fontSize: 17, letterSpacing: -0.2, color: C.encre },
 
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 },
+  countBadge: {
+    position: 'absolute', top: -5, right: -5, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
+    backgroundColor: C.alerte, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: C.papier,
+  },
+  countBadgeText: { color: C.blanc, fontFamily: F.semibold, fontSize: 10.5 },
   messageButton: {
     width: 44, height: 44, borderRadius: 12, backgroundColor: C.blanc,
     borderWidth: 1, borderColor: C.filet, alignItems: 'center', justifyContent: 'center',
