@@ -89,6 +89,8 @@ import { cachedSelect, outboxOpsAtom, pendingPhotos, runOrQueue, syncTickAtom, w
 import { fetchProjectLists, isReadOnlyRole } from '../lib/projectLists';
 import { Image as PendingPhotoImage } from 'expo-image';
 import { categoriesAtom, membersAtom, MetaPinAtom, PhotoPlanPositionAtom, pinsAtom, selectedPinAtom, selectedProjectAtom, statusesAtom } from '../store/atoms';
+import { Segmented } from '../components/chantier/ui';
+import { PIN_TYPES, pinType } from '../lib/pinTypes';
 
 const formatDate = (dateString) => {
     if (!dateString) return null;
@@ -1005,6 +1007,7 @@ export default function PinMetadataScreen() {
                 project_id: pin.project_id,
                 status_id: pin.status_id,
                 category_id: pin.category_id,
+                type: pin.type,
                 assigned_to: pin.assigned_to?.id ?? pin.assigned_to ?? null,
                 due_date: pin.due_date,
                 tags: pin.tags,
@@ -1498,6 +1501,18 @@ export default function PinMetadataScreen() {
                                 </TouchableOpacity>
                             )}
                         </View>
+
+                        {/* Nature : réserve, tâche ou observation */}
+                        <Segmented
+                            value={pinType(pin)}
+                            options={Object.entries(PIN_TYPES).map(([value, t]) => ({ value, label: t.label }))}
+                            onChange={(type) => {
+                                setPins((prev) => prev.map((p) => (p.id === pin.id ? { ...p, type } : p)));
+                                immediateSave({ type });
+                            }}
+                            disabled={!canEditEverythingElse}
+                            style={{ marginBottom: 10 }}
+                        />
 
                         <TouchableOpacity
                             disabled={!canEditEverythingElse}
