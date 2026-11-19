@@ -69,7 +69,9 @@ export function Card({ children, style, onPress }) {
 }
 
 /** Choix exclusif en pastilles (onglets internes, présence, type de point…). */
-export function Segmented({ value, options, onChange, small, style, disabled }) {
+// small : plus compact, les options se partagent toujours la largeur.
+// fit : la barre épouse ses options (placée dans une ligne, à côté d'un libellé).
+export function Segmented({ value, options, onChange, small, fit, style, disabled }) {
   return (
     <View style={[s.seg, style]}>
       {options.map((o) => {
@@ -81,7 +83,7 @@ export function Segmented({ value, options, onChange, small, style, disabled }) 
             onPress={() => !active && onChange(o.value)}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
-            style={[s.segItem, small && s.segItemSmall, active && s.segActive]}
+            style={[s.segItem, small && s.segItemSmall, fit && s.segItemFit, active && s.segActive]}
           >
             <Text style={[s.segText, small && { fontSize: 12 }, active && s.segTextActive]} numberOfLines={1}>{o.label}</Text>
           </Pressable>
@@ -136,7 +138,9 @@ export const s = StyleSheet.create({
   card: { backgroundColor: C.blanc, borderRadius: 14, borderWidth: 1, borderColor: C.filet, padding: 14 },
   seg: { flexDirection: 'row', backgroundColor: C.voile, borderRadius: 10, padding: 3 },
   segItem: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
-  segItemSmall: { paddingVertical: 5, paddingHorizontal: 9, flexGrow: 0, flexShrink: 0, flexBasis: 'auto' },
+  // Compacte : chaque option garde la largeur de son libellé et l'espace restant est partagé.
+  segItemSmall: { paddingVertical: 6, paddingHorizontal: 8, flexGrow: 1, flexShrink: 1, flexBasis: 'auto' },
+  segItemFit: { paddingHorizontal: 9, flexGrow: 0, flexShrink: 0, flexBasis: 'auto' },
   segActive: { backgroundColor: C.blanc, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
   segText: { fontFamily: F.medium, fontSize: 14, color: C.mine },
   segTextActive: { color: C.encre, fontFamily: F.semibold },

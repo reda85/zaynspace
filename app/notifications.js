@@ -105,7 +105,6 @@ export default function NotificationsScreen() {
       />
       <View style={styles.segWrap}>
         <Segmented
-          small
           value={filter}
           options={[{ value: 'all', label: 'Toutes' }, { value: 'unread', label: unread ? `Non lues (${unread})` : 'Non lues' }]}
           onChange={setFilter}
