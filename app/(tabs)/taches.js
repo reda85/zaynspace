@@ -46,6 +46,10 @@ import { HeaderButton, ScreenHeader } from '../../components/ui/ScreenHeader';
 import { C } from '../../constants/theme';
 import { Segmented } from '../../components/chantier/ui';
 import { PIN_TYPES, pinType } from '../../lib/pinTypes';
+import {
+    DEFAULT_PROGRESS, DISPLAY_MODES, PROGRESS_PARTS, REPORT_KIND_KEYS, REPORT_KINDS,
+    kindForPinType, templateKind,
+} from '../../lib/reportKinds';
 
 // --- CONFIGURATION DU TRI ---
 const SORT_FIELDS = [
@@ -223,6 +227,12 @@ const FIELD_LABELS = {
     dueDate: 'Échéance',
     category: 'Lot',
     status: 'Statut',
+    planning: 'Planning (début, avancement)',
+};
+
+const DEFAULT_FIELDS = {
+    description: true, photos: true, snapshot: true, assignedTo: true,
+    dueDate: true, category: true, status: true, planning: false,
 };
 
 // ─── REPORT OPTIONS MODAL ────────────────────────────────────────────────────
@@ -313,15 +323,18 @@ function ReportOptionsModal({
     setSelectedTemplate,
     projectMembers,
     projectId,             // ── NEW: needed for storage upload path
+    reportKind = 'libre',  // type de rapport (réserves, visite, avancement, libre)
+    onKindChange,
+    itemCount,             // éléments concernés (affiché sous le type)
 }) {
     const insets = useSafeAreaInsets();
+    const kind = REPORT_KINDS[reportKind] ?? REPORT_KINDS.libre;
+    const isProgress = reportKind === 'avancement';
+    const [progress, setProgress] = useState(DEFAULT_PROGRESS);
 
     const [reportTitle, setReportTitle] = useState('');                          // ── NEW
     const [displayMode, setDisplayMode] = useState('list');
-    const [fields, setFields] = useState({
-        description: true, photos: true, snapshot: true, assignedTo: true,
-        dueDate: true, category: true, status: true,
-    });
+    const [fields, setFields] = useState(DEFAULT_FIELDS);
     const [participants, setParticipants] = useState([]);
     const [customSectionContents, setCustomSectionContents] = useState([]);
     const [planningImages, setPlanningImages] = useState([]);                    // ── NEW
@@ -348,32 +361,28 @@ function ReportOptionsModal({
         if (!visible) setKeyboardOffset(0);
     }, [visible]);
 
-    // ── Sync state when template changes (extended) ──────────────────────────
+    // ── Sync state when template or report type changes ─────────────────────
     useEffect(() => {
         if (!visible) return;
         const cfg = selectedTemplate?.config;
-        setReportTitle(cfg?.reportTitle || 'RAPPORT DE TÂCHES');                 // ── NEW
-        setDisplayMode(cfg?.tasks?.displayMode || 'list');
-        if (cfg?.fields) {
-            setFields({
-                description: cfg.fields.description ?? true,
-                photos: cfg.fields.photos ?? true,
-                snapshot: cfg.fields.snapshot ?? true,
-                assignedTo: cfg.fields.assignedTo ?? true,
-                dueDate: cfg.fields.dueDate ?? true,
-                category: cfg.fields.category ?? true,
-                status: cfg.fields.status ?? true,
-            });
-        } else {
-            setFields({ description: true, photos: true, snapshot: true, assignedTo: true, dueDate: true, category: true, status: true });
-        }
+        // Le modèle donne titre, mode et champs s'il est fait pour ce type
+        // (ou pour un rapport libre) ; sinon le type pose les siens.
+        const own = reportKind === 'libre' || templateKind(selectedTemplate) === reportKind;
+        setReportTitle((own && cfg?.reportTitle) || kind.title);
+        const tplMode = cfg?.tasks?.displayMode;
+        setDisplayMode(tplMode && (reportKind === 'libre' || kind.modes.includes(tplMode)) ? tplMode : kind.displayMode);
+        const f = (own && cfg?.fields) || kind.fields || cfg?.fields;
+        setFields(f
+            ? Object.fromEntries(Object.keys(DEFAULT_FIELDS).map((k) => [k, f[k] ?? DEFAULT_FIELDS[k]]))
+            : DEFAULT_FIELDS);
+        setProgress({ ...DEFAULT_PROGRESS, ...(cfg?.progress || {}) });
         setParticipants(projectMembers.map(m => ({ ...m, present: true })));
         const enabled = (cfg?.customSections || []).filter(s => s.enabled);
         setCustomSectionContents(enabled.map(s => ({ id: s.id, title: s.title, content: '' })));
         // ── NEW: reset planning state on template change
         setPlanningImages([]);
         setPlanningObservationsText('');
-    }, [visible, selectedTemplate, projectMembers]);
+    }, [visible, selectedTemplate, projectMembers, reportKind]);
 
     // Defensive normalization for planning block (older templates may not have it)
     const templateConfig = useMemo(() => {                                        // ── NEW
@@ -458,6 +467,7 @@ function ReportOptionsModal({
 
             // 3. Pass everything to parent
             await onConfirm({
+                ...(isProgress ? { progress } : {}),
                 reportTitle,
                 displayMode,
                 fields,
@@ -488,9 +498,11 @@ function ReportOptionsModal({
                     {/* Header */}
                     <View style={rm.header}>
                         <View style={{ flex: 1 }}>
-                            <Text style={rm.title}>Options du rapport</Text>
-                            {templateConfig?.reportTitle && (
-                                <Text style={rm.subtitle}>{templateConfig.reportTitle}</Text>
+                            <Text style={rm.title}>{reportKind === 'libre' ? 'Options du rapport' : kind.label}</Text>
+                            {itemCount != null && (
+                                <Text style={rm.subtitle}>
+                                    {itemCount} élément{itemCount > 1 ? 's' : ''}{kind.pinType ? ` · seuls les ${PIN_TYPES[kind.pinType].label.toLowerCase()}s sont repris` : ''}
+                                </Text>
                             )}
                         </View>
                         <TouchableOpacity onPress={onClose} style={rm.closeBtn} disabled={isSubmitting}>
@@ -500,7 +512,22 @@ function ReportOptionsModal({
 
                     <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
-                        {/* Template selector (unchanged) */}
+                        {/* Type de rapport */}
+                        {onKindChange && (
+                            <View style={rm.section}>
+                                <Text style={rm.sectionLabel}>TYPE DE RAPPORT</Text>
+                                <Segmented
+                                    small
+                                    value={reportKind}
+                                    options={REPORT_KIND_KEYS.map((k) => ({ value: k, label: REPORT_KINDS[k].short }))}
+                                    onChange={onKindChange}
+                                    style={{ marginTop: 8 }}
+                                />
+                                <Text style={rm.modeHint}>{kind.hint}</Text>
+                            </View>
+                        )}
+
+                        {/* Template selector */}
                         {availableTemplates.length > 0 && (
                             <View style={rm.section}>
                                 <Text style={rm.sectionLabel}>MODÈLE DE RAPPORT</Text>
@@ -510,7 +537,7 @@ function ReportOptionsModal({
                                         style={[rm.templateChip, !selectedTemplate && rm.templateChipActive]}
                                     >
                                         <Text style={[rm.templateChipText, !selectedTemplate && rm.templateChipTextActive]}>
-                                            Par défaut
+                                            {reportKind === 'libre' ? 'Par défaut' : `Présentation ${kind.short.toLowerCase()}`}
                                         </Text>
                                     </TouchableOpacity>
                                     {availableTemplates.map(t => (
@@ -534,7 +561,7 @@ function ReportOptionsModal({
                             <TextInput
                                 value={reportTitle}
                                 onChangeText={setReportTitle}
-                                placeholder="RAPPORT DE TÂCHES"
+                                placeholder={kind.title}
                                 placeholderTextColor="#D3D3CE"
                                 style={rm.titleInput}
                             />
@@ -543,35 +570,58 @@ function ReportOptionsModal({
                             </Text>
                         </View>
 
-                        {/* Display mode (unchanged) */}
-                        <View style={rm.section}>
-                            <Text style={rm.sectionLabel}>MODE D'AFFICHAGE</Text>
-                            <View style={rm.modeRow}>
-                                <TouchableOpacity
-                                    style={[rm.modeBtn, displayMode === 'list' && rm.modeBtnActive]}
-                                    onPress={() => setDisplayMode('list')}
-                                >
-                                    <Feather name="list" size={15} color={displayMode === 'list' ? '#fff' : '#5B5B56'} />
-                                    <Text style={[rm.modeBtnText, displayMode === 'list' && rm.modeBtnTextActive]}>
-                                        Liste détaillée
-                                    </Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={[rm.modeBtn, displayMode === 'table' && rm.modeBtnActive]}
-                                    onPress={() => setDisplayMode('table')}
-                                >
-                                    <Feather name="grid" size={15} color={displayMode === 'table' ? '#fff' : '#5B5B56'} />
-                                    <Text style={[rm.modeBtnText, displayMode === 'table' && rm.modeBtnTextActive]}>
-                                        Tableau compact
-                                    </Text>
-                                </TouchableOpacity>
+                        {/* Contenu du rapport d'avancement */}
+                        {isProgress && (
+                            <View style={rm.section}>
+                                <Text style={rm.sectionLabel}>CONTENU DU RAPPORT</Text>
+                                {PROGRESS_PARTS.map(({ key, label, hint }) => {
+                                    const disabled = key === 'ganttTasks' && !progress.gantt;
+                                    const val = Boolean(progress[key]) && !disabled;
+                                    return (
+                                        <TouchableOpacity
+                                            key={key}
+                                            disabled={disabled}
+                                            onPress={() => setProgress((p) => ({ ...p, [key]: !p[key] }))}
+                                            style={[rm.fieldRow, disabled && { opacity: 0.4 }]}
+                                            activeOpacity={0.7}
+                                        >
+                                            <View style={[rm.fieldCheck, val && rm.fieldCheckActive]}>
+                                                {val && <Feather name="check" size={11} color="#fff" />}
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={rm.fieldLabel}>{label}</Text>
+                                                <Text style={[rm.modeHint, { marginTop: 1 }]}>{hint}</Text>
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })}
                             </View>
-                            <Text style={rm.modeHint}>
-                                {displayMode === 'list'
-                                    ? 'Affichage détaillé avec snapshots et photos'
-                                    : "Vue tableau compacte idéale pour l'impression"}
-                            </Text>
+                        )}
+
+                        {/* Display mode (avancement : présentation du détail des tâches, après le contenu) */}
+                        {(!isProgress || progress.details) && (
+                        <View style={rm.section}>
+                            <Text style={rm.sectionLabel}>{isProgress ? 'PRÉSENTATION DU DÉTAIL DES TÂCHES' : "MODE D'AFFICHAGE"}</Text>
+                            <View style={[rm.modeRow, { flexWrap: 'wrap' }]}>
+                                {kind.modes.map((m) => {
+                                    const active = displayMode === m;
+                                    return (
+                                        <TouchableOpacity
+                                            key={m}
+                                            style={[rm.modeBtn, kind.modes.length > 2 && { flexBasis: '45%' }, active && rm.modeBtnActive]}
+                                            onPress={() => setDisplayMode(m)}
+                                        >
+                                            <Feather name={DISPLAY_MODES[m].icon} size={15} color={active ? '#fff' : '#5B5B56'} />
+                                            <Text style={[rm.modeBtnText, active && rm.modeBtnTextActive]}>
+                                                {DISPLAY_MODES[m].label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                            <Text style={rm.modeHint}>{DISPLAY_MODES[displayMode]?.hint}</Text>
                         </View>
+                        )}
 
                         {/* Fields (unchanged) */}
                         <View style={rm.section}>
@@ -1113,6 +1163,22 @@ export default function TasksScreen() {
     const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
     // Nature affichée (null = tout) et nature de l'élément en cours de création.
     const [natureFilter, setNatureFilter] = useState(null);
+
+    // Type de rapport : suit l'onglet (Réserves → rapport de réserves, etc.).
+    const [reportKind, setReportKind] = useState('libre');
+    useEffect(() => setReportKind(kindForPinType(natureFilter)), [natureFilter]);
+    // Rapport lancé depuis la liste : tout l'onglet (filtres compris), sans cocher.
+    const [reportWholeTab, setReportWholeTab] = useState(false);
+    // Modèles du type choisi, plus les modèles « libres » qui servent pour tous.
+    const kindTemplates = useMemo(
+        () => availableTemplates.filter((t) => templateKind(t) === reportKind || templateKind(t) === 'libre'),
+        [availableTemplates, reportKind]
+    );
+    // Par défaut : le modèle par défaut de ce type, sinon la présentation du type.
+    useEffect(() => {
+        const own = availableTemplates.filter((t) => templateKind(t) === reportKind);
+        setSelectedTemplate(own.find((t) => t.is_default) || own[0] || null);
+    }, [availableTemplates, reportKind]);
     const [newNature, setNewNature] = useState('tache');
     const [newTaskName, setNewTaskName] = useState('');
     const [newTaskDescription, setNewTaskDescription] = useState('');
@@ -1175,11 +1241,7 @@ useEffect(() => {
                 .select('*')
                 .eq('organization_id', projects.organization_id)
                 .order('created_at', { ascending: false });
-            if (data) {
-                setAvailableTemplates(data);
-                const defaultTemplate = data.find(t => t.is_default) || data[0] || null;
-                setSelectedTemplate(defaultTemplate);
-            }
+            if (data) setAvailableTemplates(data);
         };
         fetchTemplates();
     }, [projects?.organization_id]);
@@ -1200,6 +1262,7 @@ useEffect(() => {
     }, [projects?.id]);
 
   const handleGenerateReport = useCallback(async ({
+    progress,
     reportTitle,
     displayMode,
     fields,
@@ -1208,7 +1271,8 @@ useEffect(() => {
     planningImages,
     planningObservations,
 }) => {
-    if (selectedIds.size === 0 || isDownloading) return;
+    const ids = reportWholeTab ? filteredPins.map((p) => p.id) : Array.from(selectedIds);
+    if (ids.length === 0 || isDownloading) return;
     if (!isOnline()) {
         Alert.alert('Indisponible hors ligne', 'La génération du rapport nécessite une connexion.');
         return;
@@ -1218,7 +1282,10 @@ useEffect(() => {
     try {
         const requestBody = {
             projectId: projects.id,
-            selectedIds: Array.from(selectedIds),
+            selectedIds: ids,
+            reportKind,
+            templateKind: templateKind(selectedTemplate),
+            ...(progress ? { progress } : {}),
             fields,
             displayMode,
             templateConfig: selectedTemplate?.config || null,
@@ -1278,14 +1345,15 @@ useEffect(() => {
             Alert.alert('Succès', `Rapport sauvegardé: ${fileName}`);
         }
 
-        setSelectedIds(new Set());
+        if (!reportWholeTab) setSelectedIds(new Set());
     } catch (error) {
         console.error('PDF generation error:', error);
         Alert.alert('Erreur', error.message || 'Erreur inconnue lors de la génération');
     } finally {
         setIsDownloading(false);
+        setReportWholeTab(false);
     }
-}, [selectedIds, projects, isDownloading, selectedTemplate]);
+}, [selectedIds, projects, isDownloading, selectedTemplate, reportKind, reportWholeTab, filteredPins]);
 
     const handleCreateGeneralTask = useCallback(async () => {
         if (!newTaskName.trim() || isCreatingTask) return;
@@ -1650,6 +1718,21 @@ useEffect(() => {
                 <Text style={{ fontSize: 15, color: '#1C1C1A', fontFamily: 'Outfit_500Medium', marginLeft: 8 }}>
                     Tout sélectionner
                 </Text>
+                {natureFilter && filteredPins.length > 0 && selectedIds.size === 0 && (
+                    <TouchableOpacity
+                        onPress={() => { setReportWholeTab(true); setShowReportModal(true); }}
+                        disabled={isDownloading}
+                        style={styles.kindReportBtn}
+                        accessibilityRole="button"
+                    >
+                        {isDownloading
+                            ? <ActivityIndicator size="small" color={C.encre} />
+                            : <Feather name="file-text" size={14} color={C.encre} />}
+                        <Text style={styles.kindReportText}>
+                            {isDownloading ? 'Génération…' : REPORT_KINDS[kindForPinType(natureFilter)].label}
+                        </Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             {loading ? (
@@ -1726,9 +1809,12 @@ useEffect(() => {
             {/* ── Report Options Modal ── */}
            <ReportOptionsModal
     visible={showReportModal}
-    onClose={() => setShowReportModal(false)}
+    onClose={() => { setShowReportModal(false); setReportWholeTab(false); }}
     onConfirm={handleGenerateReport}
-    availableTemplates={availableTemplates}
+    reportKind={reportKind}
+    onKindChange={setReportKind}
+    itemCount={reportWholeTab ? filteredPins.length : selectedIds.size}
+    availableTemplates={kindTemplates}
     selectedTemplate={selectedTemplate}
     setSelectedTemplate={setSelectedTemplate}
     projectMembers={projectMembers}
@@ -1855,6 +1941,8 @@ const styles = StyleSheet.create({
     sortText: { fontSize: 15, color: '#333', fontFamily: 'Outfit_400Regular', marginLeft: 5 },
     floatingBar: { position: 'absolute', bottom: 20, right: 20, flexDirection: 'row', alignItems: 'center', gap: 12 },
     filterFloatingBtn: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D3D3CE', width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', elevation: 4 },
+    kindReportBtn: { marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1, borderColor: C.filet, backgroundColor: C.blanc },
+    kindReportText: { fontSize: 13, color: C.encre, fontFamily: 'Outfit_500Medium' },
     downloadFloatingBtn: { backgroundColor: '#1C1C1A', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, height: 48, borderRadius: 24, gap: 6, elevation: 4 },
     downloadText: { color: 'white', fontFamily: 'Outfit_600SemiBold', fontSize: 13 },
     createTaskContainer: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20, maxHeight: '80%', width: '100%' },
