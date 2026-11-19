@@ -82,7 +82,7 @@ export default function RapportsView({ project, canEdit, active, refreshKey }) {
     setComposing(kind);
   };
 
-  const generate = async ({ progress, reportTitle, displayMode, fields, participants, customSections, planningImages, planningObservations }) => {
+  const generate = async ({ progress, progressContent, reportTitle, displayMode, fields, participants, customSections, planningImages, planningObservations }) => {
     const kind = composing;
     const period = periodOf(kind);
     const selectedIds = idsOf(kind);
@@ -99,6 +99,7 @@ export default function RapportsView({ project, canEdit, active, refreshKey }) {
         templateConfig: selectedTemplate?.config || null,
         period,
         ...(progress ? { progress } : {}),
+        ...(progressContent ? { progressContent } : {}),
         fields,
         displayMode,
         reportTitle,

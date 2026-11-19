@@ -336,6 +336,7 @@ useEffect(() => {
 
   const handleGenerateReport = useCallback(async ({
     progress,
+    progressContent,
     reportTitle,
     displayMode,
     fields,
@@ -359,6 +360,7 @@ useEffect(() => {
             reportKind,
             templateKind: templateKind(selectedTemplate),
             ...(progress ? { progress } : {}),
+            ...(progressContent ? { progressContent } : {}),
             fields,
             displayMode,
             templateConfig: selectedTemplate?.config || null,
