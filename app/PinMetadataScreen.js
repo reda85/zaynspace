@@ -58,6 +58,7 @@ import {
     UserPlus,
     WifiIcon,
     ZapIcon,
+    CalendarRange,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -470,7 +471,9 @@ export default function PinMetadataScreen() {
     // ─── Enregistrement d'un pin ──────────────────────────────────────────────
     // Seuls les champs modifiés sont envoyés, la réponse est attendue, et un
     // échec est signalé à l'utilisateur au lieu d'être ignoré.
-    const SAVABLE_FIELDS = ['name', 'note', 'status_id', 'category_id', 'assigned_to_id', 'due_date'];
+    const SAVABLE_FIELDS = ['name', 'note', 'status_id', 'category_id', 'assigned_to_id', 'due_date',
+        // Nature et planning (réserve / tâche / observation, début, avancement).
+        'type', 'date_debut', 'avancement'];
     const lastSavedTextRef = useRef({ name: null, note: null });
 
     const persistPatch = async (targetPinId, patch) => {
@@ -936,17 +939,40 @@ export default function PinMetadataScreen() {
     // Avant, la roue iOS était posée sous la barre de commentaire et chaque
     // molette (jour, mois ou année) fermait le sélecteur.
     const [iosDraftDate, setIosDraftDate] = useState(null);
+    // Le même sélecteur sert à l'échéance et au début (planning).
+    const [dateTarget, setDateTarget] = useState('due');
     const saveDueDate = (date) => {
+        if (dateTarget === 'debut') return saveDebut(date);
         const dateString = date.toISOString();
         setDue_date(dateString);
         immediateSave({ due_date: dateString });
     };
+    // Début : jour calendaire local (colonne date), comme sur le web.
+    const saveDebut = (date) => {
+        const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+        setPins((prev) => prev.map((p) => (p.id === pin.id ? { ...p, date_debut: iso } : p)));
+        immediateSave({ date_debut: iso });
+    };
     const handleOpenDatePicker = () => {
+        setDateTarget('due');
         if (Platform.OS === 'ios') {
             const start = due_date ? new Date(due_date) : new Date();
             setIosDraftDate(start < new Date() ? new Date() : start);
         }
         setShowDatePicker(true);
+    };
+    const handleOpenDebutPicker = () => {
+        setDateTarget('debut');
+        if (Platform.OS === 'ios') setIosDraftDate(pin.date_debut ? new Date(`${pin.date_debut}T12:00:00`) : new Date());
+        setShowDatePicker(true);
+    };
+    const handleClearDebut = () => {
+        setPins((prev) => prev.map((p) => (p.id === pin.id ? { ...p, date_debut: null } : p)));
+        immediateSave({ date_debut: null });
+    };
+    const handleSetAvancement = (avancement) => {
+        setPins((prev) => prev.map((p) => (p.id === pin.id ? { ...p, avancement } : p)));
+        immediateSave({ avancement });
     };
     const onChangeDate = (event, selectedDate) => {
         if (Platform.OS === 'ios') {
@@ -1565,6 +1591,50 @@ export default function PinMetadataScreen() {
                             </TouchableOpacity>
                         </View>
 
+                        {/* Planning : une tâche avec une date de début figure au planning ;
+                            son échéance en est la fin. Comme la fiche web. */}
+                        {(pinType(pin) === 'tache' || pin.date_debut) && (
+                            <View style={styles.planningBox}>
+                                <View style={styles.planningHead}>
+                                    <CalendarRange size={16} color="#5B5B56" />
+                                    <Text style={styles.planningTitle}>Planning</Text>
+                                    <Text style={styles.planningHint}>{pin.date_debut ? 'Fin = échéance' : 'Hors planning'}</Text>
+                                </View>
+                                <TouchableOpacity
+                                    disabled={!canEditEverythingElse}
+                                    onPress={handleOpenDebutPicker}
+                                    style={[styles.planningDate, !canEditEverythingElse && styles.readOnlyButton]}
+                                >
+                                    <Text style={styles.planningLabel}>Début</Text>
+                                    <Text style={styles.planningValue}>
+                                        {pin.date_debut ? formatDate(`${pin.date_debut}T12:00:00`) : 'Ajouter le début'}
+                                    </Text>
+                                    {pin.date_debut && canEditEverythingElse && (
+                                        <TouchableOpacity style={styles.clearIconWrapper} onPress={handleClearDebut}>
+                                            <CloseIcon size={12} color="#5B5B56" strokeWidth={2.4} />
+                                        </TouchableOpacity>
+                                    )}
+                                </TouchableOpacity>
+                                {pin.date_debut && (
+                                    <View style={styles.planningSteps}>
+                                        {[0, 25, 50, 75, 100].map((v) => {
+                                            const active = (pin.avancement ?? 0) === v;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={v}
+                                                    disabled={!canEditEverythingElse}
+                                                    onPress={() => !active && handleSetAvancement(v)}
+                                                    style={[styles.planningStep, active && styles.planningStepActive]}
+                                                >
+                                                    <Text style={[styles.planningStepText, active && { color: '#FFFFFF' }]}>{v} %</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
                         <View style={styles.assigneeDueDateRow}>
                             <TouchableOpacity style={[styles.actionButton, styles.mediaButton, styles.photoButton]} onPress={handleAddPhotosToCurrentPin}>
                                 <Camera size={16} color="#2C4F91" />
@@ -1678,11 +1748,11 @@ export default function PinMetadataScreen() {
                 {showDatePicker && Platform.OS !== 'ios' && (
                     <DateTimePicker
                         testID="dateTimePicker"
-                        value={initialDate}
+                        value={dateTarget === 'debut' ? (pin.date_debut ? new Date(`${pin.date_debut}T12:00:00`) : new Date()) : initialDate}
                         mode={'date'}
                         display="default"
                         onChange={onChangeDate}
-                        minimumDate={new Date()}
+                        minimumDate={dateTarget === 'debut' ? undefined : new Date()}
                     />
                 )}
 
@@ -1700,7 +1770,7 @@ export default function PinMetadataScreen() {
                                     <TouchableOpacity onPress={() => setShowDatePicker(false)} hitSlop={8}>
                                         <Text style={styles.dateSheetCancel}>Annuler</Text>
                                     </TouchableOpacity>
-                                    <Text style={styles.dateSheetTitle}>Date d'échéance</Text>
+                                    <Text style={styles.dateSheetTitle}>{dateTarget === 'debut' ? 'Début (planning)' : "Date d'échéance"}</Text>
                                     <TouchableOpacity onPress={confirmIosDate} hitSlop={8}>
                                         <Text style={styles.dateSheetConfirm}>Valider</Text>
                                     </TouchableOpacity>
@@ -1714,7 +1784,7 @@ export default function PinMetadataScreen() {
                                     themeVariant="light"
                                     accentColor="#2C4F91"
                                     onChange={onChangeDate}
-                                    minimumDate={new Date()}
+                                    minimumDate={dateTarget === 'debut' ? undefined : new Date()}
                                     style={{ alignSelf: 'stretch' }}
                                 />
                             </View>
@@ -1788,6 +1858,17 @@ export default function PinMetadataScreen() {
 }
 
 const styles = StyleSheet.create({
+    planningBox: { borderWidth: 1, borderColor: '#E4E4E0', backgroundColor: '#F3F3F0', borderRadius: 12, padding: 12, marginBottom: 10, gap: 10 },
+    planningHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    planningTitle: { fontFamily: 'Outfit_600SemiBold', fontSize: 14, color: '#1C1C1A' },
+    planningHint: { fontFamily: 'Outfit_400Regular', fontSize: 12.5, color: '#8A8A84', marginLeft: 'auto' },
+    planningDate: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E4E0', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12 },
+    planningLabel: { fontFamily: 'Outfit_400Regular', fontSize: 13, color: '#8A8A84' },
+    planningValue: { fontFamily: 'Outfit_500Medium', fontSize: 14, color: '#1C1C1A', flex: 1 },
+    planningSteps: { flexDirection: 'row', gap: 6 },
+    planningStep: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E4E4E0', backgroundColor: '#FFFFFF' },
+    planningStepActive: { backgroundColor: '#1C1C1A', borderColor: '#1C1C1A' },
+    planningStepText: { fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: '#1C1C1A' },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
