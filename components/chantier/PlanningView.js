@@ -170,7 +170,7 @@ function TaskList({ tasks, lotName, today, onPress }) {
       {tasks.map((t, i) => (
         <Pressable key={t.id} onPress={() => onPress(t)} style={[styles.item, i > 0 && { borderTopWidth: 1, borderTopColor: C.voile }]}>
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={styles.itemTitle} numberOfLines={1}>{t.type === 'jalon' ? '◆ ' : ''}{t.libelle}</Text>
+            <Text style={styles.itemTitle} numberOfLines={1}>{t.type === 'jalon' ? '◆ ' : `${t.pin_number ?? ''} · `}{t.libelle}</Text>
             <Text style={[styles.itemMeta, isTaskLate(t, today) && { color: C.alerte }]} numberOfLines={1}>
               {lotName(t.lot_id)} · {t.type === 'jalon' ? fmtDate(t.date_debut) : fmtPeriod(t.date_debut, t.date_fin)}
             </Text>
@@ -198,6 +198,7 @@ function ProgressSheet({ task, canEdit, lotName, onClose, onSave }) {
       <View style={styles.sheet}>
         <Text style={styles.sheetTitle}>{task.libelle}</Text>
         <Text style={styles.sheetMeta}>{lotName} · {jalon ? fmtDate(task.date_debut) : fmtPeriod(task.date_debut, task.date_fin)}</Text>
+        {!jalon && <Text style={styles.sheetMeta}>Tâche n° {task.pin_number} · aussi dans l’onglet Tâches{task.done ? ' (levée)' : ''}</Text>}
         {canEdit ? (
           <>
             <Text style={styles.sheetLabel}>{jalon ? 'Jalon' : 'Avancement'}</Text>
