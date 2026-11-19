@@ -124,6 +124,7 @@ export default function ReportOptionsModal({
     reportKind = 'libre',  // type de rapport (réserves, visite, avancement, libre)
     onKindChange,
     itemCount,             // éléments concernés (affiché sous le type)
+    defaultLotNames = [],  // filtre de lot de la liste : pré-sélectionne ces lots
 }) {
     const insets = useSafeAreaInsets();
     const kind = REPORT_KINDS[reportKind] ?? REPORT_KINDS.libre;
@@ -147,14 +148,23 @@ export default function ReportOptionsModal({
     const [extraCompanies, setExtraCompanies] = useState([]);
     const [conclusionText, setConclusionText] = useState('');
     useEffect(() => {
-        if (!visible || !isProgress || !projectId) return;
+        if (!visible || !projectId) return;
         let alive = true;
-        fetchLots(projectId).then(({ lots: l }) => { if (alive) setLots(l); }).catch(() => {});
+        fetchLots(projectId).then(({ lots: l }) => {
+            if (!alive) return;
+            setLots(l);
+            const wanted = new Set(defaultLotNames.map((n) => String(n).toLowerCase()));
+            setLotIds(l.filter((x) => wanted.has(String(x.name).toLowerCase())).map((x) => String(x.id)));
+        }).catch(() => {});
         return () => { alive = false; };
-    }, [visible, isProgress, projectId]);
+    }, [visible, projectId]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Rapport par lot(s) : vide = tout le projet.
+    const [lotIds, setLotIds] = useState([]);
+    const scopedLots = lots.filter((l) => lotIds.includes(String(l.id)));
+    const toggleLot = (id) => setLotIds((ids) => (ids.includes(String(id)) ? ids.filter((x) => x !== String(id)) : [...ids, String(id)]));
     const lotCompanies = useMemo(() => {
         const byKey = new Map();
-        for (const lot of lots) {
+        for (const lot of scopedLots.length ? scopedLots : lots) {
             if (!lot.entreprises?.name) continue;
             const key = lot.entreprises.id ?? lot.entreprises.name;
             const row = byKey.get(key) ?? { key, name: lot.entreprises.name, lots: [] };
@@ -162,7 +172,7 @@ export default function ReportOptionsModal({
             byKey.set(key, row);
         }
         return [...byKey.values()].map((r) => ({ ...r, lots: r.lots.join(', ') }));
-    }, [lots]);
+    }, [lots, lotIds]); // eslint-disable-line react-hooks/exhaustive-deps
     const totalWorkforce =
         lotCompanies.reduce((n, r) => n + (Number(counts[r.key]) || 0), 0) +
         extraCompanies.reduce((n, r) => n + (Number(r.count) || 0), 0);
@@ -295,6 +305,7 @@ export default function ReportOptionsModal({
 
             // 3. Pass everything to parent
             await onConfirm({
+                lotIds: scopedLots.map((l) => l.id),
                 ...(isProgress ? {
                     progress,
                     progressContent: {
@@ -407,6 +418,33 @@ export default function ReportOptionsModal({
                                 Apparaîtra sur la couverture et dans le résumé du rapport.
                             </Text>
                         </View>
+
+                        {/* Rapport par lot(s) */}
+                        {lots.length > 0 && (
+                            <View style={rm.section}>
+                                <Text style={rm.sectionLabel}>LOTS CONCERNÉS</Text>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                    {[{ id: null, name: 'Tout le projet' }, ...lots].map((l) => {
+                                        const on = l.id == null ? scopedLots.length === 0 : lotIds.includes(String(l.id));
+                                        return (
+                                            <TouchableOpacity
+                                                key={l.id ?? 'all'}
+                                                onPress={() => (l.id == null ? setLotIds([]) : toggleLot(l.id))}
+                                                style={[rm.lotChip, on && rm.modeBtnActive]}
+                                                accessibilityState={{ selected: on }}
+                                            >
+                                                <Text style={[rm.modeBtnText, on && rm.modeBtnTextActive]}>{l.name}</Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                                <Text style={rm.modeHint}>
+                                    {scopedLots.length
+                                        ? `Seuls les éléments de ${scopedLots.length > 1 ? 'ces lots' : 'ce lot'} sont repris. En page de garde : ${scopedLots.map((l) => l.name).join(' / ')}${(() => { const c = [...new Set(scopedLots.map((l) => l.entreprises?.name).filter(Boolean))]; return c.length ? ` — ${c.join(' / ')}` : ''; })()}`
+                                        : 'Choisissez un ou plusieurs lots pour un rapport par lot : leur nom et leur entreprise figurent en page de garde.'}
+                                </Text>
+                            </View>
+                        )}
 
                         {/* Contenu du rapport d'avancement */}
                         {isProgress && (
@@ -990,6 +1028,14 @@ const rm = StyleSheet.create({
         fontSize: 14,
         fontFamily: 'Outfit_600SemiBold',
         color: '#fff',
+    },
+    lotChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: '#E4E4E0',
+        backgroundColor: '#F8F8F6',
     },
     wfRow: {
         flexDirection: 'row',
