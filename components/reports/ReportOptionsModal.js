@@ -14,7 +14,7 @@ import { fetchLots, todayISO } from '../../lib/chantier';
 import { Segmented } from '../chantier/ui';
 import { PIN_TYPES } from '../../lib/pinTypes';
 import {
-    DEFAULT_PROGRESS, DISPLAY_MODES, PROGRESS_PARTS, REPORT_KIND_KEYS, REPORT_KINDS, templateKind,
+    DEFAULT_PROGRESS, DISPLAY_MODES, PROGRESS_PARTS, REPORT_KIND_KEYS, REPORT_KINDS, templateKind, fieldValue,
 } from '../../lib/reportKinds';
 
 const FIELD_LABELS = {
@@ -25,12 +25,13 @@ const FIELD_LABELS = {
     dueDate: 'Échéance',
     category: 'Lot',
     status: 'Statut',
-    planning: 'Planning (début, avancement)',
+    startDate: 'Date de début',
+    progress: 'Avancement',
 };
 
 const DEFAULT_FIELDS = {
     description: true, photos: true, snapshot: true, assignedTo: true,
-    dueDate: true, category: true, status: true, planning: false,
+    startDate: false, dueDate: true, progress: false, category: true, status: true,
 };
 
 // ─── REPORT OPTIONS MODAL ────────────────────────────────────────────────────
@@ -208,7 +209,7 @@ export default function ReportOptionsModal({
         setDisplayMode(tplMode && (reportKind === 'libre' || kind.modes.includes(tplMode)) ? tplMode : kind.displayMode);
         const f = (own && cfg?.fields) || kind.fields || cfg?.fields;
         setFields(f
-            ? Object.fromEntries(Object.keys(DEFAULT_FIELDS).map((k) => [k, f[k] ?? DEFAULT_FIELDS[k]]))
+            ? Object.fromEntries(Object.keys(DEFAULT_FIELDS).map((k) => [k, fieldValue(f, k, DEFAULT_FIELDS[k])]))
             : DEFAULT_FIELDS);
         setProgress({ ...DEFAULT_PROGRESS, ...(cfg?.progress || {}) });
         setParticipants(projectMembers.map(m => ({ ...m, present: true })));
@@ -555,7 +556,8 @@ export default function ReportOptionsModal({
                         {/* Fields (unchanged) */}
                         <View style={rm.section}>
                             <Text style={rm.sectionLabel}>CHAMPS À INCLURE</Text>
-                            {Object.entries(fields).map(([key, val]) => (
+                            {/* Début et avancement ne concernent que les tâches. */}
+                            {Object.entries(fields).filter(([key]) => !['startDate', 'progress'].includes(key) || !['reserves', 'visite'].includes(reportKind)).map(([key, val]) => (
                                 <TouchableOpacity
                                     key={key}
                                     onPress={() => toggleField(key)}
