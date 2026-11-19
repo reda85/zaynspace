@@ -207,7 +207,6 @@ export default function RapportsView({ project, canEdit, active, refreshKey }) {
                 <Text style={styles.periodLabel}>{presetLabel(kind)}</Text>
                 <Text style={styles.period} numberOfLines={1}>
                   {period ? periodLabel(period) : kind === 'avancement' ? 'Toutes les tâches' : `Toutes les ${WORDS[k.pinType]}s`}
-                  {period ? (kind === 'avancement' ? ' · tâches actives' : ' · constatées sur la période') : ''}
                 </Text>
               </View>
               <Text style={styles.periodChange}>Changer</Text>
