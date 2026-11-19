@@ -1,4 +1,4 @@
-// Onglet Chantier : pilotage du projet (lots, réunions de chantier, planning).
+// Onglet Chantier : pilotage du projet (lots, réunions de chantier, planning, rapports).
 import { useIsFocused } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import { useAtomValue } from 'jotai';
@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import LotsView from '../../components/chantier/LotsView';
 import PlanningView from '../../components/chantier/PlanningView';
+import RapportsView from '../../components/chantier/RapportsView';
 import ReunionsView from '../../components/chantier/ReunionsView';
 import { Segmented } from '../../components/chantier/ui';
 import { ScreenHeader } from '../../components/ui/ScreenHeader';
@@ -28,6 +29,7 @@ const VIEWS = [
   { value: 'lots', label: 'Lots' },
   { value: 'reunions', label: 'Réunions' },
   { value: 'planning', label: 'Planning' },
+  { value: 'rapports', label: 'Rapports' },
 ];
 
 export default function ChantierScreen() {
@@ -78,8 +80,10 @@ export default function ChantierScreen() {
     if (isFocused) load();
   }, [isFocused, load]);
 
+  const [refreshKey, setRefreshKey] = useState(0);
   const refresh = async () => {
     setRefreshing(true);
+    setRefreshKey((k) => k + 1);
     await load();
     setRefreshing(false);
   };
@@ -152,6 +156,9 @@ export default function ChantierScreen() {
               canEdit={canEdit}
               onTaskProgress={setTaskProgress}
             />
+          )}
+          {view === 'rapports' && (
+            <RapportsView project={project} canEdit={canEdit} active={isFocused} refreshKey={refreshKey} />
           )}
           {data.cachedAt ? (
             <Text style={styles.cached}>Hors ligne : données du {new Date(data.cachedAt).toLocaleString('fr-FR')}</Text>
