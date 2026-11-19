@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../lib/supabase';
+import { fetchLots, todayISO } from '../../lib/chantier';
 import { Segmented } from '../chantier/ui';
 import { PIN_TYPES } from '../../lib/pinTypes';
 import {
@@ -139,6 +140,33 @@ export default function ReportOptionsModal({
     const [isSubmitting, setIsSubmitting] = useState(false);                     // ── NEW
     const [keyboardOffset, setKeyboardOffset] = useState(0);
 
+    // Rapport d'avancement : effectifs par entreprise (titulaires des lots,
+    // plus celles ajoutées à la main) et recommandations.
+    const [lots, setLots] = useState([]);
+    const [counts, setCounts] = useState({});
+    const [extraCompanies, setExtraCompanies] = useState([]);
+    const [conclusionText, setConclusionText] = useState('');
+    useEffect(() => {
+        if (!visible || !isProgress || !projectId) return;
+        let alive = true;
+        fetchLots(projectId).then(({ lots: l }) => { if (alive) setLots(l); }).catch(() => {});
+        return () => { alive = false; };
+    }, [visible, isProgress, projectId]);
+    const lotCompanies = useMemo(() => {
+        const byKey = new Map();
+        for (const lot of lots) {
+            if (!lot.entreprises?.name) continue;
+            const key = lot.entreprises.id ?? lot.entreprises.name;
+            const row = byKey.get(key) ?? { key, name: lot.entreprises.name, lots: [] };
+            row.lots.push(lot.name);
+            byKey.set(key, row);
+        }
+        return [...byKey.values()].map((r) => ({ ...r, lots: r.lots.join(', ') }));
+    }, [lots]);
+    const totalWorkforce =
+        lotCompanies.reduce((n, r) => n + (Number(counts[r.key]) || 0), 0) +
+        extraCompanies.reduce((n, r) => n + (Number(r.count) || 0), 0);
+
    
     // ── Keyboard listeners (unchanged) ───────────────────────────────────────
     useEffect(() => {
@@ -179,6 +207,9 @@ export default function ReportOptionsModal({
         // ── NEW: reset planning state on template change
         setPlanningImages([]);
         setPlanningObservationsText('');
+        setCounts({});
+        setExtraCompanies([]);
+        setConclusionText('');
     }, [visible, selectedTemplate, projectMembers, reportKind]);
 
     // Defensive normalization for planning block (older templates may not have it)
@@ -264,7 +295,17 @@ export default function ReportOptionsModal({
 
             // 3. Pass everything to parent
             await onConfirm({
-                ...(isProgress ? { progress } : {}),
+                ...(isProgress ? {
+                    progress,
+                    progressContent: {
+                        workforceDate: todayISO(),
+                        workforce: [
+                            ...lotCompanies.map((r) => ({ name: r.name, lots: r.lots, count: Number(counts[r.key]) || 0 })),
+                            ...extraCompanies.map((r) => ({ name: r.name.trim(), lots: '', count: Number(r.count) || 0 })),
+                        ].filter((r) => r.name && r.count > 0),
+                        conclusion: plainTextToTipTapDoc(conclusionText),
+                    },
+                } : {}),
                 reportTitle,
                 displayMode,
                 fields,
@@ -392,6 +433,59 @@ export default function ReportOptionsModal({
                                         </TouchableOpacity>
                                     );
                                 })}
+                            </View>
+                        )}
+
+                        {isProgress && progress.workforce && (
+                            <View style={rm.section}>
+                                <Text style={rm.sectionLabel}>EFFECTIFS DE SITE (AUJOURD'HUI)</Text>
+                                {lotCompanies.map((r) => (
+                                    <View key={r.key} style={rm.wfRow}>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={rm.fieldLabel} numberOfLines={1}>{r.name}</Text>
+                                            <Text style={[rm.modeHint, { marginTop: 1 }]} numberOfLines={1}>{r.lots}</Text>
+                                        </View>
+                                        <TextInput
+                                            value={counts[r.key] ?? ''}
+                                            onChangeText={(t) => setCounts((c) => ({ ...c, [r.key]: t.replace(/[^0-9]/g, '') }))}
+                                            placeholder="0"
+                                            placeholderTextColor="#D3D3CE"
+                                            keyboardType="number-pad"
+                                            accessibilityLabel={`Effectif ${r.name}`}
+                                            style={rm.wfCount}
+                                        />
+                                    </View>
+                                ))}
+                                {extraCompanies.map((r, i) => (
+                                    <View key={i} style={rm.wfRow}>
+                                        <TextInput
+                                            value={r.name}
+                                            onChangeText={(t) => setExtraCompanies((rows) => rows.map((x, j) => (j === i ? { ...x, name: t } : x)))}
+                                            placeholder="Entreprise"
+                                            placeholderTextColor="#D3D3CE"
+                                            style={[rm.wfCount, { flex: 1, width: undefined, textAlign: 'left' }]}
+                                        />
+                                        <TextInput
+                                            value={r.count}
+                                            onChangeText={(t) => setExtraCompanies((rows) => rows.map((x, j) => (j === i ? { ...x, count: t.replace(/[^0-9]/g, '') } : x)))}
+                                            placeholder="0"
+                                            placeholderTextColor="#D3D3CE"
+                                            keyboardType="number-pad"
+                                            accessibilityLabel="Effectif"
+                                            style={rm.wfCount}
+                                        />
+                                        <TouchableOpacity onPress={() => setExtraCompanies((rows) => rows.filter((_, j) => j !== i))} hitSlop={8} accessibilityLabel="Retirer">
+                                            <Feather name="x" size={16} color="#8A8A84" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                                <View style={[rm.wfRow, { borderBottomWidth: 0 }]}>
+                                    <TouchableOpacity onPress={() => setExtraCompanies((rows) => [...rows, { name: '', count: '' }])} style={{ flex: 1 }}>
+                                        <Text style={[rm.fieldLabel, { color: '#5B5B56' }]}>+ Ajouter une entreprise</Text>
+                                    </TouchableOpacity>
+                                    <Text style={rm.fieldLabel}>Total : {totalWorkforce} pers.</Text>
+                                </View>
+                                <Text style={rm.modeHint}>Les entreprises sans effectif ne figurent pas dans le rapport.</Text>
                             </View>
                         )}
 
@@ -585,6 +679,25 @@ export default function ReportOptionsModal({
                                         </Text>
                                     </View>
                                 ))}
+                            </View>
+                        )}
+
+                        {isProgress && progress.conclusion && (
+                            <View style={rm.section}>
+                                <Text style={rm.sectionLabel}>RECOMMANDATIONS ET CONCLUSION</Text>
+                                <TextInput
+                                    value={conclusionText}
+                                    onChangeText={setConclusionText}
+                                    placeholder={'- Renforcer l\'effectif du lot menuiseries\n- ...'}
+                                    placeholderTextColor="#D3D3CE"
+                                    multiline
+                                    numberOfLines={4}
+                                    textAlignVertical="top"
+                                    style={[rm.customSectionInput, { marginTop: 6 }]}
+                                />
+                                <Text style={rm.customSectionHint}>
+                                    Préfixez une ligne avec - ou • pour créer une puce.
+                                </Text>
                             </View>
                         )}
 
@@ -877,6 +990,27 @@ const rm = StyleSheet.create({
         fontSize: 14,
         fontFamily: 'Outfit_600SemiBold',
         color: '#fff',
+    },
+    wfRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F1EE',
+    },
+    wfCount: {
+        width: 64,
+        borderWidth: 1,
+        borderColor: '#E4E4E0',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        fontSize: 14,
+        fontFamily: 'Outfit_600SemiBold',
+        color: '#1C1C1A',
+        backgroundColor: '#F8F8F6',
+        textAlign: 'right',
     },
     // ── NEW: Title input
     titleInput: {
