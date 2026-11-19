@@ -79,7 +79,7 @@ export default function SelectProjectScreen() {
     setLoadingOrgs(true);
     const { data, error } = await cachedSelect(`orgs-${user.id}`, () => supabase
       .from('members_organizations')
-      .select('organization_id, organizations(id, name)')
+      .select('organization_id, organizations(*)')
       .eq('member_id', user.id));
 
     if (error) {
