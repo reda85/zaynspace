@@ -167,7 +167,7 @@ export default function ReunionScreen() {
                 {a.societe && a.nom ? <Text style={styles.meta} numberOfLines={1}>{a.nom}</Text> : null}
               </View>
               {editable ? (
-                <Segmented small value={a.presence} options={PRESENCE_OPTIONS} onChange={(v) => setPresence(a, v)} />
+                <Segmented small fit value={a.presence} options={PRESENCE_OPTIONS} onChange={(v) => setPresence(a, v)} />
               ) : (
                 <Text style={[styles.meta, a.presence !== 'present' && { color: C.alerte }]}>{PRESENCES[a.presence]}</Text>
               )}

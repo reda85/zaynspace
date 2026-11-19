@@ -351,7 +351,7 @@ export default function ReportOptionsModal({
                             <Text style={rm.title}>{reportKind === 'libre' ? 'Options du rapport' : kind.label}</Text>
                             {itemCount != null && (
                                 <Text style={rm.subtitle}>
-                                    {itemCount} élément{itemCount > 1 ? 's' : ''}{kind.pinType ? ` · seuls les ${PIN_TYPES[kind.pinType].label.toLowerCase()}s sont repris` : ''}
+                                    {itemCount} élément{itemCount > 1 ? 's' : ''}{kind.pinType ? ` · seules les ${PIN_TYPES[kind.pinType].label.toLowerCase()}s sont reprises` : ''}
                                 </Text>
                             )}
                         </View>
