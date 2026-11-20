@@ -100,7 +100,7 @@ export default function RapportsView({ project, canEdit, active, refreshKey }) {
     setComposing(kind);
   };
 
-  const generate = async ({ progress, progressContent, lotIds = [], reportTitle, displayMode, fields, participants, customSections, planningImages, planningObservations }) => {
+  const generate = async ({ progress, progressContent, lotIds = [], cartouche, reportTitle, displayMode, fields, participants, customSections, planningImages, planningObservations }) => {
     const kind = composing;
     const period = periodOf(kind);
     const selectedIds = idsOf(kind);
@@ -119,6 +119,7 @@ export default function RapportsView({ project, canEdit, active, refreshKey }) {
         ...(progress ? { progress } : {}),
         ...(progressContent ? { progressContent } : {}),
         ...(lotIds.length ? { lotIds } : {}),
+        ...(cartouche ? { cartouche } : {}),
         fields,
         displayMode,
         reportTitle,
@@ -268,7 +269,7 @@ export default function RapportsView({ project, canEdit, active, refreshKey }) {
                   {fmtDateTime(r.created_at)} · {r.item_count} {itemWord(r.kind, r.item_count)}{r.members?.name ? ` · ${r.members.name}` : ''}
                 </Text>
                 <Text style={styles.meta} numberOfLines={1}>
-                  {periodLabel({ start: r.period_start, end: r.period_end })} · {fmtSize(r.file_size)}
+                  {r.doc_number ? `${r.doc_number}${r.revision ? ` · Ind. ${r.revision}` : ''} · ` : ''}{periodLabel({ start: r.period_start, end: r.period_end })} · {fmtSize(r.file_size)}
                 </Text>
               </View>
               {busyRow === r.id ? (

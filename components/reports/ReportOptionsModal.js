@@ -15,6 +15,7 @@ import { Segmented } from '../chantier/ui';
 import { PIN_TYPES } from '../../lib/pinTypes';
 import {
     DEFAULT_PROGRESS, DISPLAY_MODES, PROGRESS_PARTS, REPORT_KIND_KEYS, REPORT_KINDS, templateKind, fieldValue,
+    REPORT_PHASES, cartoucheOptions, suggestedDocNumber,
 } from '../../lib/reportKinds';
 
 const FIELD_LABELS = {
@@ -161,6 +162,13 @@ export default function ReportOptionsModal({
     }, [visible, projectId]); // eslint-disable-line react-hooks/exhaustive-deps
     // Rapport par lot(s) : vide = tout le projet.
     const [lotIds, setLotIds] = useState([]);
+    // Cartouche : n° (suivant du projet par défaut), indice, phase, visa.
+    const [docNumber, setDocNumber] = useState('');
+    const [docNumberHint, setDocNumberHint] = useState('');
+    const [revision, setRevision] = useState('A');
+    const [phase, setPhase] = useState('');
+    const [visa, setVisa] = useState({ redige: '', verifie: '', approuve: '' });
+    const [visaFocus, setVisaFocus] = useState('redige');
     const scopedLots = lots.filter((l) => lotIds.includes(String(l.id)));
     const toggleLot = (id) => setLotIds((ids) => (ids.includes(String(id)) ? ids.filter((x) => x !== String(id)) : [...ids, String(id)]));
     const lotCompanies = useMemo(() => {
@@ -247,6 +255,24 @@ export default function ReportOptionsModal({
     const participantsConfig = templateConfig?.participants || {};
     const enabledSections = (templateConfig?.customSections || []).filter(s => s.enabled);
     const planningEnabled = templateConfig?.planning?.enabled === true;          // ── NEW
+    const cart = cartoucheOptions(selectedTemplate?.config);
+
+    useEffect(() => {
+        if (!visible || !cart.enabled || !projectId) { setDocNumberHint(''); return; }
+        let alive = true;
+        supabase.rpc('next_report_seq', { p_project_id: projectId, p_kind: reportKind }).then(({ data, error }) => {
+            if (alive && !error) setDocNumberHint(suggestedDocNumber(selectedTemplate?.config, reportKind, data));
+        });
+        return () => { alive = false; };
+    }, [visible, cart.enabled, projectId, reportKind, selectedTemplate]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (!visible) return;
+        setDocNumber('');
+        setRevision('A');
+        setVisa({ redige: '', verifie: '', approuve: '' });
+        setVisaFocus('redige');
+    }, [visible]);
 
     const toggleField = (key) => setFields(f => ({ ...f, [key]: !f[key] }));
     const toggleParticipant = (id) =>
@@ -307,6 +333,7 @@ export default function ReportOptionsModal({
             // 3. Pass everything to parent
             await onConfirm({
                 lotIds: scopedLots.map((l) => l.id),
+                ...(cart.enabled ? { cartouche: { docNumber: docNumber.trim(), revision: revision.trim(), phase: phase.trim(), visa } } : {}),
                 ...(isProgress ? {
                     progress,
                     progressContent: {
@@ -443,6 +470,74 @@ export default function ReportOptionsModal({
                                     {scopedLots.length
                                         ? `Seuls les éléments de ${scopedLots.length > 1 ? 'ces lots' : 'ce lot'} sont repris. En page de garde : ${scopedLots.map((l) => l.name).join(' / ')}${(() => { const c = [...new Set(scopedLots.map((l) => l.entreprises?.name).filter(Boolean))]; return c.length ? ` — ${c.join(' / ')}` : ''; })()}`
                                         : 'Choisissez un ou plusieurs lots pour un rapport par lot : leur nom et leur entreprise figurent en page de garde.'}
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* Cartouche : n°, indice, phase, visa */}
+                        {cart.enabled && (cart.showIdentity || cart.showVisa) && (
+                            <View style={rm.section}>
+                                <Text style={rm.sectionLabel}>N° DU DOCUMENT ET VISA</Text>
+                                {cart.showIdentity && (<>
+                                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                                        <View style={{ flex: 1.7 }}>
+                                            <Text style={rm.inputLabel}>N° du document</Text>
+                                            <TextInput value={docNumber} onChangeText={setDocNumber} placeholder={docNumberHint || 'Automatique'} placeholderTextColor="#A8A8A2" maxLength={60} autoCapitalize="characters" style={rm.smallInput} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={rm.inputLabel}>Indice</Text>
+                                            <TextInput value={revision} onChangeText={(t) => setRevision(t.toUpperCase())} maxLength={12} autoCapitalize="characters" style={rm.smallInput} />
+                                        </View>
+                                    </View>
+                                    <Text style={[rm.inputLabel, { marginTop: 10 }]}>Phase</Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                                        {REPORT_PHASES.map((ph) => {
+                                            const on = phase === ph;
+                                            return (
+                                                <TouchableOpacity key={ph} onPress={() => setPhase(on ? '' : ph)} style={[rm.lotChip, on && rm.modeBtnActive]} accessibilityState={{ selected: on }}>
+                                                    <Text style={[rm.modeBtnText, on && rm.modeBtnTextActive]}>{ph}</Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </>)}
+                                {cart.showVisa && (<>
+                                    {[['redige', 'Rédigé par'], ['verifie', 'Vérifié par'], ['approuve', 'Approuvé par']].map(([k, label]) => (
+                                        <View key={k} style={{ marginTop: 10 }}>
+                                            <Text style={rm.inputLabel}>{label}</Text>
+                                            <TextInput
+                                                value={visa[k]}
+                                                onChangeText={(t) => setVisa((v) => ({ ...v, [k]: t }))}
+                                                onFocus={() => setVisaFocus(k)}
+                                                placeholder="Nom"
+                                                placeholderTextColor="#A8A8A2"
+                                                maxLength={120}
+                                                style={[rm.smallInput, visaFocus === k && { borderColor: '#1C1C1A' }]}
+                                            />
+                                        </View>
+                                    ))}
+                                    {projectMembers.some((m) => m.name) && (
+                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                                            {projectMembers.filter((m) => m.name).slice(0, 12).map((m) => (
+                                                <TouchableOpacity
+                                                    key={m.id ?? m.name}
+                                                    onPress={() => {
+                                                        setVisa((v) => ({ ...v, [visaFocus]: m.name }));
+                                                        const order = ['redige', 'verifie', 'approuve'];
+                                                        setVisaFocus(order[Math.min(order.indexOf(visaFocus) + 1, 2)]);
+                                                    }}
+                                                    style={rm.lotChip}
+                                                >
+                                                    <Text style={rm.modeBtnText}>{m.name}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    )}
+                                </>)}
+                                <Text style={rm.modeHint}>
+                                    {cart.showIdentity ? `Sans saisie, le n° suit la numérotation du projet${docNumberHint ? ` : ${docNumberHint}` : ''}. ` : ''}
+                                    {cart.showVisa ? 'Touchez un nom pour remplir le champ sélectionné. ' : ''}
+                                    {cart.showParties ? 'Les intervenants viennent des détails du projet.' : ''}
                                 </Text>
                             </View>
                         )}
@@ -1061,6 +1156,23 @@ const rm = StyleSheet.create({
         textAlign: 'right',
     },
     // ── NEW: Title input
+    inputLabel: {
+        fontSize: 11,
+        fontFamily: 'Outfit_500Medium',
+        color: '#8A8A84',
+        marginBottom: 4,
+    },
+    smallInput: {
+        borderWidth: 1,
+        borderColor: '#E4E4E0',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 9,
+        fontSize: 14,
+        fontFamily: 'Outfit_500Medium',
+        color: '#1C1C1A',
+        backgroundColor: '#F8F8F6',
+    },
     titleInput: {
         borderWidth: 1,
         borderColor: '#E4E4E0',
