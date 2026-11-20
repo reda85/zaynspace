@@ -477,7 +477,7 @@ export default function ReportOptionsModal({
                         {/* Cartouche : n°, indice, phase, visa */}
                         {cart.enabled && (cart.showIdentity || cart.showVisa) && (
                             <View style={rm.section}>
-                                <Text style={rm.sectionLabel}>CARTOUCHE</Text>
+                                <Text style={rm.sectionLabel}>N° DU DOCUMENT ET VISA</Text>
                                 {cart.showIdentity && (<>
                                     <View style={{ flexDirection: 'row', gap: 8 }}>
                                         <View style={{ flex: 1.7 }}>
