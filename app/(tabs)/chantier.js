@@ -73,6 +73,7 @@ export default function ChantierScreen() {
       points,
       entreprises,
       tasks: planningRes.tasks,
+      sousLots: planningRes.sousLots ?? [],
       finalStatusId: planningRes.finalStatusId,
       // Table absente (migration non appliquée) : on le dit plutôt que d'afficher un planning vide.
       planningUnavailable: Boolean(planningRes.error && !planningRes.error.offline && /planning_tasks|schema cache|does not exist/i.test(planningRes.error.message ?? '')),
@@ -157,6 +158,7 @@ export default function ChantierScreen() {
             <PlanningView
               lots={data.lots}
               tasks={data.tasks}
+              sousLots={data.sousLots}
               unavailable={data.planningUnavailable}
               canEdit={canEdit}
               onTaskProgress={setTaskProgress}

@@ -1,4 +1,5 @@
 // Onglet Chantier › Planning : frise compacte par lot (prévu, réel, avancement)
+// avec ses sous-lots (synthèse de leurs tâches),
 // et liste des échéances. Les tâches se mettent à jour d'un geste (avancement).
 import { ChevronDown, ChevronRight } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -9,7 +10,7 @@ import { Card, Empty, LotIcon, PrimaryButton, SectionTitle } from './ui';
 
 const MONTHS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
 
-export default function PlanningView({ lots, tasks, unavailable, canEdit, onTaskProgress }) {
+export default function PlanningView({ lots, sousLots = [], tasks, unavailable, canEdit, onTaskProgress }) {
   const today = todayISO();
   const [open, setOpen] = useState(() => new Set());
   const [editing, setEditing] = useState(null);
@@ -49,6 +50,10 @@ export default function PlanningView({ lots, tasks, unavailable, canEdit, onTask
     .sort((a, b) => a.date_debut.localeCompare(b.date_debut));
   const late = tasks.filter((t) => isTaskLate(t, today));
   const lotName = (id) => lots.find((l) => l.id === id)?.name ?? 'Généralités';
+  const taskWhere = (t) => {
+    const sl = t.sous_lot_id && sousLots.find((s) => s.id === t.sous_lot_id);
+    return sl ? `${lotName(t.lot_id)} › ${sl.name}` : lotName(t.lot_id);
+  };
 
   if (unavailable) {
     return <Empty title="Planning indisponible" text="Le planning n'est pas encore activé pour cet espace." />;
@@ -76,6 +81,11 @@ export default function PlanningView({ lots, tasks, unavailable, canEdit, onTask
           const isLate = isLotLate(lot, today);
           const realEnd = lot.date_fin_reelle ?? (lot.date_debut_reelle && lot.date_debut_reelle <= today ? today : null);
           const lotTasks = tasks.filter((t) => t.lot_id === lot.id);
+          const subs = sousLots
+            .filter((sl) => sl.lot_id === lot.id)
+            .map((sl) => ({ ...sl, tasks: lotTasks.filter((t) => t.type === 'tache' && t.sous_lot_id === sl.id) }))
+            .filter((sl) => sl.tasks.length);
+          const direct = lotTasks.filter((t) => t.type !== 'tache' || !subs.some((sl) => sl.id === t.sous_lot_id));
           const expanded = open.has(lot.id);
           return (
             <View key={lot.id} style={styles.lotBlock}>
@@ -99,8 +109,16 @@ export default function PlanningView({ lots, tasks, unavailable, canEdit, onTask
                 )}
                 <View style={[styles.today, { left: pos(today) }]} />
               </View>
-              {expanded && lotTasks.map((t) => (
+              {expanded && direct.map((t) => (
                 <TaskLine key={t.id} task={t} pos={pos} len={len} today={today} months={months} onPress={() => setEditing(t)} />
+              ))}
+              {expanded && subs.map((sl) => (
+                <View key={sl.id}>
+                  <SubLine sub={sl} pos={pos} len={len} today={today} months={months} />
+                  {sl.tasks.map((t) => (
+                    <TaskLine key={t.id} task={t} nested pos={pos} len={len} today={today} months={months} onPress={() => setEditing(t)} />
+                  ))}
+                </View>
               ))}
             </View>
           );
@@ -116,12 +134,12 @@ export default function PlanningView({ lots, tasks, unavailable, canEdit, onTask
       {late.length > 0 && (
         <>
           <SectionTitle>En retard</SectionTitle>
-          <TaskList tasks={late} lotName={lotName} today={today} onPress={setEditing} />
+          <TaskList tasks={late} lotName={taskWhere} today={today} onPress={setEditing} />
         </>
       )}
       <SectionTitle>Dans les 4 semaines</SectionTitle>
       {upcoming.length ? (
-        <TaskList tasks={upcoming} lotName={lotName} today={today} onPress={setEditing} />
+        <TaskList tasks={upcoming} lotName={taskWhere} today={today} onPress={setEditing} />
       ) : (
         <Text style={styles.none}>Rien de prévu dans les 4 prochaines semaines.</Text>
       )}
@@ -129,7 +147,7 @@ export default function PlanningView({ lots, tasks, unavailable, canEdit, onTask
       <ProgressSheet
         task={editing}
         canEdit={canEdit}
-        lotName={editing ? lotName(editing.lot_id) : ''}
+        lotName={editing ? taskWhere(editing) : ''}
         onClose={() => setEditing(null)}
         onSave={async (value) => {
           const ok = await onTaskProgress(editing, value);
@@ -144,11 +162,11 @@ function addDaysISO(iso, n) {
   return new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
 }
 
-function TaskLine({ task: t, pos, len, today, months, onPress }) {
+function TaskLine({ task: t, nested, pos, len, today, months, onPress }) {
   const late = isTaskLate(t, today);
   return (
     <Pressable onPress={onPress} style={styles.taskLine}>
-      <Text style={[styles.taskName, late && { color: C.alerte }]} numberOfLines={1}>{t.type === 'jalon' ? '◆ ' : ''}{t.libelle}</Text>
+      <Text style={[styles.taskName, nested && { marginLeft: 48 }, late && { color: C.alerte }]} numberOfLines={1}>{t.type === 'jalon' ? '◆ ' : ''}{t.libelle}</Text>
       <View style={[styles.lane, { height: 12 }]}>
         {months.map((m) => <View key={m.iso} style={[styles.gridLine, { left: `${m.left}%` }]} />)}
         {t.type === 'jalon' ? (
@@ -161,6 +179,36 @@ function TaskLine({ task: t, pos, len, today, months, onPress }) {
         <View style={[styles.today, { left: pos(today) }]} />
       </View>
     </Pressable>
+  );
+}
+
+// Sous-lot : du premier début à la dernière fin de ses tâches, avancement
+// pondéré par leur durée.
+function SubLine({ sub, pos, len, today, months }) {
+  let w = 0, p = 0, start = null, end = null;
+  for (const t of sub.tasks) {
+    const d = daysBetween(t.date_debut, t.date_fin) + 1;
+    w += d; p += d * (t.avancement ?? 0);
+    if (!start || t.date_debut < start) start = t.date_debut;
+    if (!end || t.date_fin > end) end = t.date_fin;
+  }
+  const pct = w ? Math.round(p / w) : 0;
+  const late = end < today && pct < 100;
+  const color = late ? C.alerte : C.mine;
+  return (
+    <View style={styles.subLine}>
+      <View style={styles.subHead}>
+        <Text style={[styles.subName, late && { color: C.alerte }]} numberOfLines={1}>{sub.name}</Text>
+        <Text style={[styles.subPct, late && { color: C.alerte }]}>{pct} %</Text>
+      </View>
+      <View style={[styles.lane, { height: 12 }]}>
+        {months.map((m) => <View key={m.iso} style={[styles.gridLine, { left: `${m.left}%` }]} />)}
+        <View style={[styles.subBar, { left: pos(start), width: len(start, end), borderColor: color }]}>
+          <View style={{ width: `${pct}%`, height: 4, backgroundColor: color }} />
+        </View>
+        <View style={[styles.today, { left: pos(today) }]} />
+      </View>
+    </View>
   );
 }
 
@@ -241,8 +289,13 @@ const styles = StyleSheet.create({
   real: { position: 'absolute', top: 13, height: 3, borderRadius: 2 },
   today: { position: 'absolute', top: -2, bottom: -2, width: 2, backgroundColor: C.alerte, opacity: 0.7 },
   unplanned: { fontFamily: F.regular, fontSize: 11.5, color: C.mineClair },
-  taskLine: { paddingLeft: 32, paddingTop: 6 },
-  taskName: { fontFamily: F.regular, fontSize: 12.5, color: C.mine, marginBottom: 3 },
+  taskLine: { paddingTop: 6 },
+  subLine: { paddingTop: 8 },
+  subHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3, marginLeft: 32 },
+  subName: { flex: 1, fontFamily: F.semibold, fontSize: 12.5, color: C.encre },
+  subPct: { fontFamily: F.medium, fontSize: 12, color: C.mine },
+  subBar: { position: 'absolute', top: 1, height: 9, borderLeftWidth: 2, borderRightWidth: 2, backgroundColor: C.voile },
+  taskName: { fontFamily: F.regular, fontSize: 12.5, color: C.mine, marginBottom: 3, marginLeft: 32 },
   taskBar: { position: 'absolute', top: 2, height: 8, borderRadius: 3, borderWidth: 1, borderColor: C.tirage, backgroundColor: C.tiragePale, overflow: 'hidden' },
   diamond: { position: 'absolute', top: 1, width: 9, height: 9, transform: [{ rotate: '45deg' }], marginLeft: -4 },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.voile },
