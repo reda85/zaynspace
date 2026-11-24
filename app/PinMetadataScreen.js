@@ -473,7 +473,7 @@ export default function PinMetadataScreen() {
     // échec est signalé à l'utilisateur au lieu d'être ignoré.
     const SAVABLE_FIELDS = ['name', 'note', 'status_id', 'category_id', 'assigned_to_id', 'due_date',
         // Nature et planning (réserve / tâche / observation, début, avancement).
-        'type', 'date_debut', 'avancement'];
+        'type', 'date_debut', 'avancement', 'sous_lot_id'];
     const lastSavedTextRef = useRef({ name: null, note: null });
 
     const persistPatch = async (targetPinId, patch) => {
@@ -869,7 +869,31 @@ export default function PinMetadataScreen() {
     const handleSelectCategory = (newCat) => {
         setCategory(newCat);
         setShowCategorySheet(false);
-        immediateSave({ category_id: newCat.id });
+        // Changement de lot : la tâche quitte son sous-lot (la base le fait aussi).
+        if (pin?.sous_lot_id && newCat.id !== pin.category_id) {
+            setPins((prev) => prev.map((p) => (p.id === pin.id ? { ...p, sous_lot_id: null } : p)));
+            immediateSave({ category_id: newCat.id, sous_lot_id: null });
+        } else {
+            immediateSave({ category_id: newCat.id });
+        }
+    };
+
+    // Sous-lots du projet (planning) : même cache que l'onglet Chantier.
+    const [sousLots, setSousLots] = useState([]);
+    const sousLotsProjectId = selectedProject?.id || pin?.project_id;
+    useEffect(() => {
+        if (!sousLotsProjectId) return;
+        let alive = true;
+        cachedSelect(`sous-lots-${sousLotsProjectId}`, () => supabase
+            .from('sous_lots').select('id,lot_id,name,sort_order').eq('project_id', sousLotsProjectId).order('sort_order').order('created_at'))
+            .then(({ data }) => { if (alive) setSousLots(data ?? []); })
+            .catch(() => {});
+        return () => { alive = false; };
+    }, [sousLotsProjectId]);
+    const lotSousLots = sousLots.filter((sl) => sl.lot_id === (category?.id ?? pin?.category_id));
+    const handleSetSousLot = (sousLotId) => {
+        setPins((prev) => prev.map((p) => (p.id === pin.id ? { ...p, sous_lot_id: sousLotId } : p)));
+        immediateSave({ sous_lot_id: sousLotId });
     };
 
     const handleSendComment = async () => {
@@ -1632,6 +1656,28 @@ export default function PinMetadataScreen() {
                                         })}
                                     </View>
                                 )}
+                                {pin.date_debut && lotSousLots.length > 0 && (
+                                    <View style={{ gap: 6 }}>
+                                        <Text style={styles.planningLabel}>Sous-lot</Text>
+                                        <View style={styles.sousLotChips}>
+                                            {[{ id: null, name: 'Aucun' }, ...lotSousLots].map((sl) => {
+                                                const current = lotSousLots.some((x) => x.id === pin.sous_lot_id) ? pin.sous_lot_id : null;
+                                                const active = current === sl.id;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={sl.id ?? 'aucun'}
+                                                        disabled={!canEditEverythingElse}
+                                                        onPress={() => !active && handleSetSousLot(sl.id)}
+                                                        style={[styles.sousLotChip, active && styles.planningStepActive]}
+                                                        accessibilityState={{ selected: active }}
+                                                    >
+                                                        <Text style={[styles.planningStepText, active && { color: '#FFFFFF' }]} numberOfLines={1}>{sl.name}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                )}
                             </View>
                         )}
 
@@ -1869,6 +1915,8 @@ const styles = StyleSheet.create({
     planningStep: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E4E4E0', backgroundColor: '#FFFFFF' },
     planningStepActive: { backgroundColor: '#1C1C1A', borderColor: '#1C1C1A' },
     planningStepText: { fontFamily: 'Outfit_600SemiBold', fontSize: 13, color: '#1C1C1A' },
+    sousLotChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    sousLotChip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: '#E4E4E0', backgroundColor: '#FFFFFF', maxWidth: '100%' },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
